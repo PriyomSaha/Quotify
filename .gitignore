@@ -1,0 +1,258 @@
+# ============================================================================
+# SENSITIVE DATA - CREDENTIALS & SECRETS
+# ============================================================================
+# Environment variables with API keys and tokens
+.env
+.env.*
+!.env.example
+*.env
+
+# API keys and credentials
+*secret*
+*credential*
+*token*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ============================================================================
+# GENERATED OUTPUT FILES
+# ============================================================================
+# Generated images (temporary outputs)
+image.jpg
+output.jpg
+generated_*.jpg
+generated_*.png
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# ============================================================================
+# PYTHON
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*__pycache__*
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.virtualenv/
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.env
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# Poetry
+poetry.lock
+
+# ============================================================================
+# IDEs & EDITORS
+# ============================================================================
+# VS Code
+.vscode/
+*.code-workspace
+SuperSearch_Datacollection.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw?
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# JetBrains
+.idea/
+*.iml
+
+# ============================================================================
+# OPERATING SYSTEM
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================================
+# TEMPORARY & CACHE FILES
+# ============================================================================
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+*.bak
+*.backup
+*.old
+
+# Cache directories
+.cache/
+*.cache/
+__cache__/
+
+# ============================================================================
+# DATABASE & DATA FILES
+# ============================================================================
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# CSV and data exports
+*.csv
+*.xlsx
+*.xls
+data/
+exports/
+
+# ============================================================================
+# DEPLOYMENT & INFRASTRUCTURE
+# ============================================================================
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Cloud provider configs
+.aws/
+.gcp/
+.azure/
+
+# ============================================================================
+# TESTING & DEVELOPMENT
+# ============================================================================
+# Test outputs
+test-results/
+test-output/
+screenshots/
+
+# Debug files
+debug.log
+error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================================
+# PACKAGE MANAGERS
+# ============================================================================
+# Node (if any JS tooling is added)
+node_modules/
+package-lock.json
+yarn.lock
+
+# ============================================================================
+# FONTS - Exclude all except Montserrat-Light.ttf and OFL.txt
+# ============================================================================
+# Ignore entire Montserrat directory
+Montserrat/*
+
+# But keep license file only
+!Montserrat/OFL.txt
+
+# Keep the static folder structure
+!Montserrat/static/
+
+# Ignore everything in static folder
+Montserrat/static/*
+
+# But keep only the one font we use
+!Montserrat/static/Montserrat-Light.ttf
+
+# ============================================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# ============================================================================
+# Backup images
+*_backup.*
+backup/
+
+# Draft files
+draft/
+drafts/
+scratch/
+
+# Personal notes
+notes.txt
+notes.md
+TODO.txt
+NOTES.md
+
+# Old versions
+old/
+archive/
+deprecated/

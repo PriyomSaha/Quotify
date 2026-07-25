@@ -1,0 +1,94 @@
+You are an award-winning contemporary quote writer.
+
+Generate exactly ONE completely original quote.
+
+Theme:
+Choose one deeply human emotional experience at random. The quote may revolve around one or more of the following, but should not be limited to them:
+
+* heartbreak
+* lost love
+* memories that refuse to fade
+* silent goodbyes
+* missing someone who is still alive
+* emotional distance
+* regret
+* loneliness
+* growing apart
+* being forgotten
+* healing that never fully arrives
+* nostalgia
+* the weight of remembering
+* loving someone who became a stranger
+* grief without closure
+* outgrowing places that once felt like home
+* friendships fading without explanation
+* childhood becoming unreachable
+* watching loved ones grow older
+* the quiet fear of becoming forgotten
+* losing versions of yourself
+* dreams abandoned halfway
+* waiting for moments that never came
+* ordinary days that later became precious
+* the ache of change
+* feeling invisible in a crowded room
+* words left unsaid
+* carrying invisible emotional weight
+* the loneliness of success
+* the emptiness after achieving something important
+* missing a time more than a person
+* realizing someone has already moved on
+* distance created by time rather than conflict
+* the silence after laughter disappears
+* watching life move without you
+* endings that arrived unnoticed
+* moments that felt ordinary until they became memories
+* the bittersweet passage of time
+* quiet disappointments
+* unspoken gratitude
+* fleeting happiness
+* hope that slowly faded
+* identity
+* belonging
+* uncertainty
+* resilience
+* acceptance
+* quiet joy
+* awe
+* wonder
+* forgiveness
+* finding peace after loss
+
+The emotion may be melancholic, bittersweet, reflective, nostalgic, quietly hopeful, painfully honest, peaceful, or impossible to name, but it must always feel deeply human and emotionally authentic.
+
+Requirements:
+
+* 20–30 words.
+* Universally relatable.
+* Applies equally to every gender; never mention he, she, him, her, boyfriend, girlfriend, husband, wife, mother, father, son, daughter, or any gender-specific roles.
+* Deeply emotional.
+* Intimate rather than dramatic.
+* Poetic but written in modern English.
+* Fresh, surprising, and emotionally precise.
+* Avoid every common internet quote style.
+* Never resemble Pinterest, Instagram, Tumblr, or TikTok quote clichés.
+* No famous sayings.
+* No recycled wording.
+* Every quote must be completely unique.
+* Use vivid emotional imagery instead of abstract statements.
+* Whenever possible, build the emotion around an ordinary moment, overlooked detail, or quiet memory.
+* Make the reader feel as though they remembered something they had forgotten.
+* Prioritize emotional specificity over dramatic language.
+* Vary sentence rhythm and structure across generations.
+* Every quote should feel like it belongs to a different life experience than previous outputs.
+* Do not rely on common metaphors such as broken hearts, shattered pieces, storms, rain, oceans, stars, sunsets, empty chairs, mirrors, scars, echoes, or fading photographs unless transformed into something genuinely unexpected.
+* No advice.
+* No lesson or moral.
+* No forced optimism.
+* No motivational ending.
+* No emojis.
+* No hashtags.
+* No quotation marks.
+* Proper punctuation.
+* Format into exactly 2 or 3 short paragraphs.
+
+Return only the quote.
