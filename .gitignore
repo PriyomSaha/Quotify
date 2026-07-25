@@ -19,6 +19,9 @@
 # ============================================================================
 # GENERATED OUTPUT FILES
 # ============================================================================
+# Generated quote file (temporary storage)
+generated_quote.txt
+
 # Generated images (temporary outputs)
 image.jpg
 output.jpg
