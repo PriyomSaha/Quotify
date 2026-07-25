@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 import os
+import sys
+import logging
 import asyncio
 from datetime import datetime
 from QuoteGeneration import generate_quote
