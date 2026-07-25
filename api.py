@@ -10,6 +10,18 @@ from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
 
 # -------------------------------------------------
+# Logging Configuration
+# -------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# -------------------------------------------------
 # FastAPI App Initialization
 # -------------------------------------------------
 app = FastAPI(
@@ -330,24 +342,30 @@ def execute_full_pipeline(caption: str, template_path: str, output_path: str):
     
     try:
         # Step 1: Generate Quote
-        print(f"[{datetime.now()}] 📝 Step 1/4: Generating AI quote...")
+        logger.info("🚀 BACKGROUND TASK STARTED")
+        logger.info("📝 Step 1/4: Generating AI quote...")
+        
         quote_text = generate_quote()
         
         if not quote_text or not quote_text.strip():
-            print(f"[{datetime.now()}] ❌ Quote generation failed")
+            logger.error("❌ Quote generation failed")
+            print(f"[{datetime.now()}] ❌ Quote generation failed", flush=True)
             return
         
         with open("generated_quote.txt", "w", encoding="utf-8") as f:
             f.write(quote_text)
         
         steps["quote_generated"] = True
-        print(f"[{datetime.now()}] ✅ Quote generated: {quote_text[:50]}...")
+        logger.info(f"✅ Quote generated: {quote_text[:50]}...")
+        print(f"[{datetime.now()}] ✅ Quote generated: {quote_text[:50]}...", flush=True)
         
         # Step 2: Create Image
-        print(f"[{datetime.now()}] 🎨 Step 2/4: Creating neon image...")
+        logger.info("🎨 Step 2/4: Creating neon image...")
+        print(f"[{datetime.now()}] 🎨 Step 2/4: Creating neon image...", flush=True)
         
         if not os.path.exists(template_path):
-            print(f"[{datetime.now()}] ❌ Template not found: {template_path}")
+            logger.error(f"❌ Template not found: {template_path}")
+            print(f"[{datetime.now()}] ❌ Template not found: {template_path}", flush=True)
             return
         
         create_neon_quote_image(
@@ -357,14 +375,17 @@ def execute_full_pipeline(caption: str, template_path: str, output_path: str):
         )
         
         if not os.path.exists(output_path):
-            print(f"[{datetime.now()}] ❌ Image generation failed")
+            logger.error("❌ Image generation failed")
+            print(f"[{datetime.now()}] ❌ Image generation failed", flush=True)
             return
         
         steps["image_created"] = True
-        print(f"[{datetime.now()}] ✅ Image created: {output_path}")
+        logger.info(f"✅ Image created: {output_path}")
+        print(f"[{datetime.now()}] ✅ Image created: {output_path}", flush=True)
         
         # Step 3: Upload to Facebook
-        print(f"[{datetime.now()}] 📤 Step 3/4: Uploading to Facebook...")
+        logger.info("📤 Step 3/4: Uploading to Facebook...")
+        print(f"[{datetime.now()}] 📤 Step 3/4: Uploading to Facebook...", flush=True)
         
         fb_cdn_url = schedule_photo_after(
             image_path=output_path,
@@ -374,14 +395,17 @@ def execute_full_pipeline(caption: str, template_path: str, output_path: str):
         )
         
         if not fb_cdn_url:
-            print(f"[{datetime.now()}] ❌ Facebook upload failed")
+            logger.error("❌ Facebook upload failed")
+            print(f"[{datetime.now()}] ❌ Facebook upload failed", flush=True)
             return
         
         steps["facebook_uploaded"] = True
-        print(f"[{datetime.now()}] ✅ Facebook upload successful: {fb_cdn_url}")
+        logger.info(f"✅ Facebook upload successful: {fb_cdn_url}")
+        print(f"[{datetime.now()}] ✅ Facebook upload successful: {fb_cdn_url}", flush=True)
         
         # Step 4: Publish to Instagram
-        print(f"[{datetime.now()}] 📱 Step 4/4: Publishing to Instagram...")
+        logger.info("📱 Step 4/4: Publishing to Instagram...")
+        print(f"[{datetime.now()}] 📱 Step 4/4: Publishing to Instagram...", flush=True)
         
         ig_result = post_to_instagram_from_fb_url(
             fb_image_url=fb_cdn_url,
@@ -391,16 +415,16 @@ def execute_full_pipeline(caption: str, template_path: str, output_path: str):
         ig_post_id = ig_result.get("id", "")
         
         if not ig_post_id:
-            print(f"[{datetime.now()}] ⚠️ Instagram publish failed (FB succeeded)")
+            logger.warning("⚠️ Instagram publish failed (FB succeeded)")
             return
         
         steps["instagram_published"] = True
-        print(f"[{datetime.now()}] ✅ Instagram post published: {ig_post_id}")
-        print(f"[{datetime.now()}] 🎉 FULL PIPELINE COMPLETED SUCCESSFULLY!")
+        logger.info(f"✅ Instagram post published: {ig_post_id}")
+        logger.info("🎉 FULL PIPELINE COMPLETED SUCCESSFULLY!")
         
     except Exception as e:
-        print(f"[{datetime.now()}] ❌ Pipeline failed: {e}")
-        print(f"[{datetime.now()}] Steps completed: {steps}")
+        logger.error(f"❌ Pipeline failed: {e}")
+        logger.error(f"Steps completed: {steps}")
 
 # -------------------------------------------------
 # Endpoint: Full Pipeline - ONE URL for Cron Jobs!
@@ -433,6 +457,8 @@ async def full_pipeline_autopilot(
     Returns:
         Immediate acknowledgment (background processing starts)
     """
+    logger.info("⚡ /autopilot endpoint called - adding background task")
+    
     # Add the pipeline execution to background tasks
     background_tasks.add_task(
         execute_full_pipeline,
@@ -441,12 +467,15 @@ async def full_pipeline_autopilot(
         output_path=output_path
     )
     
+    logger.info("✅ Background task queued successfully")
+    
     # Return immediately to prevent cron timeout
     return {
         "status": "accepted",
-        "message": "Pipeline started in background. Check logs for progress.",
+        "message": "Pipeline started in background. Check Render logs for progress.",
         "timestamp": datetime.now().isoformat(),
         "estimated_completion": "1-2 minutes",
+        "log_instructions": "Go to Render Dashboard → Your Service → Logs tab to see real-time progress",
         "steps": [
             "1. Generate AI quote",
             "2. Create neon image",
