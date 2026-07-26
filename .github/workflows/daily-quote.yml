@@ -2,8 +2,9 @@ name: Daily Quote Autopilot
 
 on:
   schedule:
-    # Run at 3:30 AM UTC = 9:00 AM IST (Kolkata time)
-    - cron: '30 3 * * *'
+    # Run every hour from 9:30 AM IST to 10:30 PM IST
+    # (4:00 AM UTC to 5:00 PM UTC = hours 4-17)
+    - cron: '0 4-17 * * *'
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
