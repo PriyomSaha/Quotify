@@ -27,10 +27,10 @@ jobs:
       - name: Run autopilot pipeline
         env:
           # Add your environment variables as GitHub Secrets
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
-          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          API_VERSION: ${{ secrets.API_VERSION }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          # Add any other API keys/secrets you need
         run: |
           python cron_autopilot.py
