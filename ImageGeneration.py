@@ -6,12 +6,31 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from QuoteGeneration import generate_quote
 
-def format_quote_lines(text, max_chars=22):
-    """Formats raw text into lines restricted by character count (including spaces).
-
-    - Max 20-22 characters per line (including spaces).
-    - Prevents orphan single words at the end of paragraphs.
+def format_quote_lines(text, max_chars=28):
+    """Formats raw text into lines restricted by character count.
+    
+    Handles two formats:
+    1. Conversations (Name: dialogue format) - preserves each line as-is
+    2. Regular quotes - wraps text with anti-orphan logic
+    
+    Returns: (formatted_lines, is_conversation)
     """
+    
+    # Check if this is a conversation format (has "Name: text" pattern)
+    lines_raw = text.strip().split('\n')
+    is_conversation = any(':' in line and len(line.split(':', 1)) == 2 for line in lines_raw if line.strip())
+    
+    if is_conversation:
+        # Conversation format - preserve each line exactly as-is
+        formatted_lines = []
+        for line in lines_raw:
+            line = line.strip()
+            if line:  # Skip empty lines
+                # Each conversation line stays on its own line
+                formatted_lines.append(line)
+        return formatted_lines, True
+    
+    # Regular quote format - existing logic
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     formatted_lines = []
 
@@ -57,7 +76,7 @@ def format_quote_lines(text, max_chars=22):
         if p_idx < len(paragraphs) - 1:
             formatted_lines.append("")
 
-    return formatted_lines
+    return formatted_lines, False
 
 
 def create_neon_quote_image(
@@ -83,20 +102,60 @@ def create_neon_quote_image(
         print("Montserrat-Light.ttf not found. Falling back to default font.")
         font = ImageFont.load_default()
 
-    # Format lines with strict <= 22 character limit
-    lines = format_quote_lines(raw_text, max_chars=28)
+    # Format lines - returns (lines, is_conversation)
+    lines, is_conversation = format_quote_lines(raw_text, max_chars=28)
     line_spacing = 58
 
+    # Calculate available space (leave room for logo at bottom)
+    # Assume logo is at bottom 150px, leave 200px margin from bottom
+    logo_margin_bottom = 200
+    available_height = height - logo_margin_bottom
+    
     total_text_height = len(lines) * line_spacing
-    start_y = (height - total_text_height) // 2
+    
+    # If text is too tall, reduce font size for conversations
+    if total_text_height > available_height:
+        if is_conversation or len(lines) > 6:
+            # Reduce font size for long conversations
+            font = ImageFont.truetype(str(FONT_PATH), 28)
+            line_spacing = 52
+            total_text_height = len(lines) * line_spacing
+            
+            # If still too tall, reduce further
+            if total_text_height > available_height:
+                font = ImageFont.truetype(str(FONT_PATH), 24)
+                line_spacing = 46
+                total_text_height = len(lines) * line_spacing
+        else:
+            # For regular quotes, this shouldn't happen, but handle it
+            line_spacing = 50
+            total_text_height = len(lines) * line_spacing
+    
+    # Center text in available space (above logo)
+    start_y = (available_height - total_text_height) // 2
+    
+    # Ensure minimum top margin
+    min_top_margin = 100
+    if start_y < min_top_margin:
+        start_y = min_top_margin
 
     base_mask = Image.new("L", (width, height), 0)
     draw_mask = ImageDraw.Draw(base_mask)
 
+    # Set left margin for conversations (left-aligned with padding)
+    left_margin = 80  # px from left edge for conversations
+
     for i, line in enumerate(lines):
         y_pos = start_y + (i * line_spacing)
         text_w = draw_mask.textlength(line, font=font)
-        x_pos = (width - text_w) // 2
+        
+        if is_conversation:
+            # Left-aligned for conversations (like chat messages)
+            x_pos = left_margin
+        else:
+            # Center-aligned for regular quotes
+            x_pos = (width - text_w) // 2
+        
         draw_mask.text((x_pos, y_pos), line, fill=255, font=font)
 
     ambient_mask = base_mask.filter(ImageFilter.GaussianBlur(radius=20))

@@ -50,6 +50,7 @@ Themes: Modern relationships, situationships, friendship dynamics, family misund
 
 Requirements:
 * 4-8 exchanges MAXIMUM (keep it short and punchy)
+* Each line should be SHORT - maximum 6-8 words per dialogue line
 * Natural, modern dialogue (how people actually text/talk)
 * South Asian cultural context acceptable but not required
 * Must feel authentic, not scripted
@@ -59,13 +60,26 @@ Requirements:
 * Conversational tone (casual, real, honest)
 * NO cringe dialogue or forced drama
 
-Format:
-Name 1: [line]
-Name 2: [line]
-Name 1: [line]
-Name 2: [line]
+IMPORTANT FORMAT RULES:
+* Each line MUST start with "Name: " followed by dialogue
+* Each exchange on a NEW LINE
+* Keep each dialogue line VERY SHORT (6-8 words max)
+* Use simple, brief responses like real text messages
+* Break long thoughts into multiple exchanges
+* Total conversation should fit on screen (80px left margin)
 
-Return only the conversation (no intro, no explanation).
+Correct Format Example:
+Sam: Are you awake?
+Riley: Yeah. Can't sleep.
+Sam: Me neither.
+Riley: What's on your mind?
+Sam: How fast everything changed.
+Riley: I know exactly what you mean.
+
+WRONG Format (DO NOT DO THIS):
+Sam: Are you awake? Riley: Yeah. Just staring at my ceiling. You okay?
+
+Return only the conversation (no intro, no explanation, strict line-by-line format).
 
 ---
 
