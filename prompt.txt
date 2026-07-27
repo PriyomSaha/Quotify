@@ -8,12 +8,17 @@ IMPORTANT: Randomly select ONE content type below, then generate content ONLY fo
 
 CONTENT TYPES (with probability weights):
 
-1. DEEP EMOTIONAL QUOTE - 35% probability
-2. SHORT CONVERSATION - 25% probability  
-3. BITTERSWEET MOMENT - 20% probability
-4. ONE-LINER (love/life/heartbreak) - 10% probability
-5. MOTIVATIONAL/HEALING - 5% probability
-6. WHOLESOME/JOY - 5% probability
+1. DEEP EMOTIONAL QUOTE - 21% probability
+2. SHORT CONVERSATION - 15% probability  
+3. BITTERSWEET RELATABLE MOMENT - 15% probability
+4. HE/SHE RELATIONSHIP MOMENT - 15% probability
+5. CHILDHOOD VS NOW - 15% probability
+6. ONE-LINER (love/life/heartbreak) - 5% probability
+7. MOTIVATIONAL/HEALING - 5% probability
+8. WHOLESOME/JOY - 3% probability
+9. THINGS NOBODY TALKS ABOUT - 3% probability
+10. UNPOPULAR OPINION - 2% probability
+11. TWITTER-STYLE HOT TAKE - 1% probability
 
 ---
 
@@ -44,69 +49,146 @@ Return only the quote.
 
 TYPE 2: SHORT CONVERSATION
 
-Create a relatable conversation between two people (use gender-neutral names: Alex, Sam, Jordan, Riley, Casey, Avery, Morgan, Parker, Quinn, Sage).
+Create a relatable conversation between two people.
+
+Use diverse, modern names (randomly select any 2):
+- Indian Modern: Arjun, Priya, Aarav, Ananya, Vihaan, Saanvi, Reyansh, Aadhya, Vivaan, Diya, Ishaan, Kiara, Atharv, Navya, Aditya, Avni, Kabir, Riya, Advait, Myra
+- Bengali: Ayan, Ria, Aryan, Tithi, Anik, Piya, Rudra, Sanjana
+- South Indian: Karthik, Meera, Pranav, Kavya, Surya, Divya, Arjun, Nithya
+- Nepali: Bibek, Srishti, Aayush, Anjali, Sandesh, Pooja
+- Western Modern: Kai, River, Phoenix, Nova, Sage, Blake, Quinn, Riley, Eden, Skylar, Dakota, Jules, Reese, Avery, Morgan, Parker, Rowan, Ember, Luna, Ivy, Aria
+- Gen-Z Trending: Zara, Tara, Mila, Sienna, Elara, Jax, Finn, Leo, Mia, Nora, Theo, Chloe, Liam, Zoe, Ethan, Ava, Noah, Emma, Oliver, Isla
+- Unique Modern: Astra, Lyra, Orion, Atlas, Willow, Indie, Remy, Jasper, Hazel, Felix, Ruby, Oscar, Eliza, Milo, Stella, Asher, Luna, Hugo, Aurora, Silas
+- Pan-Asian: Hana, Yuki, Sora, Mei, Lin, Akira, Haru, Min, Ren, Kira
+- Gender-Neutral: Avery, Jordan, Taylor, Casey, Cameron, Drew, Kendall, Peyton, Stevie, Charlie, Frankie, Sam, Blair, Hayden, Emerson
+
+IMPORTANT: Mix names randomly - don't pair based on culture/religion/gender. Any name can talk to any name.
 
 Themes: Modern relationships, situationships, friendship dynamics, family misunderstandings, late-night thoughts, miscommunication, realizations, bittersweet moments, growing up, emotional honesty, vulnerability, comfort, understanding.
 
 Requirements:
-* 4-8 exchanges MAXIMUM (keep it short and punchy)
-* Each line should be SHORT - maximum 6-8 words per dialogue line
+* 4-7 exchanges MAXIMUM (keep it short)
+* Each dialogue line must be VERY SHORT - maximum 5-6 words
+* Break longer thoughts into 2-3 separate exchanges
 * Natural, modern dialogue (how people actually text/talk)
-* South Asian cultural context acceptable but not required
 * Must feel authentic, not scripted
 * Emotional punch or quiet revelation
 * Can be: heartwarming, funny-sad, bittersweet, relatable, or profound
 * Final line should hit differently
 * Conversational tone (casual, real, honest)
 * NO cringe dialogue or forced drama
+* NO religious, cultural, or gender stereotypes
 
-IMPORTANT FORMAT RULES:
+CRITICAL FORMAT RULES:
 * Each line MUST start with "Name: " followed by dialogue
 * Each exchange on a NEW LINE
-* Keep each dialogue line VERY SHORT (6-8 words max)
-* Use simple, brief responses like real text messages
-* Break long thoughts into multiple exchanges
-* Total conversation should fit on screen (80px left margin)
+* Maximum 28 characters per line INCLUDING "Name: " prefix
+* Keep dialogue EXTREMELY brief (5-6 words max)
+* Simple responses like: "Yeah.", "Me too.", "I know.", "Why?", "When?"
 
 Correct Format Example:
-Sam: Are you awake?
-Riley: Yeah. Can't sleep.
-Sam: Me neither.
-Riley: What's on your mind?
-Sam: How fast everything changed.
-Riley: I know exactly what you mean.
+Mila: Are you awake?
+Kai: Yeah. Can't sleep.
+Mila: Me neither.
+Kai: Thinking about what?
+Mila: How everything changed.
+Kai: I know what you mean.
 
 WRONG Format (DO NOT DO THIS):
-Sam: Are you awake? Riley: Yeah. Just staring at my ceiling. You okay?
+Mila: Are you awake? Kai: Yeah. Just staring at the ceiling. You okay?
 
 Return only the conversation (no intro, no explanation, strict line-by-line format).
 
 ---
 
-TYPE 3: BITTERSWEET MOMENT
+TYPE 3: BITTERSWEET RELATABLE MOMENT
 
-Describe a specific, oddly-specific-yet-universal human experience that feels bittersweet, nostalgic, or quietly profound.
+Describe a hyper-relatable modern behavior or experience that 18-34 year olds do/feel constantly.
+
+Themes: Social media habits (stalking, comparing, checking stories obsessively), texting anxiety (overthinking replies, being left on read, double texting fear), modern dating (ghosting, breadcrumbing, situationships), adulting struggles (imposter syndrome, quarter-life crisis, burnout), procrastination, self-sabotage, FOMO, doomscrolling, late-night overthinking, avoidance patterns, comfort zone behaviors, online shopping therapy.
 
 Requirements:
 * 18-30 words
-* Hyper-specific detail that somehow everyone relates to
-* Makes readers think: "Wait, I'm not the only one?"
-* Can reference: modern life, technology, growing up, changing relationships, small losses, fleeting happiness, ordinary magic
-* Emotional precision over poetry
+* MUST be immediately relatable to Gen-Z/Millennials TODAY
+* Specific modern behavior (not vague emotions)
+* Makes readers go: "This is TOO accurate!"
+* Can reference: apps, texting, social media, WFH, streaming, food delivery, online habits
+* Honest and self-aware
 * Gender-neutral
-* One voice, one moment, one feeling
 * Format: 1-2 sentences
 * No emojis or hashtags
 
-Examples of the vibe (do NOT copy):
-- "Scrolling through old chats and realizing the last message was yours, waiting for a reply that never came."
-- "The strange grief of outgrowing your childhood bedroom while your parents keep it exactly the same."
+Examples of GOOD (do NOT copy):
+- "Adding things to your cart and never buying them because it feels like committing to a future you're not sure about."
+- "Typing a whole paragraph, staring at it for five minutes, deleting it all, and just sending 'lol yeah.'"
+- "Opening Instagram to check one thing and ending up on your ex's new partner's high school friend's 2018 vacation photos."
+
+Examples of BAD (too vague):
+- "The weight of memories lingering."
+- "Nostalgia for simpler times."
 
 Return only the moment.
 
 ---
 
-TYPE 4: ONE-LINER
+TYPE 4: HE/SHE RELATIONSHIP MOMENT
+
+Create a punchy, brutally honest observation about modern dating/relationships using he/she/they pronouns.
+
+Themes: Mixed signals, effort imbalance, emotional unavailability, breadcrumbing, orbiting, benching, situationships, "just talking" phase, effort vs interest, actions vs words, attachment anxiety, post-breakup behavior, red flags, knowing your worth, settling vs waiting.
+
+Requirements:
+* 12-20 words MAXIMUM (short and punchy)
+* Uses "he" or "she" or "they" naturally
+* Relatable to modern dating reality
+* Brutally honest but not bitter/preachy
+* Validating or eye-opening
+* Modern language
+* Screenshot-worthy
+* Format: 1 sentence
+* No emojis or hashtags
+
+Examples of the vibe (do NOT copy):
+- "She texts back in 5 seconds or 5 hours, there's no in between and both mean something."
+- "He'll say he's not ready for a relationship but somehow has energy for you at 2 AM."
+- "They said they needed space but their story views tell a completely different story."
+- "She deserves someone who chooses her on purpose, not someone keeping her as a backup plan."
+- "He's not confused about you, he just likes having you as an option while deciding."
+
+Return only the observation.
+
+---
+
+TYPE 5: CHILDHOOD VS NOW
+
+Create a nostalgic comparison between childhood and adult life that hits emotionally.
+
+Format: "Childhood: [nostalgic thing] / Adulthood: [harsh reality]"
+
+Themes: Lost innocence, responsibilities, burnout, comparison culture, financial stress, career pressure, relationships complexity, adulting struggles, nostalgia for simpler times, exhaustion, disillusionment, quarter-life crisis.
+
+Requirements:
+* Total 20-35 words (both parts combined)
+* Two-part structure: Childhood vs Adulthood
+* Must be universally relatable to 18-34 year olds
+* Honest about adult struggles
+* Nostalgic but not overly sad
+* Can be bittersweet, funny-sad, or eye-opening
+* Gender-neutral
+* No emojis or hashtags
+
+Examples of the vibe (do NOT copy):
+- "Childhood: Excited about growing up and having freedom / Adulthood: Realizing freedom means bills, burnout, and pretending you have it together."
+- "Childhood: Weekends felt endless / Adulthood: Weekends are just two days to recover from five days of exhaustion."
+- "Childhood: Couldn't wait to stay up late / Adulthood: Can't wait to go to bed early but somehow still staying up scrolling."
+
+Format: Keep "Childhood:" and "Adulthood:" labels (or use "Before:" / "Now:")
+
+Return only the comparison.
+
+---
+
+TYPE 6: ONE-LINER
 
 Generate ONE powerful single-sentence quote about love, heartbreak, life, or growth.
 
@@ -130,7 +212,7 @@ Return only the one-liner.
 
 ---
 
-TYPE 5: MOTIVATIONAL/HEALING
+TYPE 7: MOTIVATIONAL/HEALING
 
 Generate a grounded, authentic message about healing, growth, self-compassion, or moving forward.
 
@@ -150,7 +232,7 @@ Return only the message.
 
 ---
 
-TYPE 6: WHOLESOME/JOY
+TYPE 8: WHOLESOME/JOY
 
 Capture a small, pure moment of happiness, comfort, connection, or unexpected joy.
 
@@ -170,6 +252,83 @@ Examples of the vibe (do NOT copy):
 - "The relief of laughing so hard with someone that you forget what you were worried about."
 
 Return only the moment.
+
+---
+
+TYPE 9: THINGS NOBODY TALKS ABOUT
+
+Reveal an unspoken truth or hidden experience that everyone goes through but rarely admits.
+
+Themes: Mental health struggles nobody mentions, adulting secrets, relationship truths, social anxiety moments, imposter syndrome, comparison culture pain, hidden loneliness, fake social media life vs reality, financial stress shame, career doubts, friendship changes, family pressure, body image struggles, burnout signs.
+
+Requirements:
+* 18-30 words
+* Starts with "Nobody talks about..." or implies it
+* Addresses something people hide or don't discuss openly
+* Validating and honest (not preachy)
+* Makes readers feel less alone
+* Can be vulnerable but not depressing
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples of the vibe (do NOT copy):
+- "Nobody talks about how exhausting it is to constantly pretend you're doing fine when you're barely holding it together."
+- "Nobody talks about the loneliness of having people around you but still feeling completely misunderstood."
+- "Nobody talks about how scary it is to realize you're becoming the age you once thought was 'old.'"
+
+Return only the statement.
+
+---
+
+TYPE 10: UNPOPULAR OPINION
+
+Share a slightly controversial but deeply relatable opinion that challenges common narratives.
+
+Themes: Hustle culture critique, relationship standards, social media reality, self-care truth, productivity pressure, comparison culture, "living your best life" myth, toxic positivity, career expectations, friendship quality over quantity, boundaries, saying no, rest as necessity not luxury.
+
+Requirements:
+* 15-25 words
+* Can start with "Unpopular opinion:" or state it directly
+* Challenges mainstream narratives but in a relatable way
+* Not actually controversial - just honest
+* Should make people nod and say "FACTS"
+* Validating, not preachy
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples of the vibe (do NOT copy):
+- "Unpopular opinion: You don't have to be constantly productive to deserve rest. Existing is exhausting enough."
+- "Unpopular opinion: It's okay to outgrow friendships. Not every relationship is meant to last forever."
+- "Unpopular opinion: Choosing peace over closure is valid. Not everything needs an explanation or ending conversation."
+
+Return only the opinion.
+
+---
+
+TYPE 11: TWITTER-STYLE HOT TAKE
+
+Create a short, punchy, screenshot-worthy observation that feels like a viral tweet.
+
+Themes: Modern life absurdities, dating app culture, adulting struggles, social media behavior, work culture, generational differences, technology addiction, consumerism, self-awareness, paradoxes of modern existence.
+
+Requirements:
+* 12-22 words MAXIMUM (Twitter length)
+* Sharp, witty, or brutally honest
+* Immediately relatable
+* Can be funny, cynical, or eye-opening
+* Not mean-spirited - just honest
+* Gender-neutral
+* Format: 1 sentence
+* No emojis or hashtags
+
+Examples of the vibe (do NOT copy):
+- "Being an adult is just googling how to do basic things and pretending you've known all along."
+- "We really watch 30 stories from the same person and then say we don't have time to read."
+- "'I'll do it tomorrow' is just 'I won't do it' but with hope."
+
+Return only the hot take.
 
 ---
 

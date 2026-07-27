@@ -2,9 +2,16 @@ name: Daily Quote Autopilot
 
 on:
   schedule:
-    # Run every hour from 9:30 AM IST to 10:30 PM IST
-    # (4:00 AM UTC to 5:00 PM UTC = hours 4-17)
-    - cron: '0 4-17 * * *'
+    # Run every hour from 6:30 AM IST to 1:30 PM IST (8 posts per day)
+    # 6:30 AM IST = 1:00 AM UTC (hour 1)
+    # 7:30 AM IST = 2:00 AM UTC (hour 2)
+    # 8:30 AM IST = 3:00 AM UTC (hour 3)
+    # 9:30 AM IST = 4:00 AM UTC (hour 4)
+    # 10:30 AM IST = 5:00 AM UTC (hour 5)
+    # 11:30 AM IST = 6:00 AM UTC (hour 6)
+    # 12:30 PM IST = 7:00 AM UTC (hour 7)
+    # 1:30 PM IST = 8:00 AM UTC (hour 8)
+    - cron: '0 1-8 * * *'
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:

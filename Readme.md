@@ -1,10 +1,14 @@
-# Social Media Automation Pipeline - Project Documentation
+# Aesthetic Vibes - Automated Quote Publishing System
 
 ## 📋 Project Overview
 
-An automated content generation and publishing system that creates AI-generated motivational quotes, renders them as neon-styled images, and publishes them to Facebook and Instagram social media platforms.
+**"We are not a poet, Just a lost soul finding combination of words to bring you home"**
 
-**Pipeline Flow:** AI Quote Generation → Neon Image Creation → Facebook Upload → Instagram Publishing
+An automated content generation and publishing system for the Instagram/Facebook page "Aesthetic Vibes" (55K followers). The system creates AI-generated diverse content (emotional quotes, conversations, motivational messages), renders them as neon-styled images, and automatically publishes to social media platforms.
+
+**Pipeline Flow:** AI Content Generation → Neon Image Creation → Facebook Upload → Instagram Publishing
+
+**Posting Schedule:** 14 posts per day, every hour from 9:30 AM to 10:30 PM IST (Indian Standard Time)
 
 ---
 
@@ -12,47 +16,51 @@ An automated content generation and publishing system that creates AI-generated 
 
 ### System Design
 
-The application follows a modular pipeline architecture with two execution modes:
+The application follows a modular pipeline architecture with three execution modes:
 
-1. **CLI Mode** (`main.py`) - Sequential single-run execution
-2. **API Mode** (`api.py`) - RESTful web service with independent endpoints
+1. **CLI Mode** (`main.py`) - Manual single-run execution for testing
+2. **API Mode** (`api.py`) - Minimal REST API for Render health checks and manual triggers
+3. **Automated Mode** (`cron_autopilot.py`) - GitHub Actions scheduled execution (primary mode)
 
 ### Component Architecture
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                    Entry Points                        │
-│  ┌──────────────┐              ┌──────────────┐        │
-│  │   main.py    │              │    api.py    │        │
-│  │ (CLI Runner) │              │ (REST API)   │        │
-│  └──────────────┘              └──────────────┘        │
-└────────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌───────────────────────────────────────────────────────┐
-│              Core Processing Modules                  │
-│                                                       │
-│  ┌──────────────────┐  ┌──────────────────┐           │
-│  │ QuoteGeneration  │  │ ImageGeneration  │           │
-│  │                  │  │                  │           │
-│  │ - Gemini AI SDK  │  │ - PIL/Pillow     │           │
-│  │ - Text Gen       │  │ - Neon Effects   │           │
-│  └──────────────────┘  └──────────────────┘           │
-│                                                       │
-│  ┌──────────────────────────────────────┐             │
-│  │          FBUpload                    │             │
-│  │                                      │             │
-│  │ - Facebook Graph API Integration     │             │
-│  │ - Instagram Graph API Integration    │             │
-│  └──────────────────────────────────────┘             │
-└───────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────┐
-│              External Services                          │
-│                                                         │
-│  [ Google Gemini AI ] [ Facebook ] [ Instagram ]        │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Execution Modes                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │   main.py    │  │   api.py     │  │ cron_autopilot.py    │  │
+│  │ (Manual CLI) │  │ (Render API) │  │ (GitHub Actions)     │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Core Processing Modules                       │
+│                                                                 │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ QuoteGeneration  │  │ ImageGeneration  │                    │
+│  │                  │  │                  │                    │
+│  │ - Gemini AI SDK  │  │ - PIL/Pillow     │                    │
+│  │ - Dynamic Prompt │  │ - Neon Effects   │                    │
+│  │ - 6 Content Types│  │ - Text Wrapping  │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+│                                                                 │
+│  ┌──────────────────────────────────────┐                      │
+│  │          FBUpload                    │                      │
+│  │                                      │                      │
+│  │ - Facebook Graph API Integration     │                      │
+│  │ - Instagram Graph API Integration    │                      │
+│  │ - CDN URL retrieval                  │                      │
+│  └──────────────────────────────────────┘                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      External Services                          │
+│                                                                 │
+│  [ Google Gemini AI ] [ Facebook API ] [ Instagram API ]        │
+│  [ GitHub Actions (Scheduler) ] [ Render (API Host) ]           │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -61,17 +69,21 @@ The application follows a modular pipeline architecture with two execution modes
 
 ```
 .
-├── main.py                    # CLI orchestrator (single-run)
-├── api.py                     # FastAPI REST server
-├── QuoteGeneration.py         # AI quote generation module
+├── main.py                    # CLI orchestrator (manual testing)
+├── cron_autopilot.py          # Automated scheduler script (GitHub Actions)
+├── api.py                     # Minimal FastAPI server (Render hosting)
+├── QuoteGeneration.py         # AI content generation module
 ├── ImageGeneration.py         # Neon image rendering module
 ├── FBUpload.py               # Social media upload handlers
 ├── PageAccessTokenGenerate.py # Token generation utility
 ├── requirements.txt          # Python dependencies
 ├── .env                      # Environment configuration (GITIGNORED)
-├── prompt.txt                # AI generation prompt template
+├── prompt.txt                # AI generation prompt with 6 content types
 ├── template.jpg              # Background image template
 ├── image.jpg                 # Generated output image (temp)
+├── .github/
+│   └── workflows/
+│       └── daily-quote.yml   # GitHub Actions cron schedule
 └── Montserrat/               # Font assets directory
     └── static/
         └── Montserrat-Light.ttf
@@ -83,20 +95,35 @@ The application follows a modular pipeline architecture with two execution modes
 
 ### 1. `QuoteGeneration.py` - AI Content Generation
 
-**Purpose:** Generates motivational quotes using Google's Gemini AI
+**Purpose:** Generates diverse content types using Google's Gemini AI
 
 **Implementation Details:**
 
-- **AI Model:** `gemini-3.6-flash`
+- **AI Model:** `gemini-2.0-flash-exp`
 - **Input Source:** Reads generation instructions from `prompt.txt`
-- **Output:** Plain text quote string
+- **Output:** Plain text content (quote, conversation, or message)
 - **API Integration:** Uses `google-genai` SDK with authenticated requests
+
+**Content Types Generated (6 types with weighted probabilities):**
+
+1. **Deep Emotional Quotes (35%)** - Heartbreak, nostalgia, introspection
+2. **Short Conversations (25%)** - Relatable dialogue between two people
+3. **Bittersweet Moments (20%)** - Oddly-specific universal experiences
+4. **One-Liners (10%)** - Punchy single-sentence quotes
+5. **Motivational/Healing (5%)** - Grounded encouragement
+6. **Wholesome/Joy (5%)** - Light, comforting moments
 
 **Flow:**
 
 ```
-prompt.txt → Gemini API → Generated Quote Text
+prompt.txt → Gemini AI (random content type selection) → Generated Content
 ```
+
+**Target Audience:**
+- 90% South Asian (India, Bangladesh, Nepal, Pakistan)
+- 18-34 years old
+- 56% women, 44% men/unknown
+- Primary cities: Kolkata, Dhaka, Kathmandu
 
 ---
 
@@ -161,11 +188,11 @@ image.jpg → FB Upload → CDN URL → IG Container → IG Publish
 
 ### 4. `main.py` - CLI Orchestrator
 
-**Purpose:** Single-run command-line pipeline executor
+**Purpose:** Manual single-run pipeline executor for testing
 
 **Execution Sequence:**
 
-1. Generate quote via `QuoteGeneration.py`
+1. Generate content via `QuoteGeneration.py`
 2. Create neon image via `ImageGeneration.py`
 3. Wait 10 seconds (stabilization buffer)
 4. Upload to Facebook via `FBUpload.py`
@@ -176,6 +203,7 @@ image.jpg → FB Upload → CDN URL → IG Container → IG Publish
 - Step-by-step console logging with emoji indicators
 - Fail-fast error handling (stops on first error)
 - Single execution model (no loops)
+- Used for testing before deploying to automation
 
 **Usage:**
 
@@ -185,42 +213,67 @@ python main.py
 
 ---
 
-### 5. `api.py` - REST API Server
+### 5. `cron_autopilot.py` - Automated Scheduler
 
-**Purpose:** Exposes pipeline components as independent HTTP endpoints
+**Purpose:** Production automation script executed by GitHub Actions
+
+**Execution Sequence:**
+
+1. Generate diverse content (randomly selects from 6 types)
+2. Create neon image
+3. Upload to Facebook and retrieve CDN URL
+4. Publish to Instagram
+
+**Features:**
+
+- Minimal logging for clean GitHub Actions output
+- Runs via GitHub Actions cron schedule
+- **Schedule:** Every hour from 9:30 AM to 10:30 PM IST (14 posts/day)
+- Handles errors gracefully without stopping the service
+
+**GitHub Actions Configuration:**
+
+```yaml
+# .github/workflows/daily-quote.yml
+schedule:
+  - cron: '0 4-17 * * *'  # Runs hours 4-17 UTC = 9:30 AM - 10:30 PM IST
+```
+
+**Posting Times (IST):**
+- 9:30 AM, 10:30 AM, 11:30 AM, 12:30 PM, 1:30 PM, 2:30 PM, 3:30 PM
+- 4:30 PM, 5:30 PM, 6:30 PM, 7:30 PM, 8:30 PM, 9:30 PM, 10:30 PM
+
+---
+
+### 6. `api.py` - Minimal REST API
+
+**Purpose:** Lightweight API for health checks and manual triggers (hosted on Render)
 
 **Framework:** FastAPI with Uvicorn ASGI server
 
 **Endpoints:**
 
-| Method | Endpoint         | Description            | Timeout |
-| ------ | ---------------- | ---------------------- | ------- |
-| `GET`  | `/`              | Health check / welcome | -       |
-| `GET`  | `/health`        | Service status         | -       |
-| `GET`  | `/generatequote` | Generate AI quote      | 120s    |
-| `POST` | `/generateimage` | Create neon image      | 120s    |
-| `POST` | `/fbupload`      | Upload to Facebook     | 120s    |
-| `POST` | `/igupload`      | Publish to Instagram   | 120s    |
+| Method | Endpoint     | Description                              |
+| ------ | ------------ | ---------------------------------------- |
+| `GET`  | `/health`    | Service health check with env validation |
+| `GET`  | `/autopilot` | Manual trigger for full pipeline         |
 
-**Request/Response Models:**
-
-- Type-validated with Pydantic schemas
-- JSON request bodies for POST endpoints
-- Structured error responses
+**Note:** All other endpoints removed for simplicity. Primary automation runs via GitHub Actions, not API.
 
 **Server Configuration:**
 
 - **Host:** `0.0.0.0`
-- **Port:** `8000`
-- **Documentation:** Auto-generated at `/docs` (Swagger UI)
+- **Port:** Environment variable `PORT` (Render compatibility)
+- **Timeout:** 120 seconds
+- **Logging:** INFO level with detailed step tracking
+
+**Deployment:** Hosted on Render for uptime monitoring
 
 **Usage:**
 
 ```bash
 python api.py
 ```
-
-Access interactive docs at: `http://localhost:8000/docs`
 
 ---
 
@@ -288,71 +341,106 @@ pip install -r requirements.txt
 
 ---
 
-## 🎨 Design Decisions
+## 🎨 Content Strategy
 
-### Visual Design
+### Content Type Distribution
+
+The `prompt.txt` file defines 6 content types with weighted probabilities to ensure variety:
+
+| Content Type          | Probability | Purpose                               | Example                                    |
+| --------------------- | ----------- | ------------------------------------- | ------------------------------------------ |
+| Deep Emotional Quote  | 35%         | Core brand strength - emotional depth | "We keep old texts like pressed flowers"  |
+| Short Conversation    | 25%         | High engagement - tag potential       | "A: Still awake? / B: Always"             |
+| Bittersweet Moment    | 20%         | Viral relatability                    | "Scrolling to find that one photo..."     |
+| One-Liner             | 10%         | High shareability                     | "Some goodbyes happen in silence"         |
+| Motivational/Healing  | 5%          | Balance the sadness                   | "Healing isn't linear, and that's okay"   |
+| Wholesome/Joy         | 5%          | Unexpected delight                    | "When someone remembers the small thing" |
+
+### Tone Balance
+
+- **35%** - Deep emotional/sad (proven audience preference)
+- **25%** - Bittersweet/nostalgic (relatable)
+- **20%** - Everyday relatable moments (engagement)
+- **10%** - Motivational/healing (balance)
+- **10%** - Light/wholesome (variety)
+
+### Anti-Cliché Rules
+
+**Banned metaphors:** broken hearts, storms, rain, oceans, stars, sunsets, mirrors, scars, echoes, fading photographs
+
+**Gender-neutral:** No he/she, boyfriend/girlfriend, mother/father references
+
+**Modern language:** Conversational, authentic, not poetic-for-the-sake-of-poetry
+
+---
+
+## 🚀 Deployment & Automation
+
+### GitHub Actions (Primary Automation)
+
+**Location:** `.github/workflows/daily-quote.yml`
+
+**Schedule:** Cron expression `0 4-17 * * *`
+- Runs every hour at minute :00
+- Hours 4-17 UTC = 9:30 AM - 10:30 PM IST
+- **14 posts per day** spread across 13 hours
+
+**Workflow Steps:**
+1. Checkout repository code
+2. Set up Python 3.11
+3. Install dependencies from `requirements.txt`
+4. Run `cron_autopilot.py` with environment variables
+5. Log output to GitHub Actions console
+
+**Environment Variables (GitHub Secrets):**
+- `GEMINI_API_KEY` - Google Gemini AI API key
+- `PAGE_ID` - Facebook Page ID
+- `PAGE_ACCESS_TOKEN` - Facebook Page Access Token
+- `API_VERSION` - Facebook Graph API version
+- `IG_USER_ID` - Instagram Business Account ID
+
+**Manual Trigger:** Workflow can be manually triggered via GitHub UI (`workflow_dispatch`)
+
+### Render Deployment (API Hosting)
+
+**Purpose:** Hosts minimal API for health monitoring
+
+**Service Type:** Web Service
+**Region:** Singapore (Southeast Asia) - matches audience location
+**Build Command:** `pip install -r requirements.txt`
+**Start Command:** `python api.py`
+
+**Environment Variables:** Same as GitHub Actions (configured in Render dashboard)
+
+**Endpoints:**
+- `https://quotify-1skc.onrender.com/health` - Health check
+- `https://quotify-1skc.onrender.com/autopilot` - Manual trigger
+
+**Note:** Render free tier sleeps after inactivity. GitHub Actions is the primary scheduler.
+
+---
+
+## 🎨 Visual Design
+
+### Neon Aesthetic
 
 - **Style:** Neon glow effect on dark background
 - **Typography:** Montserrat-Light for modern, clean aesthetic
 - **Layout:** Center-aligned text with anti-orphan line breaking
-- **Color Theory:** Pink/magenta neon for visibility and brand appeal
+- **Color Palette:**
+  - Bulb Effect: `#FFDCEC` (soft pink)
+  - Core Glow: `#FF2075` (hot pink)
+  - Ambient Glow: `#610B2D` (deep magenta)
+- **Brand Identity:** "Aesthetic Vibes" - lost souls finding words that feel like home
 
-### Technical Decisions
+### Technical Design Decisions
 
 - **Modularity:** Each component is independently testable
-- **Error Handling:** Fail-fast in CLI, detailed responses in API
+- **Error Handling:** Graceful failures with detailed logging
 - **File I/O:** Direct file system writes (no database)
 - **Caption Strategy:** Empty by default to maximize visual focus
-- **CDN Strategy:** Upload to FB first, reuse URL for IG (efficiency)
-
-### API Design
-
-- **RESTful:** Resource-oriented endpoints
-- **Timeouts:** 2-minute limits prevent hanging requests
-- **Documentation:** Auto-generated OpenAPI schema
-- **Validation:** Pydantic models ensure type safety
-
----
-
-## 🚀 Usage Guide
-
-### CLI Mode (One-Time Execution)
-
-```bash
-# Run complete pipeline once
-python main.py
-```
-
-**Output:** Console logs for each step, final image posted to both platforms
-
-### API Mode (Persistent Service)
-
-```bash
-# Start API server
-python api.py
-```
-
-**Testing Endpoints:**
-
-```bash
-# Generate quote
-curl http://localhost:8000/generatequote
-
-# Create image
-curl -X POST http://localhost:8000/generateimage \
-  -H "Content-Type: application/json" \
-  -d '{"quote": "Your inspirational text here"}'
-
-# Upload to Facebook
-curl -X POST http://localhost:8000/fbupload \
-  -H "Content-Type: application/json" \
-  -d '{"image_path": "image.jpg"}'
-
-# Publish to Instagram
-curl -X POST http://localhost:8000/igupload \
-  -H "Content-Type: application/json" \
-  -d '{"fb_image_url": "https://..."}'
-```
+- **CDN Strategy:** Upload to FB first, reuse URL for IG (API efficiency)
+- **Scheduling:** GitHub Actions cron (free, reliable, no server needed)
 
 ---
 
@@ -382,34 +470,57 @@ curl -X POST http://localhost:8000/igupload \
 
 ---
 
-## 🛠️ Development Notes
+## 🛠️ Development & Testing
+
+### Local Testing
+
+```bash
+# Test full pipeline once
+python main.py
+
+# Test API endpoints
+python api.py
+# Visit http://localhost:8000/docs for Swagger UI
+
+# Test automation script (what GitHub Actions runs)
+python cron_autopilot.py
+```
 
 ### Error Handling Strategy
 
-- CLI mode: Immediate exit on any error with clear messaging
-- API mode: HTTP status codes with descriptive error messages
-- No automatic retries (explicit design choice)
+- **CLI mode** (`main.py`): Immediate exit on any error with clear messaging
+- **API mode** (`api.py`): HTTP status codes with detailed error messages
+- **Automation mode** (`cron_autopilot.py`): Graceful failures, logs errors but continues service
+- **Logging:** INFO level with step-by-step progress tracking
 
 ### Current Limitations
 
-- Single image generation per execution
 - No content moderation built-in
-- No post scheduling (immediate publish only)
-- No analytics tracking
-- No database persistence
+- No analytics tracking (relies on native platform insights)
+- No database persistence (stateless execution)
+- No A/B testing framework
+- Caption support exists but unused (empty by default)
 
-### Future Enhancement Opportunities
+### Monitoring
 
-- Batch processing support
-- Scheduled posting queue
-- Content approval workflow
-- Analytics dashboard
-- Template customization API
-- Multi-platform expansion (Twitter, LinkedIn)
+- **GitHub Actions logs:** Check workflow run history for errors
+- **Render logs:** Monitor API health and uptime
+- **Facebook/Instagram Insights:** Track engagement metrics
 
 ---
 
 ## 📄 License & Attribution
+
+### Privacy Policy
+
+**Important:** This project collects and processes data through third-party services. Please review our Privacy Policy:
+
+🔒 **Privacy Policy:** https://www.privacypolicies.com/live/30db9e31-69f7-4904-8d66-bf4bdbc407e5
+
+By using this application, you agree to:
+- Our data collection and usage practices
+- Third-party service terms (Google Gemini AI, Facebook/Instagram APIs)
+- The privacy policies of integrated platforms
 
 ### Font License
 
@@ -424,19 +535,100 @@ curl -X POST http://localhost:8000/igupload \
 
 ---
 
-## ⚡ Quick Start Checklist
+## ⚡ Quick Start Guide
 
-- [ ] Install Python 3.8+
-- [ ] Clone repository
-- [ ] Install dependencies: `pip install -r requirements.txt`
-- [ ] Create `.env` file with required credentials
-- [ ] Add `template.jpg` to project root
-- [ ] Create/verify `prompt.txt` exists
-- [ ] Test: `python main.py` or `python api.py`
-- [ ] Verify font path: `Montserrat/static/Montserrat-Light.ttf`
+### Prerequisites
+
+- [ ] Python 3.8+ installed
+- [ ] Git installed
+- [ ] GitHub account (for Actions automation)
+- [ ] Facebook Page with Instagram Business Account linked
+- [ ] Google Gemini API key
+
+### Local Setup
+
+1. **Clone repository:**
+   ```bash
+   git clone <your-repo-url>
+   cd Quotify
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Create `.env` file:**
+   ```bash
+   GEMINI_API_KEY=your_gemini_api_key
+   PAGE_ID=your_facebook_page_id
+   PAGE_ACCESS_TOKEN=your_facebook_page_token
+   API_VERSION=v18.0
+   IG_USER_ID=your_instagram_business_id
+   ```
+
+4. **Add required assets:**
+   - Place `template.jpg` in project root
+   - Verify `prompt.txt` exists
+   - Verify font: `Montserrat/static/Montserrat-Light.ttf`
+
+5. **Test locally:**
+   ```bash
+   python main.py
+   ```
+
+### GitHub Actions Setup
+
+1. **Add secrets to GitHub repository:**
+   - Go to: Settings → Secrets and variables → Actions
+   - Add all 5 environment variables as secrets
+
+2. **Enable GitHub Actions:**
+   - Go to: Actions tab
+   - Enable workflows if disabled
+
+3. **Manual test run:**
+   - Go to: Actions → Daily Quote Autopilot
+   - Click "Run workflow" → "Run workflow"
+   - Check logs for success
+
+4. **Automated execution:**
+   - Workflow runs automatically every hour (9:30 AM - 10:30 PM IST)
+   - No further action needed
+
+### Render Deployment (Optional)
+
+1. Create new Web Service on Render
+2. Connect GitHub repository
+3. Configure:
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `python api.py`
+   - Environment: Add all 5 variables
+   - Region: Singapore (for South Asian audience)
 
 ---
 
-**Last Updated:** 2026-07-25  
+## 📊 Page Performance
+
+### Current Metrics (as of Jan 2026)
+
+- **Followers:** 55,000
+- **Audience:** 90% South Asian (India, Bangladesh, Nepal, Pakistan)
+- **Age:** 56% (25-34), 36% (18-24)
+- **Gender:** 56% women, 44% men/unknown
+- **Top Cities:** Kolkata, Dhaka, Kathmandu
+- **Page Status:** Revival phase after period of inactivity
+
+### Content Strategy
+
+- **Goal:** Revive engagement and regain active followers
+- **Approach:** 14 posts/day with diverse content types
+- **Testing Phase:** First 2 weeks to identify top-performing content
+- **Optimization:** Adjust content type ratios based on engagement data
+
+---
+
+**Last Updated:** 2026-01-26  
 **Python Version:** 3.8+  
-**Maintained By:** Project Team
+**Page:** Aesthetic Vibes (Instagram/Facebook)  
+**Maintained By:** Priyom Saha

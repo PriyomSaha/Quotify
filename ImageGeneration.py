@@ -10,7 +10,7 @@ def format_quote_lines(text, max_chars=28):
     """Formats raw text into lines restricted by character count.
     
     Handles two formats:
-    1. Conversations (Name: dialogue format) - preserves each line as-is
+    1. Conversations (Name: dialogue format) - preserves each line, wraps if needed
     2. Regular quotes - wraps text with anti-orphan logic
     
     Returns: (formatted_lines, is_conversation)
@@ -21,13 +21,46 @@ def format_quote_lines(text, max_chars=28):
     is_conversation = any(':' in line and len(line.split(':', 1)) == 2 for line in lines_raw if line.strip())
     
     if is_conversation:
-        # Conversation format - preserve each line exactly as-is
+        # Conversation format - check each line and wrap if too long
         formatted_lines = []
         for line in lines_raw:
             line = line.strip()
-            if line:  # Skip empty lines
-                # Each conversation line stays on its own line
+            if not line:  # Skip empty lines
+                continue
+            
+            # Check if line is too long (max_chars limit)
+            if len(line) <= max_chars:
                 formatted_lines.append(line)
+            else:
+                # Line too long - need to wrap dialogue text
+                # Split at colon to get name and dialogue
+                if ':' in line:
+                    name, dialogue = line.split(':', 1)
+                    dialogue = dialogue.strip()
+                    
+                    # Wrap dialogue text into multiple lines
+                    words = dialogue.split()
+                    current_words = []
+                    
+                    for word in words:
+                        # Test if adding this word exceeds limit
+                        test_line = f"{name}: {' '.join(current_words + [word])}"
+                        
+                        if len(test_line) <= max_chars:
+                            current_words.append(word)
+                        else:
+                            # Current line full, save it
+                            if current_words:
+                                formatted_lines.append(f"{name}: {' '.join(current_words)}")
+                            current_words = [word]
+                    
+                    # Add remaining words
+                    if current_words:
+                        formatted_lines.append(f"{name}: {' '.join(current_words)}")
+                else:
+                    # No colon found, just add as-is (shouldn't happen)
+                    formatted_lines.append(line)
+        
         return formatted_lines, True
     
     # Regular quote format - existing logic
@@ -107,9 +140,12 @@ def create_neon_quote_image(
     line_spacing = 58
 
     # Calculate available space (leave room for logo at bottom)
-    # Assume logo is at bottom 150px, leave 200px margin from bottom
-    logo_margin_bottom = 200
-    available_height = height - logo_margin_bottom
+    # Logo area: reserve 180px from bottom
+    logo_margin_bottom = 180
+    # Also add top margin for breathing room
+    top_margin = 120
+    
+    available_height = height - logo_margin_bottom - top_margin
     
     total_text_height = len(lines) * line_spacing
     
@@ -118,26 +154,21 @@ def create_neon_quote_image(
         if is_conversation or len(lines) > 6:
             # Reduce font size for long conversations
             font = ImageFont.truetype(str(FONT_PATH), 28)
-            line_spacing = 52
+            line_spacing = 50
             total_text_height = len(lines) * line_spacing
             
             # If still too tall, reduce further
             if total_text_height > available_height:
                 font = ImageFont.truetype(str(FONT_PATH), 24)
-                line_spacing = 46
+                line_spacing = 44
                 total_text_height = len(lines) * line_spacing
         else:
             # For regular quotes, this shouldn't happen, but handle it
             line_spacing = 50
             total_text_height = len(lines) * line_spacing
     
-    # Center text in available space (above logo)
-    start_y = (available_height - total_text_height) // 2
-    
-    # Ensure minimum top margin
-    min_top_margin = 100
-    if start_y < min_top_margin:
-        start_y = min_top_margin
+    # Center text in available space (between top margin and logo)
+    start_y = top_margin + (available_height - total_text_height) // 2
 
     base_mask = Image.new("L", (width, height), 0)
     draw_mask = ImageDraw.Draw(base_mask)
