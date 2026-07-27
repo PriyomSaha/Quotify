@@ -1,9 +1,5 @@
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
-
-
-from pathlib import Path
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from QuoteGeneration import generate_quote
 
 def format_quote_lines(text, max_chars=28):
@@ -127,9 +123,11 @@ def create_neon_quote_image(
     core_glow_color = (255, 32, 117)  # #FF2075
     ambient_glow_color = (97, 11, 45)  # #610B2D
 
+    # Set up font path
+    BASE_DIR = Path(__file__).resolve().parent
+    FONT_PATH = BASE_DIR / "Montserrat" / "static" / "Montserrat-Light.ttf"
+    
     try:
-        BASE_DIR = Path(__file__).resolve().parent
-        FONT_PATH = BASE_DIR / "Montserrat" / "static" / "Montserrat-Light.ttf"
         font = ImageFont.truetype(str(FONT_PATH), 32)
     except Exception:
         print("Montserrat-Light.ttf not found. Falling back to default font.")
@@ -153,13 +151,19 @@ def create_neon_quote_image(
     if total_text_height > available_height:
         if is_conversation or len(lines) > 6:
             # Reduce font size for long conversations
-            font = ImageFont.truetype(str(FONT_PATH), 28)
+            try:
+                font = ImageFont.truetype(str(FONT_PATH), 28)
+            except:
+                font = ImageFont.load_default()
             line_spacing = 50
             total_text_height = len(lines) * line_spacing
             
             # If still too tall, reduce further
             if total_text_height > available_height:
-                font = ImageFont.truetype(str(FONT_PATH), 24)
+                try:
+                    font = ImageFont.truetype(str(FONT_PATH), 24)
+                except:
+                    font = ImageFont.load_default()
                 line_spacing = 44
                 total_text_height = len(lines) * line_spacing
         else:
