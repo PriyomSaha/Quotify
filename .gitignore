@@ -28,6 +28,9 @@ output.jpg
 generated_*.jpg
 generated_*.png
 
+# Generated Vdo
+*.mp4
+
 # Logs
 *.log
 logs/
