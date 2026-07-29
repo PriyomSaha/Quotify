@@ -443,6 +443,391 @@ Examples (do NOT copy):
 Return only the moment.
 """,
 
+    "FRIENDSHIP_BONDS": """
+Generate a heartfelt message about friendship, loyalty, chosen family, or deep platonic bonds.
+
+Themes: True friends who stay, chosen family, loyalty through hard times, friends who become family, unconditional support, laughing until you cry, inside jokes, friends who get you, being yourself around them, distance doesn't matter, quality over quantity, ride-or-die energy, friendship appreciation.
+
+Requirements:
+* 18-28 words
+* SIMPLE ENGLISH (easy words)
+* Celebrates platonic love and friendship
+* Warm and appreciative tone
+* NOT romantic - purely friendship focused
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Real friends don't ask if you need help. They just show up with food, bad jokes, and zero judgment."
+- "Find friends who feel like home, not just people who know your address."
+
+Return only the friendship message.
+""",
+
+    "SELF_LOVE_BOUNDARIES": """
+Generate a powerful message about self-worth, setting boundaries, choosing yourself, or breaking toxic patterns.
+
+Themes: Knowing your worth, setting boundaries without guilt, choosing yourself first, walking away from toxicity, unlearning people-pleasing, self-respect, protecting your peace, saying no, healing relationship with yourself, breaking generational patterns, self-validation, refusing to shrink yourself.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* Empowering and validating
+* About self-worth or boundaries
+* Not selfish - just healthy
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "You're allowed to outgrow people who refuse to water your growth. Boundaries aren't walls, they're bridges to better."
+- "Stop shrinking yourself to fit into rooms that were never built for your expansion."
+
+Return only the self-love message.
+""",
+
+    "MENTAL_HEALTH_REAL": """
+Create an honest, validating message about mental health, anxiety, depression, burnout, or emotional exhaustion.
+
+Themes: It's okay not to be okay, invisible struggles, high-functioning anxiety, burnout recovery, healing isn't linear, mental health matters, rest without guilt, asking for help, therapy normalization, breaking the stigma, emotional exhaustion, surviving vs living.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* Validating and compassionate (NOT toxic positivity)
+* Honest about struggles
+* Makes people feel seen and less alone
+* Not preachy or advice-heavy
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Sometimes self-care is just making it through the day without falling apart. That's enough. You're enough."
+- "Your mental health is not a trend or aesthetic. It's real, it's valid, and it deserves attention."
+
+Return only the mental health message.
+""",
+
+    "DAILY_STRUGGLE_HUMOR": """
+Create humor about specific daily struggles - work, family, money, responsibilities, or modern life chaos.
+
+Themes: Work stress and boss dynamics, family expectations and comparisons, salary never enough, bills arriving on time (unlike motivation), student life chaos, commute nightmares, household chores piling up, adulting admin tasks, phone storage full, low battery anxiety, passwords forgotten, online meeting disasters.
+
+Requirements:
+* 15-25 words
+* SIMPLE ENGLISH (easy words)
+* Specific situation humor (not vague funny feeling)
+* Relatable to working adults/students
+* Self-aware and witty
+* Can reference: jobs, family, money, chores, technology
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "My salary arrives and leaves faster than guests who said they'd stay for just 5 minutes."
+- "Parents: 'Don't believe everything on internet.' Also parents: forwards every WhatsApp message."
+
+Return only the struggle humor.
+""",
+
+    "DREAMS_AMBITIONS": """
+Generate an inspiring message about chasing dreams, building your vision, or following your passion.
+
+Themes: Side hustle energy, passion projects, creative pursuits, building your empire, manifesting dreams, taking leaps of faith, betting on yourself, creating your future, vision board life, 5-year plan, grinding for your dreams, turning hobbies into income, entrepreneurial spirit.
+
+Requirements:
+* 18-28 words
+* SIMPLE ENGLISH (easy words)
+* Inspiring and ambitious
+* About personal dreams/goals (not generic success)
+* Hopeful but realistic
+* Encourages action
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Your 9-to-5 pays your bills. Your 5-to-9 builds your dreams. Don't abandon the vision just because it's tired."
+- "Someone once told me my dreams were too big. I outgrew them and their opinions."
+
+Return only the dream message.
+""",
+
+    "FOOD_COMFORT": """
+Create a warm, relatable message about food, comfort eating, home cooking, or food memories.
+
+Themes: Comfort food therapy, mom's cooking nostalgia, midnight snacks, street food memories, cooking fails, food delivery addiction, emotional connection to food, sharing meals with loved ones, kitchen experiments, food = love language, taste of home.
+
+Requirements:
+* 15-25 words
+* SIMPLE ENGLISH (easy words)
+* Warm and relatable
+* Food-related (cooking, eating, memories)
+* Can be nostalgic, funny, or comforting
+* Culturally inclusive (not specific to one cuisine)
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Some comfort can't be explained by therapists. It lives in the smell of home-cooked food and familiar kitchens."
+- "Midnight Maggi hits different when you're fixing your life one noodle at a time."
+
+Return only the food message.
+""",
+
+    "MUSIC_ART_SOUL": """
+Generate a message about how music, art, or creativity heals, inspires, or connects us.
+
+Themes: Songs that heal, music as therapy, old songs nostalgia, artists who saved you, lyrics that understand, art as expression, creativity as escape, finding yourself in melodies, music memories, soundtracks of life, emotional connection to art.
+
+Requirements:
+* 18-28 words
+* SIMPLE ENGLISH (easy words)
+* Emotional connection to music/art
+* Universal (not specific artist/song)
+* Can be nostalgic or healing
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Some songs don't just play in your ears. They rewind your memory to moments you thought you'd forgotten."
+- "Music doesn't fix broken hearts, but it sits with you in the dark until sunrise comes."
+
+Return only the music/art message.
+""",
+
+    "PHILOSOPHICAL_LIGHT": """
+Share a light philosophical observation about life, destiny, karma, timing, or universe's patterns.
+
+Themes: Everything happens for a reason (but gentle), karma exists, timing is everything, universe has plans, destiny and free will, cosmic justice, life's patterns, circles closing, wrong paths leading to right places, coincidences that aren't, lessons disguised as losses.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* Philosophical but accessible
+* Spiritual/mystical vibe (NOT religious)
+* Comforting perspective
+* Not preachy
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Sometimes wrong trains take you to right destinations. Trust the detours, they're part of the map."
+- "The universe removes people from your life when their part in your story is complete. Let them go."
+
+Return only the philosophical message.
+""",
+
+    "SOCIAL_COMMENTARY": """
+Create gentle social commentary about modern culture, society, or behavioral trends.
+
+Themes: Social media fakeness, hustle culture toxicity, comparison culture, modern dating chaos, performative activism, influencer culture, validation addiction, digital age loneliness, screen time vs real time, online personas vs reality, productivity obsession, cancel culture, virtue signaling.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* Observational, not preachy
+* Critiques behavior/culture gently
+* Relatable and thought-provoking
+* Not political or divisive
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "We document moments to prove we're living them, then forget to actually live them while documenting."
+- "Everyone's selling a dream life online but nobody's buying the truth that they're just as lost."
+
+Return only the commentary.
+""",
+
+    "OVERTHINKING_ANXIETY": """
+Capture the experience of overthinking, anxiety spirals, or the exhausting mental loops we get stuck in.
+
+Themes: Overthinking everything, analyzing texts for hours, worst-case scenarios, anxiety spirals, catastrophizing, replaying conversations, creating problems that don't exist, paralysis by analysis, fear of the unknown, waiting for bad news, assuming the worst, mental exhaustion from thoughts.
+
+Requirements:
+* 18-28 words
+* SIMPLE ENGLISH (easy words)
+* Captures overthinking experience vividly
+* Validating (makes overthinkers feel seen)
+* Honest but not scary
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Overthinking is when you create six different arguments with someone who probably forgot the conversation five minutes ago."
+- "Anxiety is your mind writing horror stories about tomorrow using yesterday's worst moments as reference."
+
+Return only the overthinking message.
+""",
+
+    "LIFE_LESSONS_SUGGESTIONS": """
+Share a practical life lesson, piece of advice, or wisdom gained from experience.
+
+Themes: Things I wish I knew earlier, lessons from mistakes, advice to younger self, relationship lessons, career wisdom, money management, friendship advice, communication skills, boundary lessons, self-awareness tips, choosing battles wisely, understanding people.
+
+Requirements:
+* 20-35 words
+* SIMPLE ENGLISH (easy words)
+* Practical wisdom or life lesson
+* From personal experience perspective
+* Helpful without being preachy
+* Can start with: "I learned...", "Life taught me...", "I wish I knew..."
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "I learned that people show you who they are consistently. Believe patterns, not apologies. Words are cheap, actions build trust."
+- "Life taught me that protecting your peace isn't selfish. You can't pour from an empty cup."
+
+Return only the life lesson.
+""",
+
+    "GROWTH_HEALING": """
+Create a message about personal growth, healing journey, or transformation.
+
+Themes: Healing isn't linear, growing pains, becoming unrecognizable to old self, outgrowing old versions, shedding old skin, learning to let go, finding yourself after loss, rebuilding from scratch, transformation through pain, evolution not perfection, slow progress still progress.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* About growth or healing process
+* Honest about difficulty
+* Hopeful but realistic
+* Validates the journey
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Healing doesn't mean the damage never existed. It means it no longer controls your life."
+- "You're not the same person you were last year. Growth looks messy before it looks beautiful."
+
+Return only the growth message.
+""",
+
+    "LATE_NIGHT_THOUGHTS": """
+Capture those deep, vulnerable thoughts that hit at 2 AM when you're alone with your mind.
+
+Themes: Midnight existential crisis, late-night realizations, 2 AM emotions, sleepless overthinking, vulnerable reflections, questions without answers, loneliness at night, processing emotions, confronting truths, rawness of night thoughts, unfiltered feelings.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* Feels like a 2 AM thought
+* Raw and vulnerable
+* Deeply relatable
+* Honest without being depressing
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "It's 2 AM and I'm wondering if I'm building my life or just surviving it with better distractions."
+- "Late-night thoughts hit different when you realize you're not healing, just getting better at hiding."
+
+Return only the late-night thought.
+""",
+
+    "SMALL_VICTORIES": """
+Celebrate small wins, everyday achievements, or tiny progress that deserves recognition.
+
+Themes: Getting out of bed on hard days, completing small tasks, saying no without guilt, asking for help, eating when depressed, showering during burnout, one good day after many bad ones, small steps forward, progress not perfection, gentle wins.
+
+Requirements:
+* 15-25 words
+* SIMPLE ENGLISH (easy words)
+* Celebrates small, relatable achievements
+* Validating and gentle
+* Makes people feel proud of small things
+* Not patronizing
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Getting out of bed on a hard day isn't lazy. It's choosing yourself when everything feels heavy."
+- "You did one small thing today that past you would be proud of. That counts."
+
+Return only the small victory message.
+""",
+
+    "FORGIVENESS_LETTING_GO": """
+Create a message about forgiveness, letting go, moving on, or releasing what no longer serves you.
+
+Themes: Forgiving yourself, releasing grudges, letting people go with love, closure you create yourself, moving forward without answers, peace over being right, releasing expectations, accepting endings, forgiving without forgetting, choosing peace over revenge.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* About forgiveness or letting go
+* Empowering, not weak
+* Validates difficulty of process
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Forgiveness doesn't mean what they did was okay. It means you refuse to carry their mistakes into your future."
+- "Sometimes closure is accepting you'll never get the apology you deserved and choosing peace anyway."
+
+Return only the forgiveness message.
+""",
+
+    "TIME_PERSPECTIVE": """
+Share an observation about time, aging, change, or how quickly life moves.
+
+Themes: Time flies, years blending together, age sneaking up, yesterday feels like last week, moments that define decades, time's relativity, looking back in disbelief, future arriving too fast, nostalgia for recent past, temporal dissonance, fleeting moments.
+
+Requirements:
+* 18-30 words
+* SIMPLE ENGLISH (easy words)
+* About time's passage or perspective
+* Relatable across ages
+* Reflective but not depressing
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "Crazy how you can be 18 thinking you have forever, blink twice, and suddenly you're 28 wondering where time went."
+- "Time is weird. Days feel long but years disappear. Moments feel small but memories last forever."
+
+Return only the time perspective.
+""",
+
+    "TRUTH_BOMBS": """
+Drop a harsh truth or reality check that people need to hear (delivered with care).
+
+Themes: Uncomfortable truths, reality checks, things people avoid hearing, difficult acceptance, wake-up calls, honest observations about life/love/work, illusions we hold, self-deception we practice, avoidance patterns, truths that hurt but help.
+
+Requirements:
+* 15-25 words
+* SIMPLE ENGLISH (easy words)
+* Harsh truth delivered kindly
+* Reality check without cruelty
+* Makes people uncomfortable but in helpful way
+* Not mean-spirited
+* Gender-neutral
+* Format: 1-2 sentences
+* No emojis or hashtags
+
+Examples (do NOT copy):
+- "If they wanted to, they would. Stop creating excuses for people who barely think about you."
+- "You can't heal in the same environment that made you sick. Sometimes leaving is self-care."
+
+Return only the truth bomb.
+""",
+
     "TRAVEL_WANDERLUST": """
 Generate an inspiring message about travel, adventure, exploration, or wanderlust.
 
