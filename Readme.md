@@ -4,7 +4,15 @@
 
 **"We are not a poet, Just a lost soul finding combination of words to bring you home"**
 
-An automated content generation and publishing system for the Instagram/Facebook page "Aesthetic Vibes" (55K followers). The system creates AI-generated diverse content with **33 unique content types**, renders them as neon-styled images, and automatically publishes to social media platforms.
+An automated content generation and publishing system for the Instagram/Facebook page **"Aesthetic Vibes"** (55K+ followers). The system creates AI-generated diverse content with **33 unique content types**, renders them as neon-styled images, and automatically publishes to social media platforms.
+
+### 🔗 Social Media Pages
+
+- **Instagram:** [@aesthetic_o_vibes](https://www.instagram.com/aesthetic_o_vibes/) - 55K+ followers
+- **Facebook:** [AesthaticsVibes](https://www.facebook.com/AesthaticsVibes) - Aesthetic Vibes Official Page
+- **Content Focus:** Emotional quotes, deep thoughts, relatable conversations, life wisdom
+- **Target Audience:** 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years old
+- **Brand Identity:** Lost souls finding words that feel like home
 
 **Pipeline Flow:** Content Type Selection → AI Content Generation → Neon Image Creation → Facebook Upload → Instagram Publishing
 
@@ -910,25 +918,34 @@ Should show:
 
 ## 📊 Page Performance
 
-### Current Metrics (as of Jan 2026)
+### Current Metrics (as of July 2026)
 
-- **Followers:** 55,000
-- **Audience:** 90% South Asian (India, Bangladesh, Nepal, Pakistan)
-- **Age:** 56% (25-34), 36% (18-24)
-- **Gender:** 56% women, 44% men/unknown
-- **Top Cities:** Kolkata, Dhaka, Kathmandu
-- **Page Status:** Revival phase after period of inactivity
+- **Instagram:** [@aesthetic_o_vibes](https://www.instagram.com/aesthetic_o_vibes/) - 55,000+ followers
+- **Facebook:** [AesthaticsVibes](https://www.facebook.com/AesthaticsVibes) - Aesthetic Vibes Official
+- **Audience Demographics:** 90% South Asian (India, Bangladesh, Nepal, Pakistan)
+- **Age Distribution:** 56% (25-34), 36% (18-24), 8% (35+)
+- **Gender Split:** 56% women, 44% men/unknown
+- **Top Cities:** Kolkata, Dhaka, Kathmandu, Mumbai, Bangalore
+- **Page Status:** Active automation with 17 posts/day
 
 ### Content Strategy
 
-- **Goal:** Revive engagement and regain active followers
-- **Approach:** 14 posts/day with diverse content types
-- **Testing Phase:** First 2 weeks to identify top-performing content
-- **Optimization:** Adjust content type ratios based on engagement data
+- **Goal:** Maintain engagement and grow active community
+- **Approach:** 17 posts/day with smart randomization (33 content types)
+- **Automation:** GitHub Actions + Render API for 24/7 operation
+- **Anti-Repetition:** GitHub Gist tracks last 30 posts for maximum variety
+- **Optimization:** Time-based content selection (morning energy, afternoon relatable, evening deep)
+
+### SEO Keywords
+
+Aesthetic quotes, emotional quotes, deep thoughts, relatable content, Instagram quotes, Facebook quotes, heartbreak quotes, motivational quotes, life wisdom, South Asian content, Indian quotes, Bengali quotes, Nepali quotes, Gen-Z content, millennial quotes, automated content generation, AI-powered quotes, neon aesthetic, quote images, social media automation
 
 ---
 
-**Last Updated:** 2026-01-26  
+**Last Updated:** 2026-07-29  
 **Python Version:** 3.8+  
-**Page:** Aesthetic Vibes (Instagram/Facebook)  
-**Maintained By:** Priyom Saha
+**Social Media Pages:**  
+- Instagram: https://www.instagram.com/aesthetic_o_vibes/  
+- Facebook: https://www.facebook.com/AesthaticsVibes  
+**Maintained By:** Priyom Saha  
+**License:** See LICENSE file for details
