@@ -1,16 +1,12 @@
 """
 content_schedule.py - Smart randomized content type selection
 Ensures maximum diversity throughout the week with time-appropriate energy
+Uses GitHub Gist for synchronized history storage (no local files)
 """
 
 from datetime import datetime, timezone
 import random
-import os
-import json
-
-# File to track recent post types (prevents repetition across days)
-HISTORY_FILE = "content_history.json"
-HISTORY_LIMIT = 30  # Track last 30 posts
+from gist_storage import get_content_history, add_to_history
 
 # ALL 33 CONTENT TYPES organized by energy level and time appropriateness
 MORNING_ENERGY_TYPES = [
@@ -58,26 +54,7 @@ EVENING_DEEP_TYPES = [
 ]
 
 
-def load_content_history():
-    """Load recent content types from history file"""
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
 
-
-def save_content_history(history):
-    """Save updated content history"""
-    # Keep only last N posts
-    history = history[-HISTORY_LIMIT:]
-    try:
-        with open(HISTORY_FILE, 'w') as f:
-            json.dump(history, f)
-    except Exception as e:
-        print(f"⚠️ Could not save history: {e}")
 
 
 def get_time_category():
@@ -104,8 +81,8 @@ def get_content_type_for_time():
     # Get current time category
     time_label, available_types = get_time_category()
     
-    # Load history to avoid repetition
-    history = load_content_history()
+    # Load history from GitHub Gist to avoid repetition
+    history = get_content_history()
     recent_types = history[-10:]  # Last 10 posts
     
     # Filter out recently used types (smart weighting)
@@ -127,9 +104,8 @@ def get_content_type_for_time():
     # Randomly select from weighted pool
     selected = random.choice(weighted_types if weighted_types else available_types)
     
-    # Add to history
-    history.append(selected["type"])
-    save_content_history(history)
+    # Add to history (saves to Gist automatically)
+    add_to_history(selected["type"])
     
     # Prepare response
     result = {
@@ -174,7 +150,7 @@ def get_all_types_summary():
 
 def get_stats():
     """Show statistics about recent content variety"""
-    history = load_content_history()
+    history = get_content_history()
     if not history:
         print("📊 No history yet")
         return
