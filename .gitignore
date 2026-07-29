@@ -28,6 +28,8 @@ output.jpg
 generated_*.jpg
 generated_*.png
 
+*.mp4
+
 # Logs
 *.log
 logs/
