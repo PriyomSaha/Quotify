@@ -1,20 +1,26 @@
 from google import genai
 import os
 from dotenv import load_dotenv
+from PromptSelector import get_prompt_for_current_time
 
 load_dotenv()
-
-with open("prompt.txt", "r", encoding="utf-8") as f:
-    prompt = f.read()
 
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
-interaction = client.interactions.create(
-    model="gemini-3.6-flash",
-    input=prompt
-)
-
 def generate_quote():
-    return(interaction.output_text)
+    """
+    Generate content based on current time.
+    Uses time-based prompt selection to save tokens and ensure variety.
+    """
+    # Get the appropriate prompt for current time
+    prompt = get_prompt_for_current_time()
+    
+    # Generate content using Gemini
+    interaction = client.interactions.create(
+        model="gemini-3.6-flash",
+        input=prompt
+    )
+    
+    return interaction.output_text

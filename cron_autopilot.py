@@ -7,10 +7,16 @@ Run this directly from Render Cron Job
 from QuoteGeneration import generate_quote
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
+from check_last_post import should_publish_new_post
 
 def main():
     try:
         print("🚀 Autopilot started")
+        
+        # Check if enough time has passed since last post (2 hours minimum)
+        if not should_publish_new_post(min_hours=2):
+            print("⏭️ Skipping - posted too recently")
+            return
         
         # Generate quote
         quote = generate_quote()
