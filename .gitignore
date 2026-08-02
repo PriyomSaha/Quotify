@@ -31,6 +31,8 @@ generated_*.png
 # Generated Vdo
 *.mp4
 
+/Reels/output/*
+
 # Logs
 *.log
 logs/
