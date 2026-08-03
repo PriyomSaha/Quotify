@@ -10,11 +10,16 @@ ffmpeg required
 import whisper
 import re
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
+# Set explicit cache directory to ensure consistency
+os.environ["WHISPER_CACHE_DIR"] = os.path.expanduser("~/.cache/whisper")
+
 # Global model cache - loaded on first use
 _MODEL = None
+_MODEL_NAME = "tiny"  # Centralized model name
 
 
 def _get_model():
@@ -25,12 +30,13 @@ def _get_model():
     """
     global _MODEL
     if _MODEL is None:
-        logger.info("🔊 Loading Whisper model (tiny)...")
-        logger.info("⏳ Downloading ~39MB model (memory-efficient)...")
-        _MODEL = whisper.load_model("tiny")
+        logger.info(f"🔊 Loading Whisper model ({_MODEL_NAME})...")
+        logger.info(f"⏳ Downloading ~39MB model (memory-efficient)...")
+        logger.info(f"Cache dir: {os.environ.get('WHISPER_CACHE_DIR', 'default')}")
+        _MODEL = whisper.load_model(_MODEL_NAME)
         logger.info("✅ Whisper model loaded successfully")
     else:
-        logger.info("✅ Using cached Whisper model (already loaded)")
+        logger.info(f"✅ Using cached Whisper model ({_MODEL_NAME}, already loaded)")
     return _MODEL
 
 
