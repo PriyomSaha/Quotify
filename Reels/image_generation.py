@@ -447,6 +447,13 @@ typography
 """
 
 # ============================================================
+# BRAND COLOR MODE - Toggle this to switch styles
+# ============================================================
+# Set to True for brand colors (pink/purple theme)
+# Set to False for natural colors (current style)
+USE_BRAND_COLORS = False  # ← Change this to False to revert
+
+# ============================================================
 # PROMPT BUILDER
 # ============================================================
 
@@ -460,26 +467,32 @@ def build_prompt(
     
     person_instruction = ""
     if include_person:
-        person_instruction = "Include ONE tiny person (male or female, vary naturally) as small distant silhouette (max 5% of frame), back or side view, doing simple action: standing, walking, or sitting facing forward toward nature. Person must have logical context - sitting on bench/rock/dock, walking on path/beach, standing on cliff/field. Body position must make sense with surroundings."
+        person_instruction = "ONE tiny person (equal mix of male/female figures, vary naturally) as small distant silhouette (max 5%), back/side view, simple action. Logical context - sitting on bench/rock, walking on path, standing on cliff."
     else:
-        person_instruction = "Pure nature scene, no people. Focus entirely on landscape and atmospheric elements."
+        person_instruction = "Pure nature scene, no people. Focus on landscape."
+    
+    # Choose color palette based on mode
+    if USE_BRAND_COLORS:
+        color_instruction = """BRAND COLORS (MANDATORY): Bright pink (#FF2075) in sky/lights/highlights, dark burgundy (#610B2D) shadows, navy blue depth, muted cream accents. Pink-tinted atmosphere - pink sunset, pink mist, purple night, burgundy shadows. Color grade entire scene pink/purple/blue. NEVER: bright green, yellow, orange."""
+    else:
+        color_instruction = """Colors: Navy blue, charcoal, muted teal, burnt orange, warm amber, cream. Low saturation, moody cinematic grading."""
     
     return f"""
-Hand-drawn pencil sketch illustration. Loose artistic linework, soft watercolor washes, visible paper texture. Impressionistic, not photorealistic. Editorial book illustration style.
+Hand-drawn sketch illustration. Loose linework, soft watercolor, paper texture. Impressionistic editorial style.
 
 Scene: {scene_description}
 
 {person_instruction}
 
-Nature elements: Add atmospheric details - rain clouds, mist, fog, moonlight, stars, birds flying, ocean waves, wind in grass, tree branches, flowers, reflections in water. Nature is the main character.
+Nature: rain clouds, mist, fog, moonlight, stars, birds, waves, wind, grass, trees, flowers, water reflections.
 
-Composition: Extreme wide establishing shot. 90-95% landscape. Huge empty sky or water. Rule of thirds. Cinematic breathing room for text overlay.
+Composition: Extreme wide shot. 90-95% landscape. Huge empty sky/water. Rule of thirds. Space for text.
 
-Atmosphere: Calm, peaceful, melancholic, quiet, reflective, minimal. Soft natural lighting - blue hour, golden hour, overcast.
+Atmosphere: Calm, peaceful, melancholic, quiet, reflective, minimal. Blue hour, golden hour lighting.
 
-Colors: Navy blue, charcoal grey, muted teal, burnt orange, warm amber, cream. Low saturation, moody cinematic grading.
+{color_instruction}
 
-Style: Artistic sketch emphasis, loose gestural strokes, simplified forms, elegant minimalism. Face (if visible) should be abstract suggestion, not detailed features.
+Style: Artistic sketch, loose strokes, simplified forms, elegant minimalism. Abstract faces if visible.
 """
 
 # ============================================================

@@ -97,17 +97,24 @@ MUSIC_VOLUME = 0.15
 # Subtitle
 # ----------------------------
 
-FONT = str((BASE_DIR.parent / "Montserrat" / "static" / "Montserrat-Light.ttf"))
-
-FONT_SIZE = 68
+FONT = str((BASE_DIR.parent / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"))
+FONT_SIZE = 64
 
 FONT_COLOR = "white"
 
 STROKE_COLOR = "black"
 
-STROKE_WIDTH = 4
+STROKE_WIDTH = 3
 
-BOTTOM_MARGIN = 180
+BOTTOM_MARGIN = 450  # Increased - text positioned higher from bottom
+
+# ----------------------------
+# LOGO
+# ----------------------------
+LOGO_TEXT = "FB : Aesthetic Vibes \nIG: @aesthetic_o_vibes"
+LOGO_FONT = str((BASE_DIR.parent / "Fonts" / "Kaushan_Script" / "KaushanScript-Regular.ttf"))
+LOGO_FONT_SIZE = 45
+LOGO_FONT_COLOR = (255, 32, 117)  # #FF2075 - bright pink
 
 # ----------------------------
 # Generation
