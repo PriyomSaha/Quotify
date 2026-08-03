@@ -467,7 +467,7 @@ def build_prompt(
     
     person_instruction = ""
     if include_person:
-        person_instruction = "ONE tiny person (equal mix of male/female figures, vary naturally) as small distant silhouette (max 5%), back/side view, simple action. Logical context - sitting on bench/rock, walking on path, standing on cliff."
+        person_instruction = "ONE tiny person as small distant silhouette (max 5%), back/side view, simple action. Logical context - sitting on bench/rock, walking on path, standing on cliff."
     else:
         person_instruction = "Pure nature scene, no people. Focus on landscape."
     

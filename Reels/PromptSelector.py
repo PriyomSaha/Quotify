@@ -268,7 +268,7 @@ TIME_SCHEDULE = {
 
 "night": {
     "start": 22,
-    "end": 24,
+    "end": 6,  # Covers 22-24 and 0-6 (wraps around midnight)
     "mood": "deep thoughts and quiet reflections"
 }
 
@@ -284,14 +284,24 @@ def get_content_type_for_time():
     hour = datetime.now().hour
 
     for category, data in TIME_SCHEDULE.items():
+        start = data["start"]
+        end = data["end"]
+        
+        # Handle wraparound for night (22-24 and 0-6)
+        if start > end:  # Night wraps around midnight
+            if hour >= start or hour < end:
+                return {
+                    "category": category,
+                    "mood": data["mood"]
+                }
+        else:
+            if start <= hour < end:
+                return {
+                    "category": category,
+                    "mood": data["mood"]
+                }
 
-        if data["start"] <= hour < data["end"]:
-            return {
-                "category": category,
-                "mood": data["mood"]
-            }
-
-
+    # Fallback (should never reach here)
     return {
         "category": "night",
         "mood": "deep thoughts and quiet reflections"

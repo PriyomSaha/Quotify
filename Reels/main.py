@@ -2,6 +2,7 @@ from datetime import datetime
 import json
 import sys
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 from .config import OUTPUT_DIR
 from .image_generation import generate_images_for_reel
@@ -10,7 +11,7 @@ from .video_generation import create_reel
 from .voice_generation import generate_voice
 
 
-def load_existing_story(story_path: str):
+def load_existing_story(story_path: str) -> Dict[str, Any]:
     """
     Load an existing story JSON file.
     """
@@ -37,23 +38,34 @@ def get_timestamp_from_story_path(story_path: Path) -> str:
     return story_path.stem
 
 
-if __name__ == "__main__":
-    # Parse command line arguments
-    use_existing_story = len(sys.argv) > 1 and sys.argv[1].endswith('.json')
-    images_only = '--images-only' in sys.argv
+def generate_complete_reel(story_path: Optional[str] = None, images_only: bool = False) -> Dict[str, Any]:
+    """
+    Generate a complete reel from scratch or using existing story.
     
-    if use_existing_story:
-        story_path = Path(sys.argv[1])
-        print(f"📖 Loading existing story from: {story_path}\n")
-        story = load_existing_story(str(story_path))
+    Args:
+        story_path: Path to existing story JSON (optional)
+        images_only: If True, only generate images and stop
+    
+    Returns:
+        dict: Paths to generated files
+    """
+    
+    output_folder: Path
+    story_file: Path
+    story: Dict[str, Any]
+    
+    if story_path:
+        story_path_obj = Path(story_path)
+        print(f"📖 Loading existing story from: {story_path_obj}\n")
+        story = load_existing_story(story_path)
         
         # Extract timestamp from path
-        timestamp = get_timestamp_from_story_path(story_path)
+        timestamp = get_timestamp_from_story_path(story_path_obj)
         
         # Use the story's directory
-        if story_path.parent.name != "output":
+        if story_path_obj.parent.name != "output":
             # Story is in output/timestamp/ structure
-            output_folder = story_path.parent
+            output_folder = story_path_obj.parent
         else:
             # Story is in output/ (old format), create timestamp folder
             output_folder = OUTPUT_DIR / timestamp
@@ -77,7 +89,7 @@ if __name__ == "__main__":
     
     # Generate images
     print("🎨 Step 2 : Generating Images...\n")
-    images = generate_images_for_reel(
+    images: List[str] = generate_images_for_reel(
         reel_json=story,
         output_dir=image_dir,
         prefix="scene"
@@ -88,7 +100,12 @@ if __name__ == "__main__":
         print("\n✅ Image Generation Completed (images-only mode)")
         print(f"📁 Story : {story_file}")
         print(f"🖼️  Images: {image_dir}")
-        sys.exit(0)
+        return {
+            "output_folder": str(output_folder),
+            "story_file": str(story_file),
+            "image_dir": str(image_dir),
+            "images": images
+        }
     
     # Generate voice
     print("🎤 Step 3 : Voice Generation...\n")
@@ -125,3 +142,24 @@ if __name__ == "__main__":
     print(f"🖼️  Images: {image_dir}")
     print(f"🎤 Audio : {audio_path}")
     print(f"🎬 Video : {video_file}")
+    
+    return {
+        "output_folder": str(output_folder),
+        "story_file": str(story_file),
+        "image_dir": str(image_dir),
+        "audio_file": str(audio_path),
+        "video_file": str(video_file),
+        "images": images,
+        "story": story
+    }
+
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    use_existing_story = len(sys.argv) > 1 and sys.argv[1].endswith('.json')
+    images_only = '--images-only' in sys.argv
+    
+    story_path_arg: Optional[str] = sys.argv[1] if use_existing_story else None
+    
+    # Call the main function
+    generate_complete_reel(story_path=story_path_arg, images_only=images_only)

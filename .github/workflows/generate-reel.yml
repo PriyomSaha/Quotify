@@ -1,0 +1,88 @@
+name: Generate Reel
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+
+  # Scheduled - 2 times per day at specific IST times
+  schedule:
+    # 12:30 PM IST = 7:00 AM UTC (12:30 - 5:30)
+    - cron: "0 7 * * *"
+    # 8:30 PM IST = 3:00 PM UTC (20:30 - 5:30)
+    - cron: "0 15 * * *"
+
+jobs:
+  generate-reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # Fail if takes longer than 30 minutes
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip" # Cache pip dependencies
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache Vosk model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vosk
+          key: vosk-model-small-en-us-0.15
+          restore-keys: |
+            vosk-model-
+
+      - name: Generate and Upload Reel
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_TOKEN_2: ${{ secrets.CF_TOKEN_2 }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          RENDER: "true" # Use optimized settings
+        run: |
+          python -c "
+          import sys
+          import logging
+
+          logging.basicConfig(
+              level=logging.INFO,
+              format='%(asctime)s - %(levelname)s - %(message)s',
+              handlers=[logging.StreamHandler(sys.stdout)]
+          )
+
+          print('🎬 Starting reel generation in GitHub Actions...')
+
+          # Use the refactored function from api.py
+          from api import execute_reel_generation
+
+          execute_reel_generation()
+
+          print('✅ Reel generation and upload completed!')
+          "
+
+      - name: Check disk usage
+        if: always()
+        run: df -h
+
+      - name: Clean up temporary files
+        if: always()
+        run: |
+          rm -rf Reels/output/*
+          echo "✅ Cleaned up output folder"

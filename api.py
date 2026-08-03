@@ -44,16 +44,16 @@ async def startup_event():
     Uses 'small-en-us' model (~40MB) which fits in Render's 512MB RAM.
     """
     logger.info("🚀 API Starting up...")
-    logger.info("📦 Pre-loading Vosk 'small-en-us' model (~40MB, memory-efficient)...")
+    logger.info("📦 Skipping Vosk pre-load (will load on first request)...")
     
-    try:
-        # Import and trigger model load
-        from Reels.subtitle_generation_vosk import _get_model
-        _get_model()  # This will load and cache the Vosk model
-        logger.info("✅ Vosk model pre-loaded successfully")
-    except Exception as e:
-        logger.warning(f"⚠️ Could not pre-load Vosk model: {e}")
-        logger.warning("Model will be loaded on first reel generation request")
+    # Temporarily disabled for local testing - model will load on first reel generation
+    # try:
+    #     from Reels.subtitle_generation_vosk import _get_model
+    #     _get_model()  # This will load and cache the Vosk model
+    #     logger.info("✅ Vosk model pre-loaded successfully")
+    # except Exception as e:
+    #     logger.warning(f"⚠️ Could not pre-load Vosk model: {e}")
+    #     logger.warning("Model will be loaded on first reel generation request")
 
 # -------------------------------------------------
 # Background Task Function
@@ -288,7 +288,7 @@ async def health_check():
 def execute_reel_generation():
     """
     Generates a complete reel: story → images → voice → video → upload to FB/IG.
-    Uses the SAME upload pattern as /autopilot endpoint.
+    Uses the refactored generate_complete_reel() function from Reels.main
     """
     # Force immediate log flush
     logger.info("="*50)
@@ -298,149 +298,29 @@ def execute_reel_generation():
     sys.stdout.flush()
     
     try:
-        logger.info("📦 Step 0: Importing modules...")
+        # Import the main reel generation function
+        logger.info("📦 Importing reel generation module...")
+        from Reels.main import generate_complete_reel
+        logger.info("✅ Module imported successfully")
         sys.stdout.flush()
         
-        try:
-            from Reels.story_generation import generate_story
-            logger.info("✅ Imported story_generation")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"❌ Failed to import story_generation: {e}")
-            raise
-            
-        try:
-            from Reels.image_generation import generate_images_for_reel
-            logger.info("✅ Imported image_generation")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"❌ Failed to import image_generation: {e}")
-            raise
-            
-        try:
-            from Reels.voice_generation import generate_voice
-            logger.info("✅ Imported voice_generation")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"❌ Failed to import voice_generation: {e}")
-            raise
-            
-        try:
-            from Reels.video_generation import create_reel
-            logger.info("✅ Imported video_generation")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"❌ Failed to import video_generation: {e}")
-            raise
-            
-        import json
-        import time
-        import requests
-        logger.info("✅ All modules imported successfully")
+        # Generate the complete reel (returns paths dict)
+        logger.info("🎬 Generating complete reel...")
         sys.stdout.flush()
         
-        # Create timestamped output folder
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = Path("Reels/output") / timestamp
-        output_dir.mkdir(parents=True, exist_ok=True)
+        result = generate_complete_reel()
         
-        logger.info(f"📁 Output folder: {output_dir}")
+        logger.info("✅ Reel generation completed successfully!")
+        logger.info(f"📁 Output folder: {result['output_folder']}")
+        logger.info(f"🎬 Video file: {result['video_file']}")
+        sys.stdout.flush()
         
-        # Step 1: Generate Story
-        logger.info("📝 Step 1/5: Generating story...")
-        logger.info("Calling generate_story()...")
+        # Get video file and story from result
+        video_file = Path(result['video_file'])
+        output_dir = Path(result['output_folder'])
+        story = result['story']
         
-        try:
-            story = generate_story()
-            logger.info("✅ generate_story() completed")
-        except Exception as e:
-            logger.error(f"❌ generate_story() failed: {e}")
-            raise
-        
-        story_file = output_dir / "story.json"
-        with open(story_file, "w", encoding="utf-8") as f:
-            json.dump(story, f, indent=4, ensure_ascii=False)
-        
-        logger.info(f"✅ Story saved: {story.get('title', 'N/A')}")
-        logger.info(f"Story content_type: {story.get('content_type', 'N/A')}")
-        logger.info(f"Narration length: {len(story.get('narration', ''))} chars")
-        
-        # Step 2: Generate Images
-        logger.info("🎨 Step 2/5: Generating images...")
-        image_dir = output_dir / "images"
-        logger.info(f"Image directory: {image_dir}")
-        logger.info(f"Number of scenes in story: {len(story.get('scenes', []))}")
-        
-        try:
-            logger.info("Calling generate_images_for_reel()...")
-            images = generate_images_for_reel(
-                reel_json=story,
-                output_dir=image_dir,
-                prefix="scene"
-            )
-            logger.info(f"✅ generate_images_for_reel() completed")
-            logger.info(f"✅ Generated {len(images)} images")
-            for idx, img_path in enumerate(images, 1):
-                logger.info(f"  Image {idx}: {img_path}")
-        except Exception as e:
-            logger.error(f"❌ generate_images_for_reel() failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            raise
-        
-        # Step 3: Generate Voice
-        logger.info("🎤 Step 3/5: Generating voiceover...")
-        audio_path = output_dir / "voiceover.mp3"
-        logger.info(f"Audio output path: {audio_path}")
-        logger.info(f"Narration text length: {len(story['narration'])} chars")
-        
-        try:
-            logger.info("Calling generate_voice()...")
-            generate_voice(
-                text=story["narration"],
-                output_file=str(audio_path)
-            )
-            logger.info("✅ generate_voice() completed")
-            
-            if audio_path.exists():
-                logger.info(f"✅ Voiceover file created: {audio_path.stat().st_size} bytes")
-            else:
-                logger.error(f"❌ Voiceover file not found at {audio_path}")
-                raise FileNotFoundError(f"Audio file not created: {audio_path}")
-        except Exception as e:
-            logger.error(f"❌ generate_voice() failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            raise
-        
-        # Step 4: Compose Video
-        logger.info("🎬 Step 4/5: Composing video...")
-        video_file = output_dir / "reel.mp4"
-        logger.info(f"Video output path: {video_file}")
-        logger.info(f"Number of images to process: {len(images)}")
-        logger.info(f"Audio file: {audio_path}")
-        
-        try:
-            logger.info("Calling create_reel()...")
-            create_reel(
-                images=images,
-                narration_audio=str(audio_path),
-                output_file=str(video_file)
-            )
-            logger.info("✅ create_reel() completed")
-            
-            if video_file.exists():
-                logger.info(f"✅ Video file created: {video_file.stat().st_size} bytes")
-            else:
-                logger.error(f"❌ Video file not found at {video_file}")
-                raise FileNotFoundError(f"Video file not created: {video_file}")
-        except Exception as e:
-            logger.error(f"❌ create_reel() failed: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            raise
-        
-        # Step 5: Upload to FB and Instagram (SAME PATTERN AS /autopilot)
+        # Step 5: Upload to FB and Instagram
         logger.info("📤 Step 5/5: Uploading to social media...")
         sys.stdout.flush()
         
@@ -449,6 +329,10 @@ def execute_reel_generation():
         logger.info(f"Caption (first 50 chars): {caption[:50]}...")
         logger.info(f"Caption length: {len(caption)} characters")
         sys.stdout.flush()
+        
+        # Import requests and time for upload
+        import requests
+        import time
         
         # Upload video to Facebook
         logger.info("📤 Step 5a: Uploading video to Facebook...")
@@ -553,18 +437,64 @@ def execute_reel_generation():
         
         if not creation_id:
             logger.error(f"❌ IG Container creation failed: {container_res}")
+            error_message = container_res.get("error", {}).get("message", "Unknown error")
+            logger.error(f"Error details: {error_message}")
             sys.stdout.flush()
             return
         
         logger.info(f"✅ IG Container created: {creation_id}")
         sys.stdout.flush()
         
-        # Wait for Instagram to process the video
-        logger.info("⏳ Waiting 15 seconds for Instagram to process video...")
+        # Poll container status until ready (Instagram needs time to process)
+        logger.info("⏳ Polling container status (this can take 30-90 seconds)...")
         sys.stdout.flush()
-        time.sleep(15)
-        logger.info("✅ Wait complete, attempting to publish...")
-        sys.stdout.flush()
+        
+        max_attempts = 30  # 30 attempts x 3 seconds = 90 seconds max
+        attempt = 0
+        container_ready = False
+        status_code = "UNKNOWN"  # Initialize status_code
+        
+        while attempt < max_attempts:
+            attempt += 1
+            time.sleep(3)  # Check every 3 seconds
+            
+            # Check container status
+            status_url = f"https://graph.facebook.com/{API_VERSION}/{creation_id}"
+            status_res = requests.get(
+                status_url,
+                params={
+                    "fields": "status_code",
+                    "access_token": PAGE_ACCESS_TOKEN,
+                }
+            )
+            
+            status_data = status_res.json()
+            status_code = status_data.get("status_code", "UNKNOWN")
+            
+            logger.info(f"Attempt {attempt}/{max_attempts}: Status = {status_code}")
+            sys.stdout.flush()
+            
+            if status_code == "FINISHED":
+                container_ready = True
+                logger.info("✅ Container ready for publishing!")
+                sys.stdout.flush()
+                break
+            elif status_code == "ERROR":
+                logger.error(f"❌ Container processing failed: {status_data}")
+                sys.stdout.flush()
+                return
+            elif status_code in ["EXPIRED", "PUBLISHED"]:
+                logger.error(f"❌ Container status invalid: {status_code}")
+                sys.stdout.flush()
+                return
+            
+            # Status is IN_PROGRESS or other - keep waiting
+        
+        if not container_ready:
+            logger.error(f"❌ Container not ready after {max_attempts * 3} seconds")
+            logger.error(f"Final status: {status_code}")
+            sys.stdout.flush()
+            return
         
         # Publish the reel
         logger.info("Publishing Instagram Reel...")

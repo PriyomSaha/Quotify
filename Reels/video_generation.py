@@ -23,6 +23,7 @@ import random
 import numpy as np
 import tempfile
 import textwrap
+import sys
 
 from PIL import Image, ImageDraw, ImageFont
 from moviepy import (

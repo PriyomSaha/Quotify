@@ -18,6 +18,7 @@ from typing import Dict, Any
 from google import genai
 from .config import GEMINI_API_KEY, GEMINI_MODEL
 from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
+from .gender_tracker import get_next_gender, get_gender_instruction
 import json
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -29,12 +30,14 @@ def build_generation_prompt() -> str:
     # Get the complete prompt (returns a string, not a dict)
     final_prompt = get_prompt_for_current_time()
     
-    # Get content info for display
-    from PromptSelector import get_content_type_for_time
-    content_info = get_content_type_for_time()
-
-    print(f"\n📝 Generating : {content_info['category']}")
-    print(f"💡 {content_info['mood']}")
+    # Get next gender in rotation sequence
+    gender = get_next_gender()
+    gender_instruction = get_gender_instruction(gender)
+    
+    print(f"\n🎭 Character Gender for this reel: {gender.upper()}")
+    
+    # Note: content info is already printed in PromptSelector.get_prompt_for_current_time()
+    # No need to import or call get_content_type_for_time again
 
     # Add JSON output format requirements to the prompt
     return f"""
@@ -88,13 +91,14 @@ def build_generation_prompt() -> str:
         ==================================================
         CHARACTER RULES
 
-        - maximum two characters
-        - ordinary people only
-        - realistic appearance
-        - consistent clothing
-        - consistent hairstyle
-        - consistent age
-        - consistent gender
+        {gender_instruction}
+        
+        General rules:
+        - Keep character consistent across all 6 scenes
+        - Ordinary people only (no celebrities, no fantasy characters)
+        - Realistic appearance
+        - Simple, relatable clothing
+        - Avoid stereotypes and clichés
 
         ==================================================
         VISUAL STYLE

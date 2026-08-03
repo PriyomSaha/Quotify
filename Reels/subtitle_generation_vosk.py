@@ -57,7 +57,17 @@ def _ensure_model():
     zip_path = Path(VOSK_MODEL_DIR) / f"{MODEL_NAME}.zip"
     
     try:
-        urllib.request.urlretrieve(MODEL_URL, zip_path)
+        # Download with progress callback
+        def show_progress(block_num, block_size, total_size):
+            downloaded = block_num * block_size
+            if total_size > 0:
+                percent = min(100, downloaded * 100 / total_size)
+                mb_downloaded = downloaded / 1024 / 1024
+                mb_total = total_size / 1024 / 1024
+                if block_num % 50 == 0:  # Log every ~50 blocks to avoid spam
+                    logger.info(f"⏳ Downloading: {percent:.1f}% ({mb_downloaded:.1f}/{mb_total:.1f} MB)")
+        
+        urllib.request.urlretrieve(MODEL_URL, zip_path, show_progress)
         logger.info(f"✅ Downloaded model")
         
         logger.info(f"📦 Extracting model...")
