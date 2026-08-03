@@ -79,14 +79,14 @@ VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
 IS_RENDER = os.getenv("RENDER") is not None
 
 if IS_RENDER:
-    # Optimized settings for Render's 512MB RAM limit
+    # Ultra-optimized settings for Render's 512MB RAM limit
     # Maintaining 9:16 aspect ratio for Instagram Reels
-    VIDEO_WIDTH = 720  # Lower resolution
-    VIDEO_HEIGHT = 1280  # 720x1280 maintains 9:16 ratio
-    FPS = 24  # Lower FPS
-    BITRATE = "3000k"  # Lower bitrate
+    VIDEO_WIDTH = 540  # Much lower resolution to fit in 512MB RAM
+    VIDEO_HEIGHT = 960  # 540x960 maintains 9:16 ratio
+    FPS = 20  # Lower FPS for memory efficiency
+    BITRATE = "2000k"  # Lower bitrate
     FILM_GRAIN_INTENSITY = 0  # Disable grain (memory intensive)
-    IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU intensive)
+    IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU/memory intensive)
 else:
     # High quality settings for local/powerful servers
     # Perfect 9:16 ratio for Instagram Reels

@@ -20,14 +20,14 @@ _MODEL = None
 def _get_model():
     """
     Lazy load Whisper model on first use.
-    Avoids downloading 139M on every import.
-    Uses cached model if already loaded.
+    Uses 'tiny' model for memory efficiency (39MB vs 139MB for 'base').
+    Perfect for Render's 512MB RAM limit.
     """
     global _MODEL
     if _MODEL is None:
-        logger.info("🔊 Loading Whisper model (base)...")
-        logger.info("⏳ This may take 30-60 seconds on first run...")
-        _MODEL = whisper.load_model("base")
+        logger.info("🔊 Loading Whisper model (tiny)...")
+        logger.info("⏳ Downloading ~39MB model (memory-efficient)...")
+        _MODEL = whisper.load_model("tiny")
         logger.info("✅ Whisper model loaded successfully")
     else:
         logger.info("✅ Using cached Whisper model (already loaded)")

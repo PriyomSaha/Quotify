@@ -41,15 +41,15 @@ app = FastAPI(
 async def startup_event():
     """
     Pre-load Whisper model at startup to avoid delays on first request.
-    This runs once when the API starts, not on every request.
+    Uses 'tiny' model (~39MB) which fits in Render's 512MB RAM.
     """
     logger.info("🚀 API Starting up...")
-    logger.info("📦 Pre-loading Whisper model to avoid first-request delays...")
+    logger.info("📦 Pre-loading Whisper 'tiny' model (~39MB, memory-efficient)...")
     
     try:
         # Import and trigger model load
         from Reels.subtitle_generation import _get_model
-        _get_model()  # This will load and cache the model
+        _get_model()  # This will load and cache the tiny model
         logger.info("✅ Whisper model pre-loaded successfully")
     except Exception as e:
         logger.warning(f"⚠️ Could not pre-load Whisper model: {e}")
