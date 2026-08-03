@@ -6,10 +6,10 @@ import re
 import edge_tts
 
 # Assuming these exist in your project structure
-from config import OUTPUT_DIR
-from image_generation import generate_images_for_reel
-from story_generation import generate_story
-from video_generation import create_reel
+from .config import OUTPUT_DIR
+from .image_generation import generate_images_for_reel
+from .story_generation import generate_story
+from .video_generation import create_reel
 
 # VOICE CONFIGURATION: Microsoft Edge-TTS
 # 'en-US-GuyNeural' - Natural, mature male voice

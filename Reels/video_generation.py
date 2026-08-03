@@ -39,9 +39,10 @@ from moviepy import (
 
 from moviepy import vfx
 from PIL import Image, ImageDraw, ImageFont
-from subtitle_generation import generate_subtitles
 
-from config import (
+from .subtitle_generation import generate_subtitles
+
+from .config import (
     VIDEO_WIDTH,
     VIDEO_HEIGHT,
     FPS,

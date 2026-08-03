@@ -29,7 +29,7 @@ from PIL import Image, ImageDraw
 
 from dotenv import load_dotenv
 
-from config import OUTPUT_DIR
+from .config import OUTPUT_DIR
 
 load_dotenv()
 

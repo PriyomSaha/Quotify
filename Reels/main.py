@@ -3,11 +3,11 @@ import json
 import sys
 from pathlib import Path
 
-from config import OUTPUT_DIR
-from image_generation import generate_images_for_reel
-from story_generation import generate_story
-from video_generation import create_reel
-from voice_generation import generate_voice
+from .config import OUTPUT_DIR
+from .image_generation import generate_images_for_reel
+from .story_generation import generate_story
+from .video_generation import create_reel
+from .voice_generation import generate_voice
 
 
 def load_existing_story(story_path: str):

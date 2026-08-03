@@ -16,8 +16,8 @@ pip install google-genai
 
 from typing import Dict, Any
 from google import genai
-from config import GEMINI_API_KEY, GEMINI_MODEL
-from PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
+from .config import GEMINI_API_KEY, GEMINI_MODEL
+from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
 import json
 
 client = genai.Client(api_key=GEMINI_API_KEY)

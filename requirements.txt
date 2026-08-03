@@ -27,6 +27,7 @@ imageio-ffmpeg==0.6.0
 moviepy==2.2.1
 multidict==6.7.1
 numpy==2.5.1
+openai-whisper==20231117
 pillow==11.3.0
 proglog==0.1.12
 propcache==0.5.2
