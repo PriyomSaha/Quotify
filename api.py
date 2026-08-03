@@ -494,6 +494,42 @@ async def generate_reel_endpoint(background_tasks: BackgroundTasks):
     }
 
 # -------------------------------------------------
+# Endpoint: Serve Reel Videos
+# -------------------------------------------------
+from fastapi.responses import FileResponse
+
+@app.get("/reels/{timestamp}/reel.mp4")
+async def serve_reel_video(timestamp: str):
+    """
+    Serve reel video file for Instagram upload.
+    
+    Instagram requires a publicly accessible URL to upload reels.
+    This endpoint serves the generated reel.mp4 file.
+    
+    Args:
+        timestamp: Folder timestamp (e.g., "20260803_153500")
+        
+    Returns:
+        MP4 video file
+        
+    Raises:
+        404: If video file doesn't exist
+    """
+    video_path = Path(f"Reels/output/{timestamp}/reel.mp4")
+    
+    if not video_path.exists():
+        logger.warning(f"⚠️ Video not found: {video_path}")
+        raise HTTPException(status_code=404, detail=f"Video not found: {timestamp}")
+    
+    logger.info(f"📹 Serving reel video: {timestamp}")
+    
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",
+        filename="reel.mp4"
+    )
+
+# -------------------------------------------------
 # Run the API
 # -------------------------------------------------
 if __name__ == "__main__":
