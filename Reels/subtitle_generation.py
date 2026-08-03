@@ -9,9 +9,26 @@ ffmpeg required
 
 import whisper
 import re
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Global model cache - loaded on first use
+_MODEL = None
 
 
-MODEL = whisper.load_model("base")
+def _get_model():
+    """
+    Lazy load Whisper model on first use.
+    Avoids downloading 139M on every import.
+    """
+    global _MODEL
+    if _MODEL is None:
+        logger.info("🔊 Loading Whisper model (base)...")
+        logger.info("⏳ This may take 30-60 seconds on first run...")
+        _MODEL = whisper.load_model("base")
+        logger.info("✅ Whisper model loaded successfully")
+    return _MODEL
 
 
 def _build_natural_phrase_chunks(segments):
@@ -123,7 +140,9 @@ def generate_subtitles(audio_path):
     Generate subtitles that sync with natural speech flow.
     Respects pauses, punctuation, and sentence boundaries.
     """
-    result = MODEL.transcribe(
+    model = _get_model()
+    
+    result = model.transcribe(
         audio_path,
         word_timestamps=True
     )

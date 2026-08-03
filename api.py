@@ -20,7 +20,8 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
-    ]
+    ],
+    force=True
 )
 logger = logging.getLogger(__name__)
 
@@ -268,16 +269,54 @@ def execute_reel_generation():
     Generates a complete reel: story → images → voice → video → upload to FB/IG.
     Uses the SAME upload pattern as /autopilot endpoint.
     """
+    # Force immediate log flush
+    logger.info("="*50)
+    logger.info("🎬 REEL GENERATION STARTED")
+    logger.info(f"Timestamp: {datetime.now().isoformat()}")
+    logger.info("="*50)
+    sys.stdout.flush()
+    
     try:
-        from Reels.story_generation import generate_story
-        from Reels.image_generation import generate_images_for_reel
-        from Reels.voice_generation import generate_voice
-        from Reels.video_generation import create_reel
+        logger.info("📦 Step 0: Importing modules...")
+        sys.stdout.flush()
+        
+        try:
+            from Reels.story_generation import generate_story
+            logger.info("✅ Imported story_generation")
+            sys.stdout.flush()
+        except Exception as e:
+            logger.error(f"❌ Failed to import story_generation: {e}")
+            raise
+            
+        try:
+            from Reels.image_generation import generate_images_for_reel
+            logger.info("✅ Imported image_generation")
+            sys.stdout.flush()
+        except Exception as e:
+            logger.error(f"❌ Failed to import image_generation: {e}")
+            raise
+            
+        try:
+            from Reels.voice_generation import generate_voice
+            logger.info("✅ Imported voice_generation")
+            sys.stdout.flush()
+        except Exception as e:
+            logger.error(f"❌ Failed to import voice_generation: {e}")
+            raise
+            
+        try:
+            from Reels.video_generation import create_reel
+            logger.info("✅ Imported video_generation")
+            sys.stdout.flush()
+        except Exception as e:
+            logger.error(f"❌ Failed to import video_generation: {e}")
+            raise
+            
         import json
         import time
         import requests
-        
-        logger.info("🎬 Starting Reel Generation Pipeline")
+        logger.info("✅ All modules imported successfully")
+        sys.stdout.flush()
         
         # Create timestamped output folder
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -288,58 +327,129 @@ def execute_reel_generation():
         
         # Step 1: Generate Story
         logger.info("📝 Step 1/5: Generating story...")
-        story = generate_story()
+        logger.info("Calling generate_story()...")
+        
+        try:
+            story = generate_story()
+            logger.info("✅ generate_story() completed")
+        except Exception as e:
+            logger.error(f"❌ generate_story() failed: {e}")
+            raise
         
         story_file = output_dir / "story.json"
         with open(story_file, "w", encoding="utf-8") as f:
             json.dump(story, f, indent=4, ensure_ascii=False)
         
-        logger.info(f"✅ Story: {story.get('quote', '')[:50]}...")
+        logger.info(f"✅ Story saved: {story.get('title', 'N/A')}")
+        logger.info(f"Story content_type: {story.get('content_type', 'N/A')}")
+        logger.info(f"Narration length: {len(story.get('narration', ''))} chars")
         
         # Step 2: Generate Images
         logger.info("🎨 Step 2/5: Generating images...")
         image_dir = output_dir / "images"
-        images = generate_images_for_reel(
-            reel_json=story,
-            output_dir=image_dir,
-            prefix="scene"
-        )
-        logger.info(f"✅ Generated {len(images)} images")
+        logger.info(f"Image directory: {image_dir}")
+        logger.info(f"Number of scenes in story: {len(story.get('scenes', []))}")
+        
+        try:
+            logger.info("Calling generate_images_for_reel()...")
+            images = generate_images_for_reel(
+                reel_json=story,
+                output_dir=image_dir,
+                prefix="scene"
+            )
+            logger.info(f"✅ generate_images_for_reel() completed")
+            logger.info(f"✅ Generated {len(images)} images")
+            for idx, img_path in enumerate(images, 1):
+                logger.info(f"  Image {idx}: {img_path}")
+        except Exception as e:
+            logger.error(f"❌ generate_images_for_reel() failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
         
         # Step 3: Generate Voice
         logger.info("🎤 Step 3/5: Generating voiceover...")
         audio_path = output_dir / "voiceover.mp3"
-        generate_voice(
-            text=story["narration"],
-            output_file=str(audio_path)
-        )
-        logger.info(f"✅ Voiceover generated")
+        logger.info(f"Audio output path: {audio_path}")
+        logger.info(f"Narration text length: {len(story['narration'])} chars")
+        
+        try:
+            logger.info("Calling generate_voice()...")
+            generate_voice(
+                text=story["narration"],
+                output_file=str(audio_path)
+            )
+            logger.info("✅ generate_voice() completed")
+            
+            if audio_path.exists():
+                logger.info(f"✅ Voiceover file created: {audio_path.stat().st_size} bytes")
+            else:
+                logger.error(f"❌ Voiceover file not found at {audio_path}")
+                raise FileNotFoundError(f"Audio file not created: {audio_path}")
+        except Exception as e:
+            logger.error(f"❌ generate_voice() failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
         
         # Step 4: Compose Video
         logger.info("🎬 Step 4/5: Composing video...")
         video_file = output_dir / "reel.mp4"
-        create_reel(
-            images=images,
-            narration_audio=str(audio_path),
-            output_file=str(video_file)
-        )
-        logger.info(f"✅ Video created: {video_file}")
+        logger.info(f"Video output path: {video_file}")
+        logger.info(f"Number of images to process: {len(images)}")
+        logger.info(f"Audio file: {audio_path}")
+        
+        try:
+            logger.info("Calling create_reel()...")
+            create_reel(
+                images=images,
+                narration_audio=str(audio_path),
+                output_file=str(video_file)
+            )
+            logger.info("✅ create_reel() completed")
+            
+            if video_file.exists():
+                logger.info(f"✅ Video file created: {video_file.stat().st_size} bytes")
+            else:
+                logger.error(f"❌ Video file not found at {video_file}")
+                raise FileNotFoundError(f"Video file not created: {video_file}")
+        except Exception as e:
+            logger.error(f"❌ create_reel() failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
         
         # Step 5: Upload to FB and Instagram (SAME PATTERN AS /autopilot)
         logger.info("📤 Step 5/5: Uploading to social media...")
+        sys.stdout.flush()
         
-        caption = story.get("quote", "")[:2000]
+        # Build caption from story title or narration
+        caption = story.get("title", story.get("narration", "")[:100])[:2000]
+        logger.info(f"Caption (first 50 chars): {caption[:50]}...")
+        logger.info(f"Caption length: {len(caption)} characters")
+        sys.stdout.flush()
         
         # Upload video to Facebook
-        logger.info("Uploading video to Facebook...")
+        logger.info("📤 Step 5a: Uploading video to Facebook...")
+        sys.stdout.flush()
+        
         PAGE_ID = os.getenv("PAGE_ID")
         PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
         API_VERSION = os.getenv("API_VERSION", "v21.0")
         
-        fb_url = f"https://graph.facebook.com/{API_VERSION}/{PAGE_ID}/videos"
+        logger.info(f"Facebook API Version: {API_VERSION}")
+        logger.info(f"Page ID: {PAGE_ID[:10]}..." if PAGE_ID else "Page ID: MISSING")
+        logger.info(f"Video file size: {video_file.stat().st_size / (1024*1024):.2f} MB")
+        sys.stdout.flush()
         
-        with open(str(video_file), "rb") as video:
-            fb_response = requests.post(
+        fb_url = f"https://graph.facebook.com/{API_VERSION}/{PAGE_ID}/videos"
+        logger.info(f"Facebook upload URL: {fb_url}")
+        logger.info("⏳ Uploading video to Facebook (this may take 1-3 minutes)...")
+        sys.stdout.flush()
+        
+        try:
+            with open(str(video_file), "rb") as video:
+                fb_response = requests.post(
                 fb_url,
                 files={"source": video},
                 data={
@@ -349,17 +459,33 @@ def execute_reel_generation():
                 },
                 timeout=300
             )
+            
+            logger.info(f"✅ Facebook upload request completed")
+            logger.info(f"Response status code: {fb_response.status_code}")
+            sys.stdout.flush()
+        except Exception as upload_error:
+            logger.error(f"❌ Facebook upload request failed: {upload_error}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
         
         fb_result = fb_response.json()
+        logger.info(f"Facebook response: {fb_result}")
+        sys.stdout.flush()
         fb_video_id = fb_result.get("id")
         
         if not fb_video_id:
             logger.error(f"❌ Facebook upload failed: {fb_result}")
+            sys.stdout.flush()
             return
         
         logger.info(f"✅ Facebook video uploaded: {fb_video_id}")
+        sys.stdout.flush()
         
         # Get video URL from Facebook
+        logger.info("📥 Retrieving Facebook video URL...")
+        sys.stdout.flush()
+        
         video_info_url = f"https://graph.facebook.com/{API_VERSION}/{fb_video_id}"
         video_info_res = requests.get(
             video_info_url,
@@ -370,15 +496,25 @@ def execute_reel_generation():
         
         if not fb_video_url:
             logger.warning("⚠️ Could not retrieve FB video URL")
+            logger.warning(f"Video info response: {video_info_res.json()}")
+            sys.stdout.flush()
             return
         
-        logger.info(f"✅ FB Video URL: {fb_video_url[:50]}...")
+        logger.info(f"✅ FB Video URL retrieved: {fb_video_url[:50]}...")
+        sys.stdout.flush()
         
         # Post to Instagram as REEL
-        logger.info("Publishing to Instagram as Reel...")
+        logger.info("📱 Step 5b: Publishing to Instagram as Reel...")
+        sys.stdout.flush()
+        
         IG_USER_ID = os.getenv("IG_USER_ID")
+        logger.info(f"Instagram User ID: {IG_USER_ID[:10]}..." if IG_USER_ID else "IG User ID: MISSING")
+        sys.stdout.flush()
         
         # Create media container for REEL
+        logger.info("Creating Instagram media container...")
+        sys.stdout.flush()
+        
         container_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media"
         container_res = requests.post(
             container_url,
@@ -391,18 +527,28 @@ def execute_reel_generation():
         ).json()
         
         creation_id = container_res.get("id")
+        logger.info(f"Container response: {container_res}")
+        sys.stdout.flush()
         
         if not creation_id:
             logger.error(f"❌ IG Container creation failed: {container_res}")
+            sys.stdout.flush()
             return
         
         logger.info(f"✅ IG Container created: {creation_id}")
+        sys.stdout.flush()
         
         # Wait for Instagram to process the video
-        logger.info("⏳ Waiting for Instagram to process video...")
+        logger.info("⏳ Waiting 15 seconds for Instagram to process video...")
+        sys.stdout.flush()
         time.sleep(15)
+        logger.info("✅ Wait complete, attempting to publish...")
+        sys.stdout.flush()
         
         # Publish the reel
+        logger.info("Publishing Instagram Reel...")
+        sys.stdout.flush()
+        
         publish_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media_publish"
         publish_res = requests.post(
             publish_url,
@@ -413,13 +559,18 @@ def execute_reel_generation():
         ).json()
         
         ig_post_id = publish_res.get("id", "")
+        logger.info(f"Publish response: {publish_res}")
+        sys.stdout.flush()
         
         if ig_post_id:
             logger.info(f"✅ Instagram Reel published: {ig_post_id}")
         else:
             logger.warning(f"⚠️ Instagram publish failed: {publish_res}")
         
+        sys.stdout.flush()
+        
         logger.info("🎉 Reel generation pipeline completed!")
+        sys.stdout.flush()
         logger.info(f"📁 Output: {output_dir}")
         logger.info(f"🎬 Video: {video_file}")
         logger.info(f"📱 Instagram: {ig_post_id}")
