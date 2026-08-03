@@ -723,6 +723,8 @@ class ReelComposer:
         
         logger.info(f"Video settings: {VIDEO_WIDTH}x{VIDEO_HEIGHT} @ {FPS}fps, bitrate={BITRATE}")
         logger.info(f"Render preset: {preset}, threads: {threads}")
+        logger.info("⏳ Starting video encoding (this takes 2-4 minutes on Render)...")
+        sys.stdout.flush()
 
 
         final_video.write_videofile(
@@ -741,9 +743,12 @@ class ReelComposer:
 
             threads=threads,
             
-            logger=None  # Suppress moviepy's verbose logging
+            logger="bar"  # Show progress bar for visibility
 
         )
+        
+        logger.info("✅ Video encoding complete!")
+        sys.stdout.flush()
 
 
         print()
