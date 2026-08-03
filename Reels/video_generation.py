@@ -40,7 +40,7 @@ from moviepy import (
 from moviepy import vfx
 from PIL import Image, ImageDraw, ImageFont
 
-from .subtitle_generation import generate_subtitles
+from .subtitle_generation_vosk import generate_subtitles
 
 from .config import (
     VIDEO_WIDTH,
@@ -98,7 +98,7 @@ class ReelComposer:
             self.image_duration = self.duration / len(images)
             logger.info(f"Image duration: {self.image_duration:.2f} seconds each")
             
-            logger.info("Generating subtitles with Whisper...")
+            logger.info("Generating subtitles with Vosk...")
             self.subtitles = generate_subtitles(narration_audio)
             logger.info(f"✅ Generated {len(self.subtitles)} subtitle segments")
             

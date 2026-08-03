@@ -39,7 +39,7 @@ mutagen==1.48.1
 networkx==3.6.1
 numba==0.66.0
 numpy==2.4.6
-openai-whisper==20250625
+vosk==0.3.44
 packaging==26.2
 pillow==11.3.0
 proglog==0.1.12
