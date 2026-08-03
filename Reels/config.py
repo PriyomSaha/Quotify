@@ -75,13 +75,29 @@ VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
 # Video
 # ----------------------------
 
-VIDEO_WIDTH = 1080
-VIDEO_HEIGHT = 1920
-FPS = 30
-IMAGE_ZOOM = 1.08
+# Check if running on Render (low-resource environment)
+IS_RENDER = os.getenv("RENDER") is not None
+
+if IS_RENDER:
+    # Optimized settings for Render's 512MB RAM limit
+    # Maintaining 9:16 aspect ratio for Instagram Reels
+    VIDEO_WIDTH = 720  # Lower resolution
+    VIDEO_HEIGHT = 1280  # 720x1280 maintains 9:16 ratio
+    FPS = 24  # Lower FPS
+    BITRATE = "3000k"  # Lower bitrate
+    FILM_GRAIN_INTENSITY = 0  # Disable grain (memory intensive)
+    IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU intensive)
+else:
+    # High quality settings for local/powerful servers
+    # Perfect 9:16 ratio for Instagram Reels
+    VIDEO_WIDTH = 1080
+    VIDEO_HEIGHT = 1920  # 1080x1920 is 9:16
+    FPS = 30
+    BITRATE = "8000k"
+    FILM_GRAIN_INTENSITY = 18
+    IMAGE_ZOOM = 1.08
+
 IMAGE_FADE = 0.4
-BITRATE = "8000k"
-FILM_GRAIN_INTENSITY = 18
 DARK_OVERLAY_OPACITY = 45
 ZOOM_DIRECTION = "in"
 

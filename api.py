@@ -35,6 +35,27 @@ app = FastAPI(
 )
 
 # -------------------------------------------------
+# Startup Event: Pre-load Whisper Model
+# -------------------------------------------------
+@app.on_event("startup")
+async def startup_event():
+    """
+    Pre-load Whisper model at startup to avoid delays on first request.
+    This runs once when the API starts, not on every request.
+    """
+    logger.info("🚀 API Starting up...")
+    logger.info("📦 Pre-loading Whisper model to avoid first-request delays...")
+    
+    try:
+        # Import and trigger model load
+        from Reels.subtitle_generation import _get_model
+        _get_model()  # This will load and cache the model
+        logger.info("✅ Whisper model pre-loaded successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not pre-load Whisper model: {e}")
+        logger.warning("Model will be loaded on first reel generation request")
+
+# -------------------------------------------------
 # Background Task Function
 # -------------------------------------------------
 def execute_full_pipeline(caption: str, template_path: str, output_path: str):
@@ -687,5 +708,6 @@ if __name__ == "__main__":
     import uvicorn
     # Use PORT from environment variable for Render compatibility
     port = int(os.environ.get("PORT", 8000))
+    logger.info(f"🚀 Starting API on port {port}")
     # Set timeout to 10 minutes (600 seconds) for video processing
-    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=600, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=port, timeout_keep_alive=600, log_level="info")

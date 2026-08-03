@@ -21,6 +21,7 @@ def _get_model():
     """
     Lazy load Whisper model on first use.
     Avoids downloading 139M on every import.
+    Uses cached model if already loaded.
     """
     global _MODEL
     if _MODEL is None:
@@ -28,6 +29,8 @@ def _get_model():
         logger.info("⏳ This may take 30-60 seconds on first run...")
         _MODEL = whisper.load_model("base")
         logger.info("✅ Whisper model loaded successfully")
+    else:
+        logger.info("✅ Using cached Whisper model (already loaded)")
     return _MODEL
 
 

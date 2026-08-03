@@ -81,13 +81,32 @@ CROSSFADE_DURATION = 0.5  # Crossfade duration in seconds
 class ReelComposer:
 
     def __init__(self, images: List[str], narration_audio: str, output_file: str):
-        self.images = images
-        self.audio_path = narration_audio
-        self.output = output_file
-        self.audio = AudioFileClip(narration_audio)
-        self.duration = self.audio.duration
-        self.image_duration = self.duration / len(images)
-        self.subtitles = generate_subtitles(narration_audio)
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info("Initializing ReelComposer...")
+            self.images = images
+            self.audio_path = narration_audio
+            self.output = output_file
+            
+            logger.info(f"Loading audio file: {narration_audio}")
+            self.audio = AudioFileClip(narration_audio)
+            self.duration = self.audio.duration
+            logger.info(f"Audio duration: {self.duration:.2f} seconds")
+            
+            self.image_duration = self.duration / len(images)
+            logger.info(f"Image duration: {self.image_duration:.2f} seconds each")
+            
+            logger.info("Generating subtitles with Whisper...")
+            self.subtitles = generate_subtitles(narration_audio)
+            logger.info(f"✅ Generated {len(self.subtitles)} subtitle segments")
+            
+        except Exception as e:
+            logger.error(f"❌ ReelComposer initialization failed: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
 
 
     def create_image_clip(self, image_path: str, add_fade_in: bool = True, add_fade_out: bool = False):
@@ -589,13 +608,33 @@ class ReelComposer:
 
 
     def compose(self):
+        import logging
+        import psutil
+        import os
+        
+        logger = logging.getLogger(__name__)
+        
+        # Log memory usage at start
+        try:
+            process = psutil.Process(os.getpid())
+            mem_info = process.memory_info()
+            logger.info(f"💾 Memory at composition start: {mem_info.rss / 1024 / 1024:.1f} MB")
+        except:
+            pass  # psutil might not be available
 
         print()
         print("Creating cinematic image track...")
         image_track = self.create_image_track()
 
-        print("Applying film grain...")
-        image_track = self.add_film_grain(image_track)
+        # Only apply film grain if not on Render (memory intensive)
+        import os
+        from .config import FILM_GRAIN_INTENSITY
+        
+        if FILM_GRAIN_INTENSITY > 0:
+            print("Applying film grain...")
+            image_track = self.add_film_grain(image_track)
+        else:
+            print("Skipping film grain (disabled for performance)...")
 
         print("Creating subtitles...")
         subtitle_track = self.create_subtitle_track()
@@ -668,6 +707,22 @@ class ReelComposer:
             "Rendering final reel..."
 
         )
+        
+        # Detect if running on Render (low resources)
+        import os
+        is_render = os.getenv("RENDER") is not None
+        
+        # Use memory-efficient settings on Render
+        if is_render:
+            logger.info("🔧 Using Render-optimized settings (lower memory usage)")
+            threads = 2
+            preset = "ultrafast"  # Faster, less memory
+        else:
+            threads = 4
+            preset = "medium"
+        
+        logger.info(f"Video settings: {VIDEO_WIDTH}x{VIDEO_HEIGHT} @ {FPS}fps, bitrate={BITRATE}")
+        logger.info(f"Render preset: {preset}, threads: {threads}")
 
 
         final_video.write_videofile(
@@ -682,9 +737,11 @@ class ReelComposer:
 
             bitrate=BITRATE,
 
-            preset="medium",
+            preset=preset,
 
-            threads=4
+            threads=threads,
+            
+            logger=None  # Suppress moviepy's verbose logging
 
         )
 
@@ -732,20 +789,30 @@ def create_reel(
     output_file: str
 
 ):
-
-
-    composer = ReelComposer(
-
-        images=images,
-
-        narration_audio=narration_audio,
-
-        output_file=output_file
-
-    )
-
-
-    return composer.compose()
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Creating reel with {len(images)} images")
+        logger.info(f"Audio: {narration_audio}")
+        logger.info(f"Output: {output_file}")
+        
+        composer = ReelComposer(
+            images=images,
+            narration_audio=narration_audio,
+            output_file=output_file
+        )
+        
+        logger.info("ReelComposer initialized, starting composition...")
+        result = composer.compose()
+        logger.info(f"✅ Reel composition completed: {result}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ create_reel() failed: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise
 
 
 # ============================================================
