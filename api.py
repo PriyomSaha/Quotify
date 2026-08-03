@@ -35,24 +35,24 @@ app = FastAPI(
 )
 
 # -------------------------------------------------
-# Startup Event: Pre-load Whisper Model
+# Startup Event: Pre-load Vosk Model
 # -------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
     """
-    Pre-load Whisper model at startup to avoid delays on first request.
-    Uses 'tiny' model (~39MB) which fits in Render's 512MB RAM.
+    Pre-load Vosk model at startup to avoid delays on first request.
+    Uses 'small-en-us' model (~40MB) which fits in Render's 512MB RAM.
     """
     logger.info("🚀 API Starting up...")
-    logger.info("📦 Pre-loading Whisper 'tiny' model (~39MB, memory-efficient)...")
+    logger.info("📦 Pre-loading Vosk 'small-en-us' model (~40MB, memory-efficient)...")
     
     try:
         # Import and trigger model load
-        from Reels.subtitle_generation import _get_model
-        _get_model()  # This will load and cache the tiny model
-        logger.info("✅ Whisper model pre-loaded successfully")
+        from Reels.subtitle_generation_vosk import _get_model
+        _get_model()  # This will load and cache the Vosk model
+        logger.info("✅ Vosk model pre-loaded successfully")
     except Exception as e:
-        logger.warning(f"⚠️ Could not pre-load Whisper model: {e}")
+        logger.warning(f"⚠️ Could not pre-load Vosk model: {e}")
         logger.warning("Model will be loaded on first reel generation request")
 
 # -------------------------------------------------
