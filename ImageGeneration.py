@@ -125,7 +125,7 @@ def create_neon_quote_image(
 
     # Set up font path
     BASE_DIR = Path(__file__).resolve().parent
-    FONT_PATH = BASE_DIR / "Montserrat" / "static" / "Montserrat-Light.ttf"
+    FONT_PATH = BASE_DIR / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"
     
     try:
         font = ImageFont.truetype(str(FONT_PATH), 32)
