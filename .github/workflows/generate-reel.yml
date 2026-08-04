@@ -14,7 +14,7 @@ on:
 jobs:
   generate-reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # Fail if takes longer than 30 minutes
+    timeout-minutes: 60 # Fail if takes longer than 60 minutes
 
     steps:
       - name: Checkout code
@@ -47,9 +47,6 @@ jobs:
       - name: Generate and Upload Reel
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          # HF_TOKEN2: ${{ secrets.HF_TOKEN2 }}
-          # ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
           CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
           CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
@@ -62,7 +59,6 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           AUTO_UPLOAD_REELS: ${{ secrets.AUTO_UPLOAD_REELS }}
-          RENDER: "true" # Use optimized settings
         run: |
           python -c "
           import sys

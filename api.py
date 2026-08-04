@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 import shutil
+import traceback
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
