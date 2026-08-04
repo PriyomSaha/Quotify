@@ -151,3 +151,12 @@ MAX_RETRIES = 3
 RETRY_DELAY = 5
 
 REQUEST_TIMEOUT = 120
+
+# ----------------------------
+# Upload to Social Media
+# ----------------------------
+
+# Control whether to upload reels to Facebook and Instagram after generation
+# Set to "true" or "false" in .env file
+# Default: true (upload enabled)
+AUTO_UPLOAD_REELS = os.getenv("AUTO_UPLOAD_REELS", "true").lower() == "true"

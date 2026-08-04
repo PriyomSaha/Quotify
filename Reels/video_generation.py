@@ -271,12 +271,12 @@ class ReelComposer:
 
     def create_subtitle_track(self):
         """
-        Creates animated subtitle track with typewriter effect.
-        Subtitles positioned safely above bottom.
+        Creates animated subtitle track with extended visibility.
+        Subtitles stay visible longer for better readability.
         """
         subtitle_clips = []
 
-        for subtitle in self.subtitles:
+        for i, subtitle in enumerate(self.subtitles):
             text = subtitle["text"].strip()
 
             if not text:
@@ -284,7 +284,28 @@ class ReelComposer:
 
             start_time = subtitle["start"]
             end_time = subtitle["end"]
-            duration = max(0.5, end_time - start_time)
+            
+            # Calculate extended duration for better readability
+            base_duration = end_time - start_time
+            
+            # Minimum visible time should be 1.5 seconds (comfortable reading speed)
+            min_duration = 1.5
+            
+            # Add hold time: keep subtitle visible 0.8s after speech ends
+            hold_time = 0.8
+            
+            # Calculate extended duration
+            extended_duration = max(min_duration, base_duration + hold_time)
+            
+            # Check if next subtitle exists to avoid overlap
+            if i + 1 < len(self.subtitles):
+                next_start = self.subtitles[i + 1]["start"]
+                # Don't overlap into next subtitle's start time
+                max_duration = next_start - start_time
+                duration = min(extended_duration, max_duration)
+            else:
+                # Last subtitle - use extended duration
+                duration = extended_duration
 
             clip = self._create_standard_subtitle(
                     text,
