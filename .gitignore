@@ -28,7 +28,15 @@ output.jpg
 generated_*.jpg
 generated_*.png
 
+# Generated Vdo
 *.mp4
+
+# Reels output folder (generated content - exclude from git)
+Reels/output/
+
+# But keep Reels/inputs folder tracked (background music, assets)
+!Reels/inputs/
+!Reels/inputs/**
 
 # Logs
 *.log
