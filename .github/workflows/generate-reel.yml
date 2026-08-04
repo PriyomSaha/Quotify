@@ -61,7 +61,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          AUTO_UPLOAD_REELS: "true" # Enable upload to FB/IG
+          AUTO_UPLOAD_REELS: ${{ secrets.AUTO_UPLOAD_REELS }}
           RENDER: "true" # Use optimized settings
         run: |
           python -c "
