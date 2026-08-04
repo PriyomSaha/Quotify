@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 import shutil
+import traceback
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -314,7 +315,11 @@ def execute_reel_generation():
         # -------------------------------------------------
         logger.info("🎬 Generating complete reel...")
         sys.stdout.flush()
-        result = generate_complete_reel()
+        
+        # Call generate_complete_reel with upload=False
+        # api.py will handle upload separately
+        result = generate_complete_reel(upload=False)
+        
         logger.info("✅ Reel generation completed successfully!")
         logger.info(f"📁 Output folder: {result['output_folder']}")
         logger.info(f"🎬 Video file: {result['video_file']}")

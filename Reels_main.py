@@ -13,6 +13,7 @@ from Reels.image_generation import generate_images_for_reel
 from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
 from Reels.voice_generation import generate_voice
+from Reels.hashtag_generation import generate_hashtags
 
 
 def load_existing_story(story_path: str) -> Dict[str, Any]:
@@ -371,7 +372,9 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     
     # Upload to social media if enabled
     if upload:
-        caption = story.get("title", story.get("narration", "")[:100])[:2000]
+        name = story.get("title", story.get("narration", "")[:100])[:2000]
+        hashtags = generate_hashtags()
+        caption = name + "\n\n\n\n\n\n" + hashtags
         upload_results = upload_to_social_media(video_file, caption, output_folder)
         result["upload_results"] = upload_results
         

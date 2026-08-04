@@ -14,7 +14,7 @@ on:
 jobs:
   generate-reel:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # Fail if takes longer than 30 minutes
+    timeout-minutes: 60 # Fail if takes longer than 60 minutes
 
     steps:
       - name: Checkout code
@@ -36,20 +36,17 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Cache Vosk model
+      - name: Cache Whisper model
         uses: actions/cache@v4
         with:
-          path: ~/.cache/vosk
-          key: vosk-model-small-en-us-0.15
+          path: ~/.cache/whisper
+          key: whisper-model-base
           restore-keys: |
-            vosk-model-
+            whisper-model-
 
       - name: Generate and Upload Reel
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          # HF_TOKEN2: ${{ secrets.HF_TOKEN2 }}
-          # ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
           CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
           CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
@@ -61,8 +58,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          AUTO_UPLOAD_REELS: "true" # Enable upload to FB/IG
-          RENDER: "true" # Use optimized settings
+          AUTO_UPLOAD_REELS: ${{ secrets.AUTO_UPLOAD_REELS }}
         run: |
           python -c "
           import sys
