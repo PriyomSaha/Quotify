@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 # Change these from relative to absolute imports
-from Reels.config import OUTPUT_DIR
+from Reels.config import OUTPUT_DIR, AUTO_UPLOAD_REELS
 from Reels.image_generation import generate_images_for_reel
 from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
@@ -246,18 +246,25 @@ def upload_to_social_media(video_file: Path, caption: str, output_dir: Path) -> 
     return results
 
 
-def generate_complete_reel(story_path: Optional[str] = None, images_only: bool = False, upload: bool = False) -> Dict[str, Any]:
+def generate_complete_reel(story_path: Optional[str] = None, images_only: bool = False, upload: Optional[bool] = None) -> Dict[str, Any]:
     """
     Generate a complete reel from scratch or using existing story.
     
     Args:
         story_path: Path to existing story JSON (optional)
         images_only: If True, only generate images and stop
-        upload: If True, upload to Facebook and Instagram (default: True)
+        upload: If True, upload to Facebook and Instagram
+                If None, reads from AUTO_UPLOAD_REELS env variable (default behavior)
     
     Returns:
         dict: Paths to generated files and upload results
     """
+    
+    # Determine upload behavior
+    # Priority: explicit parameter > environment variable > default (True)
+    if upload is None:
+        upload = AUTO_UPLOAD_REELS
+        print(f"📤 Upload setting from config: {upload}")
     
     output_folder: Path
     story_file: Path
@@ -389,9 +396,13 @@ if __name__ == "__main__":
     
     story_path_arg: Optional[str] = sys.argv[1] if use_existing_story else None
     
+    # Determine upload parameter
+    # Command line --no-upload flag overrides env variable
+    upload_param = False if no_upload else None  # None = use config default
+    
     # Call the main function
     generate_complete_reel(
         story_path=story_path_arg, 
         images_only=images_only,
-        # upload=not no_upload
+        upload=upload_param
     )

@@ -47,6 +47,9 @@ jobs:
       - name: Generate and Upload Reel
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN2: ${{ secrets.HF_TOKEN2 }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
           CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
           CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
@@ -58,6 +61,7 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          AUTO_UPLOAD_REELS: "true" # Enable upload to FB/IG
           RENDER: "true" # Use optimized settings
         run: |
           python -c "
