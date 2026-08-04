@@ -87,6 +87,10 @@ if IS_RENDER:
     BITRATE = "2000k"  # Lower bitrate
     FILM_GRAIN_INTENSITY = 0  # Disable grain (memory intensive)
     IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU/memory intensive)
+    # Scale font size proportionally (540/1080 = 0.5x scale)
+    FONT_SIZE = 32  # Half of 64 for half resolution
+    LOGO_FONT_SIZE = 22  # Half of 45
+    BOTTOM_MARGIN = 225  # Half of 450
 else:
     # High quality settings for local/powerful servers
     # Perfect 9:16 ratio for Instagram Reels
@@ -96,6 +100,9 @@ else:
     BITRATE = "8000k"
     FILM_GRAIN_INTENSITY = 18
     IMAGE_ZOOM = 1.08
+    FONT_SIZE = 64
+    LOGO_FONT_SIZE = 45
+    BOTTOM_MARGIN = 450  # Text positioned higher from bottom
 
 IMAGE_FADE = 0.4
 DARK_OVERLAY_OPACITY = 45
@@ -114,7 +121,7 @@ MUSIC_VOLUME = 0.15
 # ----------------------------
 
 FONT = str((BASE_DIR.parent / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"))
-FONT_SIZE = 64
+# FONT_SIZE is set above based on IS_RENDER (32 for low-res, 64 for high-res)
 
 FONT_COLOR = "white"
 
@@ -122,14 +129,14 @@ STROKE_COLOR = "black"
 
 STROKE_WIDTH = 3
 
-BOTTOM_MARGIN = 450  # Increased - text positioned higher from bottom
+# BOTTOM_MARGIN is set above based on IS_RENDER (225 for low-res, 450 for high-res)
 
 # ----------------------------
 # LOGO
 # ----------------------------
 LOGO_TEXT = "FB : Aesthetic Vibes \nIG: @aesthetic_o_vibes"
 LOGO_FONT = str((BASE_DIR.parent / "Fonts" / "Kaushan_Script" / "KaushanScript-Regular.ttf"))
-LOGO_FONT_SIZE = 45
+# LOGO_FONT_SIZE is set above based on IS_RENDER (22 for low-res, 45 for high-res)
 LOGO_FONT_COLOR = (255, 32, 117)  # #FF2075 - bright pink
 
 # ----------------------------

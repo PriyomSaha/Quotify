@@ -36,13 +36,13 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Cache Vosk model
+      - name: Cache Whisper model
         uses: actions/cache@v4
         with:
-          path: ~/.cache/vosk
-          key: vosk-model-small-en-us-0.15
+          path: ~/.cache/whisper
+          key: whisper-model-base
           restore-keys: |
-            vosk-model-
+            whisper-model-
 
       - name: Generate and Upload Reel
         env:

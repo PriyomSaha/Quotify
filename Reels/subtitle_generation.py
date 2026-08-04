@@ -19,7 +19,7 @@ os.environ["WHISPER_CACHE_DIR"] = os.path.expanduser("~/.cache/whisper")
 
 # Global model cache - loaded on first use
 _MODEL = None
-_MODEL_NAME = "tiny"  # Centralized model name
+_MODEL_NAME = "base"  # Use base model for better accuracy (74MB)
 
 
 def _get_model():
