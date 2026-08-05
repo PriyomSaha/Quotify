@@ -25,13 +25,12 @@ _MODEL_NAME = "base"  # Use base model for better accuracy (74MB)
 def _get_model():
     """
     Lazy load Whisper model on first use.
-    Uses 'tiny' model for memory efficiency (39MB vs 139MB for 'base').
-    Perfect for Render's 512MB RAM limit.
+    Uses the base model for better subtitle accuracy.
     """
     global _MODEL
     if _MODEL is None:
         logger.info(f"🔊 Loading Whisper model ({_MODEL_NAME})...")
-        logger.info(f"⏳ Downloading ~39MB model (memory-efficient)...")
+        logger.info("⏳ Downloading/loading Whisper base model...")
         logger.info(f"Cache dir: {os.environ.get('WHISPER_CACHE_DIR', 'default')}")
         _MODEL = whisper.load_model(_MODEL_NAME)
         logger.info("✅ Whisper model loaded successfully")

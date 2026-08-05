@@ -853,12 +853,17 @@ Return only the wanderlust message.
 }
 
 
-def get_prompt_for_current_time():
+LAST_SELECTED_CONTENT_INFO = None
+
+
+def get_prompt_for_current_time(record_history=True):
     """
-    Get the appropriate prompt based on current time
-    Returns only the relevant prompt to save Gemini tokens
+    Get the appropriate prompt based on current time.
+    Returns only the relevant prompt to save Gemini tokens.
     """
-    content_info = get_content_type_for_time()
+    global LAST_SELECTED_CONTENT_INFO
+    content_info = get_content_type_for_time(record_history=record_history)
+    LAST_SELECTED_CONTENT_INFO = content_info
     content_type = content_info['type']
     
     print(f"\n📝 Generating: {content_info['name']}")

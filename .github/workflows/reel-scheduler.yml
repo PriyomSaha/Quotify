@@ -1,0 +1,161 @@
+name: Reel Scheduler
+
+on:
+  # Run every 15 minutes to check reel posting windows
+  schedule:
+    - cron: '0,15,30,45 * * * *'  # Every 15 minutes
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+
+concurrency:
+  group: aesthetic-vibes-publisher
+  cancel-in-progress: false
+
+jobs:
+  check-and-generate-reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40  # Increased for reel generation (20-25 min) + upload
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Cache Whisper model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/whisper
+          key: whisper-model-base
+          restore-keys: |
+            whisper-model-
+      
+      - name: Check if reel should be generated
+        id: check
+        env:
+          SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
+          CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          python -c "
+          from smart_scheduler import should_publish_reel, get_schedule_summary
+          from smart_scheduler import ContentType
+          import sys
+          
+          # Show today's schedule
+          get_schedule_summary()
+          
+          # Check if we should generate reel
+          should_publish, reason = should_publish_reel()
+          
+          print(f'\n📊 Decision: {\"GENERATE REEL\" if should_publish else \"SKIP\"}')
+          print(f'📝 Reason: {reason}\n')
+          
+          # Set output for next step
+          if should_publish:
+              print('SHOULD_PUBLISH=true')
+              sys.exit(0)
+          else:
+              print('SHOULD_PUBLISH=false')
+              sys.exit(0)
+          " | tee check_result.txt
+          
+          # Extract decision
+          if grep -q "SHOULD_PUBLISH=true" check_result.txt; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate and upload reel
+        if: steps.check.outputs.should_publish == 'true'
+        env:
+          SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
+          CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN2: ${{ secrets.HF_TOKEN2 }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_TOKEN_2: ${{ secrets.CF_TOKEN_2 }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          AUTO_UPLOAD_REELS: "true"
+        run: |
+          python -c "
+          import sys
+          import logging
+          
+          logging.basicConfig(
+              level=logging.INFO,
+              format='%(asctime)s - %(levelname)s - %(message)s',
+              handlers=[logging.StreamHandler(sys.stdout)],
+              force=True
+          )
+          logger = logging.getLogger(__name__)
+          
+          print('\n' + '='*70)
+          print('🎬 STARTING REEL GENERATION (20-25 minutes)')
+          print('='*70 + '\n')
+          
+          from api import execute_reel_generation
+          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
+          
+          active_window = get_active_window(ContentType.REEL)
+          if not active_window:
+              raise RuntimeError('No active reel window found before generation')
+          
+          if not acquire_run_lock(ContentType.REEL, active_window):
+              raise RuntimeError('Could not acquire scheduler run lock')
+          
+          try:
+              # This raises if upload is not fully successful.
+              execute_reel_generation()
+              
+              print('\n' + '='*70)
+              print('🎉 REEL GENERATION AND UPLOAD COMPLETE')
+              print('='*70 + '\n')
+              
+              print(f'✅ Marking slot "{active_window.name}" as completed...')
+              mark_slot_completed(active_window)
+              sys.exit(0)
+              
+          except Exception as e:
+              release_run_lock(ContentType.REEL, active_window)
+              logger.error(f'❌ Reel generation failed: {e}')
+              import traceback
+              logger.error(traceback.format_exc())
+              sys.exit(1)
+          "
+      
+      - name: Skip - not in posting window
+        if: steps.check.outputs.should_publish != 'true'
+        run: |
+          echo "⏭️ Skipping reel generation - not in posting window or already completed"
