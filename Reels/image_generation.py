@@ -10,7 +10,7 @@ Visual Identity
 
 ✓ Environment-first composition
 ✓ Tiny human silhouette
-✓ Dark blue/orange color palette
+✓ Natural clear color palette
 ✓ Hand-drawn editorial artwork
 ✓ Large negative space for subtitles
 ✓ 1080x1920 Reel Ready
@@ -23,9 +23,10 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import random
+import re
 
 import requests
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 from dotenv import load_dotenv
 
@@ -90,7 +91,7 @@ Graphite pencil sketch.
 
 Fine ink line art.
 
-Soft watercolor washes.
+Controlled transparent watercolor shading with clear edges.
 
 Subtle textured paper.
 
@@ -160,27 +161,25 @@ The viewer should pause and think.
 
 COLOR_PALETTE = """
 
-Deep navy blue.
+Natural earthy colors.
 
-Charcoal.
+Clear sky blue.
 
-Muted teal.
+Forest green.
 
-Burnt orange.
+Warm sunlight amber.
 
-Warm amber.
+Soft sunset orange.
 
 Dusty brown.
 
-Soft grey.
+Natural stone grey.
 
 Muted cream highlights.
 
-Low saturation.
+Balanced saturation.
 
-Dark cinematic color grading.
-
-Blue hour.
+Clean cinematic color grading.
 
 Golden hour.
 
@@ -188,9 +187,13 @@ Late sunset.
 
 Soft moonlight.
 
-Foggy morning.
+Clear morning light.
 
 Deep natural shadows.
+
+No hazy grey overlay.
+
+No foggy or misty wash.
 
 """
 
@@ -276,7 +279,7 @@ Mountain overlook.
 
 Forest trail.
 
-Foggy road.
+Clear quiet country road.
 
 Country road.
 
@@ -342,9 +345,7 @@ Cloud movement.
 
 Rain.
 
-Mist.
-
-Fog.
+Clear air.
 
 Wind.
 
@@ -422,6 +423,16 @@ bright colorful scene
 
 busy composition
 
+repeated scene
+
+duplicate composition
+
+same background
+
+overlapping subjects
+
+cluttered foreground
+
 action pose
 
 dramatic pose
@@ -444,6 +455,44 @@ speech bubble
 
 typography
 
+blur
+
+blurry
+
+haze
+
+hazy
+
+fog
+
+foggy
+
+mist
+
+misty
+
+smoky atmosphere
+
+washed out colors
+
+muddy colors
+
+grey veil
+
+low contrast
+
+out of focus
+
+low quality
+
+distorted hands
+
+extra fingers
+
+bad anatomy
+
+duplicate face
+
 """
 
 # ============================================================
@@ -461,38 +510,92 @@ def build_prompt(
     scene_type: str,
     scene_description: str,
 ) -> str:
+    """
+    Build varied aesthetic image prompts.
 
-    # Determine if person should be included
-    include_person = scene_type.lower() == "person" and "person" in scene_description.lower()
-    
-    person_instruction = ""
-    if include_person:
-        person_instruction = "ONE tiny person as small distant silhouette (max 5%), back/side view, simple action. Logical context - sitting on bench/rock, walking on path, standing on cliff."
+    The goal is not to force the same "person facing back" frame every time.
+    Most scenes should be nature/object/environment driven, with occasional
+    human or couple scenes only when the story calls for it.
+    """
+    normalized_type = scene_type.lower().strip()
+
+    if normalized_type == "couple":
+        subject_instruction = """
+Subject: two small human figures only if natural to the scene, for example a boy and girl holding hands, sitting apart on a bench, walking beside a lake, sharing an umbrella, or standing quietly near a sunset road.
+Keep them tasteful and cinematic, not romantic-photo-shoot style.
+No close-up faces. No selfie. No fashion pose. Show natural body language, hands, distance, warmth, and environment.
+"""
+    elif normalized_type == "person":
+        subject_instruction = """
+Subject: at most one small human figure, integrated naturally into the environment.
+Avoid repeating the same back-facing silhouette. Vary the pose: side profile, sitting near a window, walking under trees, reading on a bench, holding flowers, looking down at water, tying shoelaces, holding an umbrella, or standing in soft side light.
+Face can be simple/abstract, but not a close-up portrait.
+"""
+    elif normalized_type == "object":
+        subject_instruction = """
+Subject: a meaningful everyday object as the emotional focus, with nature around it.
+Examples: two cups of tea, a blank open sketchbook with no visible writing, plain sealed envelopes with no text, a bicycle near flowers, shoes beside water, a lantern, a phone on a table with blank screen, a window with rain, a small boat, dried flowers.
+No people unless absolutely necessary.
+"""
+    elif normalized_type == "architecture":
+        subject_instruction = """
+Subject: a quiet place or structure as the focus.
+Examples: old library corner, rainy cafe window, empty train station, wooden cabin, bridge, lighthouse, balcony, narrow street, warm house window.
+No people unless tiny and secondary.
+"""
     else:
-        person_instruction = "Pure nature scene, no people. Focus on landscape."
-    
-    # Choose color palette based on mode
+        subject_instruction = """
+Subject: pure aesthetic nature/environment scene.
+No human subject by default. Focus on landscape, sky, water, trees, flowers, road, clouds, moonlight, sunlight, reflections, and atmosphere.
+"""
+
     if USE_BRAND_COLORS:
-        color_instruction = """BRAND COLORS (MANDATORY): Bright pink (#FF2075) in sky/lights/highlights, dark burgundy (#610B2D) shadows, navy blue depth, muted cream accents. Pink-tinted atmosphere - pink sunset, pink mist, purple night, burgundy shadows. Color grade entire scene pink/purple/blue. NEVER: bright green, yellow, orange."""
+        color_instruction = """Natural cinematic colors with very subtle Aesthetic Vibes accents: muted pink highlights (#FF2075), deep burgundy shadows (#610B2D), natural sky blue, forest green, warm cream light. Keep it natural, clear, not neon, not oversaturated, not hazy."""
     else:
-        color_instruction = """Colors: Navy blue, charcoal, muted teal, burnt orange, warm amber, cream. Low saturation, moody cinematic grading."""
-    
+        color_instruction = """Natural cinematic colors: clear sky blue, forest green, warm sunlight amber, dusty brown, natural stone grey, soft cream, pale sky blue, gentle sunset orange. Balanced natural color grading, clean contrast, clear air, not blurred, not hazy, not foggy, not misty, not over-saturated."""
+
     return f"""
-Hand-drawn sketch illustration. Loose linework, soft watercolor, paper texture. Impressionistic editorial style.
+Premium hand-drawn editorial illustration for an emotional Instagram Reel.
 
-Scene: {scene_description}
+Scene idea: {scene_description}
 
-{person_instruction}
+{subject_instruction}
 
-Nature: rain clouds, mist, fog, moonlight, stars, birds, waves, wind, grass, trees, flowers, water reflections.
+Visual style:
+- hand-drawn sketch illustration
+- fine ink linework
+- soft watercolor texture without haze
+- subtle paper grain
+- natural brush strokes
+- clean readable shapes
+- clear visible edges
+- crisp details, not blurry, not foggy, not misty
+- elegant book-cover / magazine editorial feeling
 
-Composition: Extreme wide shot. 90-95% landscape. Huge empty sky/water. Rule of thirds. Space for text.
+Composition:
+- vertical 9:16 cinematic frame
+- strong nature-first composition
+- large negative space for subtitles
+- rule of thirds
+- layered depth with foreground, midground, background
+- unique setting, angle, foreground detail, and subject placement for every scene
+- avoid repetitive centered person from behind
+- no overlapping main subjects; keep objects and people cleanly separated and readable
+- make every scene feel visually different from the previous one
 
-Atmosphere: Calm, peaceful, melancholic, quiet, reflective, minimal. Blue hour, golden hour lighting.
+Atmosphere:
+Calm, peaceful, reflective, warm, melancholic, emotionally mature, poetic but simple. The air should feel clear and crisp, never hazy, foggy, smoky, or washed out.
 
+Natural elements:
+Trees, wildflowers, quiet roads, lakes, rivers, ocean shore, gentle rain, moon, clean clouds, birds, window light, warm lamps, clear reflections, grass, mountains, old wood, blank paper, tea, books with no readable text.
+
+Color direction:
 {color_instruction}
 
-Style: Artistic sketch, loose strokes, simplified forms, elegant minimalism. Abstract faces if visible.
+Strict quality rules:
+No text, no letters, no logo, no watermark, no speech bubble, no caption inside image.
+No blurry image. No haze. No fog. No mist. No smoky atmosphere. No washed-out colors. No muddy grey overlay. No repeated background. No duplicate composition. No overlapping subjects. No cluttered foreground. No low quality. No distorted hands. No extra fingers. No duplicate faces.
+Not cartoon, not anime, not 3D, not photorealistic, not stock photo.
 """
 
 # ============================================================
@@ -642,6 +745,36 @@ def create_placeholder_image(
 # IMAGE PROCESSING
 # ============================================================
 
+def enhance_natural_clarity(
+    image: Image.Image,
+) -> Image.Image:
+
+    """
+    Apply a subtle finishing pass so generated images stay clear,
+    naturally colored, and not hazy.
+    """
+
+    image = image.convert("RGB")
+
+    image = ImageEnhance.Contrast(image).enhance(1.08)
+    image = ImageEnhance.Color(image).enhance(1.04)
+    image = ImageEnhance.Sharpness(image).enhance(1.12)
+
+    image = image.filter(
+        ImageFilter.UnsharpMask(
+            radius=1.2,
+            percent=80,
+            threshold=3,
+        )
+    )
+
+    return image
+
+
+# ============================================================
+# IMAGE PROCESSING
+# ============================================================
+
 def resize_for_reel(
     image: Image.Image,
 ) -> Image.Image:
@@ -785,10 +918,126 @@ def generate_single_image(
         image
     )
 
+    image = enhance_natural_clarity(
+        image
+    )
+
     return save_image(
         image,
         output_path,
     )
+
+
+# ============================================================
+# SCENE VARIETY HELPERS
+# ============================================================
+
+RELATIONSHIP_KEYWORDS = {
+    "couple", "love", "lover", "relationship", "together", "holding hands",
+    "boy and girl", "girl and boy", "husband", "wife", "partner", "date",
+}
+
+PERSON_KEYWORDS = {
+    "person", "man", "woman", "boy", "girl", "child", "old man", "old woman",
+    "father", "mother", "friend", "student", "traveler", "someone", "he ", "she ",
+}
+
+OBJECT_KEYWORDS = {
+    "book", "letter", "tea", "coffee", "cup", "phone", "diary", "journal",
+    "bicycle", "umbrella", "lantern", "chair", "window", "door", "flowers",
+}
+
+ARCHITECTURE_KEYWORDS = {
+    "library", "cafe", "station", "train", "bridge", "cabin", "house",
+    "room", "balcony", "street", "shop", "home", "kitchen",
+}
+
+NATURE_VARIATIONS = [
+    "quiet lake with wildflowers in the foreground and soft mountains far away",
+    "empty winding road after light rain with trees bending over it and clear reflections",
+    "golden field under a wide evening sky with birds crossing the clouds",
+    "moonlit river with gentle reflections and tall grass moving in wind",
+    "old wooden dock beside calm water during blue hour",
+    "clear forest path with soft sunlight passing through leaves and crisp visible details",
+    "peaceful ocean shore with scattered stones and pale sunset light",
+    "small hill covered with grass and flowers under moving clouds",
+]
+
+OBJECT_VARIATIONS = [
+    "two warm cups of tea on a wooden table beside a rainy window",
+    "an open book with dried flowers on old wood near soft window light",
+    "a bicycle leaning near wildflowers on a quiet country road",
+    "an umbrella resting near a puddle reflecting evening lamps",
+    "old letters tied with thread beside a small candle and flowers",
+]
+
+ARCHITECTURE_VARIATIONS = [
+    "quiet old library corner with tall shelves and warm window light",
+    "rainy cafe window with reflections on glass and an empty chair",
+    "empty train station platform during golden evening light",
+    "small wooden cabin surrounded by trees under a soft sky",
+    "old bridge over a calm river with flowers near the railing",
+]
+
+COUPLE_VARIATIONS = [
+    "a boy and girl holding hands on a quiet nature path, small figures, natural colors, no close-up faces",
+    "two small figures sharing an umbrella on a rainy road with warm street reflections",
+    "a couple sitting quietly apart on a wooden dock beside a calm lake at sunset",
+    "two people walking beside wildflowers under a wide soft sky, hands almost touching",
+]
+
+
+def _contains_any(text: str, keywords: set[str]) -> bool:
+    lowered = f" {text.lower()} "
+    return any(keyword in lowered for keyword in keywords)
+
+
+def enhance_scene_for_variety(scene: Dict[str, Any], index: int) -> Dict[str, Any]:
+    """
+    Add visual variety while keeping the generated story scene as the base.
+    This avoids six similar frames of a person facing away.
+    """
+    description = str(scene.get("description", "") or "").strip()
+    scene_type = str(scene.get("type", "environment") or "environment").lower()
+
+    if _contains_any(description, RELATIONSHIP_KEYWORDS):
+        scene_type = "couple"
+    elif _contains_any(description, PERSON_KEYWORDS):
+        scene_type = "person"
+    elif _contains_any(description, OBJECT_KEYWORDS):
+        scene_type = "object"
+    elif _contains_any(description, ARCHITECTURE_KEYWORDS):
+        scene_type = "architecture"
+    elif scene_type not in {"couple", "person", "object", "architecture", "environment"}:
+        scene_type = "environment"
+
+    if not description:
+        if index in {2, 5}:
+            scene_type = "object"
+            description = random.choice(OBJECT_VARIATIONS)
+        elif index == 3:
+            scene_type = "architecture"
+            description = random.choice(ARCHITECTURE_VARIATIONS)
+        elif index == 4:
+            scene_type = "couple"
+            description = random.choice(COUPLE_VARIATIONS)
+        else:
+            scene_type = "environment"
+            description = random.choice(NATURE_VARIATIONS)
+
+    if scene_type == "environment" and index in {2, 5}:
+        description += f". Add a unique foreground detail: {random.choice(OBJECT_VARIATIONS)}."
+    elif scene_type == "person":
+        description += ". The person should not always face away; use a varied natural pose and keep them secondary to the environment."
+    elif scene_type == "couple":
+        description += ". Show emotional connection through simple body language like holding hands, walking together, or sitting quietly; keep nature as the main visual mood."
+
+    description += ". Use natural colors, crisp details, clear air, no haze, no fog, no mist, no blur, aesthetic composition, and no text in the image."
+
+    return {
+        "type": scene_type,
+        "description": description,
+    }
 
 
 # ============================================================
@@ -852,6 +1101,11 @@ def generate_images_for_reel(
         scenes,
         start=1,
     ):
+
+        scene = enhance_scene_for_variety(
+            scene,
+            index,
+        )
 
         output_path = (
             output_dir
@@ -952,7 +1206,7 @@ PERSON_ENVIRONMENTS = [
 
     "standing on a mountain overlook",
 
-    "walking through a foggy forest",
+    "walking through a clear forest with crisp visible trees",
 
     "standing beside a calm lake",
 
@@ -981,13 +1235,13 @@ SCENERY_ENVIRONMENTS = [
 
     "quiet beach at sunset",
 
-    "misty mountain landscape",
+    "clear mountain landscape with crisp distant details",
 
     "empty forest trail",
 
     "moon over a calm lake",
 
-    "foggy country road",
+    "clear quiet country road after rain",
 
     "old wooden pier",
 
