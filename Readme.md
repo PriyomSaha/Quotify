@@ -1,54 +1,43 @@
-# Aesthetic Vibes
+# Aesthetic Vibes - Automated Quote Publishing System
 
-<div align="center">
-  <img src="ProfilePic.jpg" alt="Aesthetic Vibes" width="200" height="200" style="border-radius: 50%;">
-  
-  ### *"We are not a poet, Just a lost soul finding combination of words to bring you home"*
+## 📋 Project Overview
 
-  [![Instagram](https://img.shields.io/badge/Instagram-55K+-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/aesthetic_o_vibes/)
-  [![Facebook](https://img.shields.io/badge/Facebook-AestheticsVibes-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://www.facebook.com/AesthaticsVibes)
+**"We are not a poet, Just a lost soul finding combination of words to bring you home"**
 
-</div>
+An automated content generation and publishing system for the Instagram/Facebook page **"Aesthetic Vibes"** (55K+ followers). The system creates AI-generated diverse content with **33 unique content types**, renders them as neon-styled images, and automatically publishes to social media platforms.
 
----
-
-## 📱 Social Media
+### 🔗 Social Media Pages
 
 - **Instagram:** [@aesthetic_o_vibes](https://www.instagram.com/aesthetic_o_vibes/) - 55K+ followers
-- **Facebook:** [AesthaticsVibes](https://www.facebook.com/AesthaticsVibes)
-- **Content:** Emotional quotes, deep thoughts, relatable conversations, life wisdom
-- **Audience:** South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years
+- **Facebook:** [AesthaticsVibes](https://www.facebook.com/AesthaticsVibes) - Aesthetic Vibes Official Page
+- **Content Focus:** Emotional quotes, deep thoughts, relatable conversations, life wisdom
+- **Target Audience:** 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years old
+- **Brand Identity:** Lost souls finding words that feel like home
+
+**Pipeline Flow:** Content Type Selection → AI Content Generation → Neon Image Creation → Facebook Upload → Instagram Publishing
+
+**Posting Schedule:** 17 posts per day with 2-hour minimum spacing between posts
+
+**Smart Features:**
+- 33 diverse content types organized by time-appropriate energy
+- Anti-repetition tracking via GitHub Gist (last 30 posts)
+- Weighted random selection (unused types get 3x priority)
+- Time-based categories (morning energetic, afternoon relatable, evening deep)
+- Automatic spacing enforcement (prevents duplicate posts even with multiple triggers)
 
 ---
 
-## 🤖 What This Repo Does
+## 🎯 Content System - 33 Diverse Types
 
-Automated content generation and publishing system that:
+### Smart Randomization Engine
 
-- ✨ Generates AI-powered quotes and short-form video reels
-- 🎨 Creates aesthetic neon-styled images
-- 🎬 Produces cinematic reels with voiceover and subtitles
-- 📤 Automatically posts to Facebook and Instagram
-- 📅 Smart scheduler with weekly posting windows
-- 🔄 33 diverse content types with anti-repetition tracking
+- **33 unique content types** organized by time-appropriate energy
+- **Smart anti-repetition** - tracks last 30 posts via GitHub Gist
+- **Weighted selection** - unused types get 3x priority
+- **Time-based categories** - morning energetic, afternoon relatable, evening deep
+- **2-hour minimum spacing** - prevents duplicate posts even with multiple triggers
 
-**Daily Output:** 2 quotes + 3 reels, optimized for peak engagement times
-
----
-
-## 🛠️ Tech Stack
-
-- **AI:** Google Gemini (content), ElevenLabs (voice), Whisper (subtitles)
-- **Images:** HuggingFace/FAL-AI, Cloudflare Workers AI
-- **Video:** MoviePy, FFmpeg
-- **Automation:** GitHub Actions (smart scheduler)
-- **APIs:** Facebook Graph API, Instagram Graph API, Cloudinary
-
----
-
-<div align="center">
-  <sub>Built with ❤️ for lost souls finding their way home</sub>
-</div> 12 PM IST) - 8 Types
+### Morning Energy (5 AM - 12 PM IST) - 8 Types
 
 1. **Motivational/Inspiring** - Action-oriented encouragement
 2. **Elder Wisdom** - "Father/Mother used to say..." cultural wisdom
