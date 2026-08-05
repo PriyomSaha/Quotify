@@ -12,7 +12,7 @@ from Reels.image_generation import generate_images_for_reel
 from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
 from Reels.voice_generation import generate_voice
-from Reels.hashtag_generation import generate_hashtags
+from Reels.hashtag_generation import build_reel_caption
 
 
 def load_existing_story(story_path: str) -> Dict[str, Any]:
@@ -49,7 +49,8 @@ def upload_to_social_media(video_file: Path, caption: str, output_dir: Path) -> 
     from Reels.social_upload import upload_reel_to_social_media
 
     print("\n📤 Step 5/5: Uploading to social media...")
-    print(f"Caption: {caption[:50]}...")
+    print(f"Caption length: {len(caption)} chars")
+    print(f"Caption preview: {caption[:500]}")
     sys.stdout.flush()
 
     return upload_reel_to_social_media(
@@ -186,9 +187,10 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     
     # Upload to social media if enabled
     if upload:
-        name = story.get("title", story.get("narration", "")[:100])[:2000]
-        hashtags = generate_hashtags()
-        caption = name + "\n\n\n\n\n\n" + hashtags
+        caption = build_reel_caption(
+            title=story.get("title", ""),
+            fallback_text=story.get("narration", "")[:100],
+        )
         upload_results = upload_to_social_media(video_file, caption, output_folder)
         result["upload_results"] = upload_results
         

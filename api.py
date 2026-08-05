@@ -303,7 +303,7 @@ def execute_reel_generation():
 
     try:
         logger.info("📦 Importing reel modules...")
-        from Reels.hashtag_generation import generate_hashtags
+        from Reels.hashtag_generation import build_reel_caption
         from Reels.social_upload import upload_reel_to_social_media
         from Reels_main import generate_complete_reel
 
@@ -314,13 +314,16 @@ def execute_reel_generation():
         output_dir = Path(result["output_folder"])
         story = result["story"]
 
-        name = story.get("title", story.get("narration", "")[:100])[:2000]
-        caption = name + "\n\n\n\n\n\n" + generate_hashtags()
+        caption = build_reel_caption(
+            title=story.get("title", ""),
+            fallback_text=story.get("narration", "")[:100],
+        )
 
         logger.info("✅ Reel generation completed successfully")
         logger.info(f"📁 Output folder: {output_dir}")
         logger.info(f"🎬 Video file: {video_file}")
-        logger.info(f"Caption (first 50 chars): {caption[:50]}...")
+        logger.info(f"Caption length: {len(caption)} chars")
+        logger.info(f"Caption preview: {caption[:500]}")
         sys.stdout.flush()
 
         upload_results = upload_reel_to_social_media(
