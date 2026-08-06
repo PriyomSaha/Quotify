@@ -11,7 +11,7 @@ import os
 
 # Environment variables (set these in GitHub Secrets and Render)
 GIST_ID = os.getenv("CONTENT_HISTORY_GIST_ID")  # Your gist ID
-GITHUB_TOKEN = os.getenv("GH_TOKEN")  # GitHub personal access token
+GITHUB_TOKEN = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")  # GitHub personal access token
 
 GIST_FILENAME = "content_history.json"
 HISTORY_LIMIT = 30  # Track last 30 posts

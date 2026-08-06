@@ -1,0 +1,170 @@
+name: Quote Scheduler
+
+on:
+  # Run every 15 minutes to check posting windows
+  schedule:
+    - cron: '0,15,30,45 * * * *'  # Every 15 minutes
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+
+concurrency:
+  group: aesthetic-vibes-publisher
+  cancel-in-progress: false
+
+jobs:
+  check-and-post-quote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Check if quote should be published
+        id: check
+        env:
+          SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
+          CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -c "
+          from smart_scheduler import should_publish_quote, get_schedule_summary
+          from smart_scheduler import ContentType
+          import sys
+          
+          # Show today's schedule
+          get_schedule_summary()
+          
+          # Check if we should publish
+          should_publish, reason = should_publish_quote()
+          
+          print(f'\n📊 Decision: {\"PUBLISH\" if should_publish else \"SKIP\"}')
+          print(f'📝 Reason: {reason}\n')
+          
+          # Set output for next step
+          if should_publish:
+              print('SHOULD_PUBLISH=true')
+              sys.exit(0)
+          else:
+              print('SHOULD_PUBLISH=false')
+              sys.exit(0)
+          " | tee check_result.txt
+          
+          # Extract decision
+          if grep -q "SHOULD_PUBLISH=true" check_result.txt; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate and post quote
+        if: steps.check.outputs.should_publish == 'true'
+        env:
+          SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
+          CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          python -c "
+          print('\n' + '='*70)
+          print('🚀 STARTING QUOTE GENERATION AND UPLOAD')
+          print('='*70 + '\n')
+          
+          # Import after environment variables are set
+          from QuoteGeneration import generate_quote
+          from ImageGeneration import create_neon_quote_image
+          from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
+          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
+          from gist_storage import add_to_history
+          import os
+          import PromptSelector
+          
+          active_window = get_active_window(ContentType.QUOTE)
+          if not active_window:
+              raise RuntimeError('No active quote window found before posting')
+          
+          if not acquire_run_lock(ContentType.QUOTE, active_window):
+              raise RuntimeError('Could not acquire scheduler run lock')
+          
+          try:
+              # Generate quote without updating content history yet.
+              print('📝 Step 1/4: Generating AI quote...')
+              quote_text = generate_quote(record_history=False)
+              print(f'✅ Quote generated: {quote_text[:100]}...\n')
+              
+              # Create image
+              print('🎨 Step 2/4: Creating neon image...')
+              create_neon_quote_image(
+                  raw_text=quote_text,
+                  template_path='template.jpg',
+                  output_path='image.jpg'
+              )
+              print('✅ Image created\n')
+              
+              # Upload to Facebook
+              print('📤 Step 3/4: Uploading to Facebook...')
+              fb_cdn_url = schedule_photo_after(
+                  image_path='image.jpg',
+                  caption='',
+                  hours=0,
+                  minutes=0
+              )
+              if not fb_cdn_url:
+                  raise RuntimeError('Facebook upload did not return CDN URL')
+              print('✅ Facebook upload complete\n')
+              
+              # Upload to Instagram
+              print('📱 Step 4/4: Publishing to Instagram...')
+              ig_result = post_to_instagram_from_fb_url(
+                  fb_image_url=fb_cdn_url,
+                  caption=''
+              )
+              ig_post_id = ig_result.get('id', '')
+              if not ig_post_id:
+                  raise RuntimeError(f'Instagram publish failed: {ig_result}')
+              print(f'✅ Instagram post complete: {ig_post_id}\n')
+              
+              # Mark content type history only after confirmed upload.
+              selected = getattr(PromptSelector, 'LAST_SELECTED_CONTENT_INFO', None)
+              if selected and selected.get('type'):
+                  add_to_history(selected['type'])
+              
+              print(f'✅ Marking slot "{active_window.name}" as completed...')
+              mark_slot_completed(active_window)
+              
+              print('\n' + '='*70)
+              print('🎉 QUOTE POSTED SUCCESSFULLY!')
+              print('='*70 + '\n')
+          except Exception:
+              release_run_lock(ContentType.QUOTE, active_window)
+              raise
+          finally:
+              if os.path.exists('image.jpg'):
+                  os.remove('image.jpg')
+          "
+      
+      - name: Skip - not in posting window
+        if: steps.check.outputs.should_publish != 'true'
+        run: |
+          echo "⏭️ Skipping quote generation - not in posting window or already completed"

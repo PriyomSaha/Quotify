@@ -1,32 +1,14 @@
-"""
-image_generation.py
-
-Aesthetic Vibes Image Generator
-
-Creates cinematic hand-drawn editorial illustrations
-for short wisdom reels.
-
-Visual Identity
-
-✓ Environment-first composition
-✓ Tiny human silhouette
-✓ Dark blue/orange color palette
-✓ Hand-drawn editorial artwork
-✓ Large negative space for subtitles
-✓ 1080x1920 Reel Ready
-"""
-
 import base64
 import io
 import json
 import os
+import random
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import random
 
 import requests
-from PIL import Image, ImageDraw
-
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 from dotenv import load_dotenv
 
 from .config import OUTPUT_DIR
@@ -48,7 +30,7 @@ CF_MODEL = "@cf/black-forest-labs/flux-1-schnell"
 CLOUDFLARE_URL_TEMPLATE = (
     "https://api.cloudflare.com/client/v4/accounts/"
     "{account_id}/ai/run/"
-    "@cf/black-forest-labs/flux-1-schnell"
+    f"{CF_MODEL}"
 )
 
 QUOTA_STATUS_CODE = 429
@@ -60,10 +42,16 @@ CLOUDFLARE_ACCOUNTS = [
         "api_token": CF_TOKEN,
     },
     {
-        "name": "2nd Account",
+        "name": "Secondary",
         "account_id": CF_ACCOUNT_ID_2,
         "api_token": CF_TOKEN_2,
-    }
+    },
+]
+
+CLOUDFLARE_ACCOUNTS = [
+    account
+    for account in CLOUDFLARE_ACCOUNTS
+    if account["account_id"] and account["api_token"]
 ]
 
 if not CLOUDFLARE_ACCOUNTS:
@@ -77,381 +65,160 @@ REEL_WIDTH = 1080
 REEL_HEIGHT = 1920
 
 # ============================================================
-# AESTHETIC VIBES VISUAL STYLE
+# IMAGE STYLE
 # ============================================================
 
-AESTHETIC_STYLE = """
+STYLE_PROMPT = """
+Create a beautiful cinematic digital painting.
 
-Create a premium hand-drawn editorial illustration.
+Japanese slice-of-life inspired illustration.
 
-Traditional illustration.
+Painterly brush strokes.
 
-Graphite pencil sketch.
+Soft natural textures.
 
-Fine ink line art.
+Warm golden hour lighting.
 
-Soft watercolor washes.
+Beautiful volumetric sunlight.
 
-Subtle textured paper.
+Natural shadows.
 
-Natural brush strokes.
+Rich but realistic colors.
 
-Visible handmade imperfections.
+Orange and teal cinematic grading.
 
-Elegant book illustration.
+Emotional storytelling.
 
-NOT cartoon.
+Peaceful atmosphere.
 
-NOT anime.
+Highly detailed environment.
 
-NOT comic.
+Beautiful sky.
 
-NOT Pixar.
+Soft clouds.
 
-NOT Disney.
+Natural perspective.
 
-NOT vector art.
+Award-winning illustration.
 
-NOT 3D.
+Movie still.
 
-NOT photorealistic.
+Professional composition.
 
+Vertical 9:16.
+
+No text.
 """
-
-# ============================================================
-# CHANNEL ATMOSPHERE
-# ============================================================
-
-ATMOSPHERE = """
-
-The image should feel calm.
-
-Peaceful.
-
-Quiet.
-
-Thoughtful.
-
-Emotionally mature.
-
-Reflective.
-
-Lonely without feeling depressing.
-
-Warm but melancholic.
-
-Minimal.
-
-Timeless.
-
-Everything feels slow.
-
-Nothing dramatic.
-
-Nothing exciting.
-
-The viewer should pause and think.
-
-"""
-
-# ============================================================
-# COLOR PALETTE
-# ============================================================
-
-COLOR_PALETTE = """
-
-Deep navy blue.
-
-Charcoal.
-
-Muted teal.
-
-Burnt orange.
-
-Warm amber.
-
-Dusty brown.
-
-Soft grey.
-
-Muted cream highlights.
-
-Low saturation.
-
-Dark cinematic color grading.
-
-Blue hour.
-
-Golden hour.
-
-Late sunset.
-
-Soft moonlight.
-
-Foggy morning.
-
-Deep natural shadows.
-
-"""
-
-# ============================================================
-# COMPOSITION
-# ============================================================
-
-COMPOSITION = """
-
-The environment is the main subject.
-
-Landscape occupies around 90% of the image.
-
-The human occupies less than 10%.
-
-Use an extreme wide cinematic shot.
-
-Establishing shot.
-
-Large negative space.
-
-Large empty sky.
-
-Large empty foreground.
-
-Rule of thirds.
-
-Professional movie composition.
-
-Leave plenty of empty space for subtitles.
-
-The scenery should tell the story.
-
-"""
-
-# ============================================================
-# HUMAN
-# ============================================================
-
-HUMAN_STYLE = """
-
-If a person appears:
-
-Show only one person.
-
-The person is tiny.
-
-The person is a distant silhouette.
-
-Never close to the camera.
-
-Never portrait composition.
-
-Never selfie.
-
-Never looking at the viewer.
-
-Show from behind or side.
-
-Anonymous.
-
-The person should simply exist inside the environment.
-
-"""
-
-# ============================================================
-# ENVIRONMENTS
-# ============================================================
-
-ENVIRONMENTS = """
-
-Choose environments naturally.
-
-Quiet beach.
-
-Ocean shoreline.
-
-Lake.
-
-River bank.
-
-Mountain overlook.
-
-Forest trail.
-
-Foggy road.
-
-Country road.
-
-Empty bridge.
-
-Old wooden dock.
-
-Rainy street.
-
-Park bench.
-
-Field during sunset.
-
-Snow path.
-
-Old library.
-
-Wooden cabin.
-
-Window during rain.
-
-Coffee shop window.
-
-Cliff.
-
-Lighthouse.
-
-Train station.
-
-Night sky.
-
-Stars.
-
-Moon.
-
-Clouds.
-
-Tall grass.
-
-Wild flowers.
-
-Old trees.
-
-Empty road.
-
-"""
-
-# ============================================================
-# ENVIRONMENT DETAILS
-# ============================================================
-
-DETAILS = """
-
-Use meaningful environmental details.
-
-Birds flying.
-
-Moonlight.
-
-Stars.
-
-Cloud movement.
-
-Rain.
-
-Mist.
-
-Fog.
-
-Wind.
-
-Ocean waves.
-
-Reflection on water.
-
-Leaves.
-
-Street lamps.
-
-Telephone wires.
-
-Boats.
-
-Flowers.
-
-Mountains.
-
-Fireflies.
-
-Distant lights.
-
-Soft shadows.
-
-"""
-
-# ============================================================
-# NEGATIVE PROMPT
-# ============================================================
 
 NEGATIVE_PROMPT = """
-
-portrait
-
-close-up
-
-selfie
-
-headshot
-
-large face
-
-person filling frame
-
-multiple people
-
-crowd
-
-fashion photography
-
-studio lighting
-
-looking at camera
-
-cartoon
-
-anime
-
-comic
-
-pixar
-
-disney
-
-cgi
-
-3d render
-
+text,
+letters,
+caption,
+logo,
+watermark,
+signature,
+frame,
+border,
+low quality,
+blurry,
+pixelated,
+cropped,
+duplicate people,
+multiple heads,
+extra arms,
+extra legs,
+extra fingers,
+bad anatomy,
+deformed,
+distorted,
+mutated,
+3d,
+cgi,
+render,
+photograph,
 photorealistic
-
-oversaturated colors
-
-bright colorful scene
-
-busy composition
-
-action pose
-
-dramatic pose
-
-weapon
-
-violence
-
-text
-
-letters
-
-logo
-
-watermark
-
-caption
-
-speech bubble
-
-typography
-
 """
 
 # ============================================================
-# BRAND COLOR MODE - Toggle this to switch styles
+# ENVIRONMENT POOL
 # ============================================================
-# Set to True for brand colors (pink/purple theme)
-# Set to False for natural colors (current style)
-USE_BRAND_COLORS = False  # ← Change this to False to revert
+
+ENVIRONMENTS = [
+    "quiet lakeside at sunset",
+    "peaceful mountain overlook",
+    "empty countryside road",
+    "rainy city street",
+    "cozy coffee shop window",
+    "small wooden cabin",
+    "old train station",
+    "forest trail",
+    "ocean shore",
+    "flower field",
+    "wooden dock",
+    "old bridge",
+    "snow covered path",
+    "library corner",
+    "park bench",
+    "cliff overlooking the sea",
+    "river bank",
+    "lighthouse",
+    "village street",
+    "balcony during sunset",
+]
+
+LIGHTING = [
+    "golden hour",
+    "soft sunset",
+    "blue hour",
+    "warm morning light",
+    "gentle rain",
+    "after rainfall",
+    "moonlight",
+    "cloudy afternoon",
+]
+
+MOODS = [
+    "peaceful",
+    "nostalgic",
+    "quiet",
+    "melancholic",
+    "hopeful",
+    "reflective",
+    "comforting",
+    "dreamlike",
+]
+
+FOREGROUND_DETAILS = [
+    "wildflowers",
+    "fallen leaves",
+    "wooden fence",
+    "rain puddles",
+    "grass",
+    "tea cup",
+    "open book",
+    "lantern",
+    "old bicycle",
+    "window",
+    "birds",
+]
+
+# ============================================================
+# PROMPT HELPERS
+# ============================================================
+
+MAX_PROMPT_LENGTH = 1800
+
+
+def normalize_prompt_text(text: str) -> str:
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def compact_prompt(text: str) -> str:
+    text = normalize_prompt_text(text)
+    if len(text) > MAX_PROMPT_LENGTH:
+        text = text[:MAX_PROMPT_LENGTH].rstrip()
+    return text
 
 # ============================================================
 # PROMPT BUILDER
@@ -461,39 +228,113 @@ def build_prompt(
     scene_type: str,
     scene_description: str,
 ) -> str:
+    scene_type = (scene_type or "environment").lower().strip()
+    scene_description = (scene_description or "").strip()
 
-    # Determine if person should be included
-    include_person = scene_type.lower() == "person" and "person" in scene_description.lower()
-    
-    person_instruction = ""
-    if include_person:
-        person_instruction = "ONE tiny person as small distant silhouette (max 5%), back/side view, simple action. Logical context - sitting on bench/rock, walking on path, standing on cliff."
+    if scene_type == "couple":
+        subject = (
+            "Two people naturally interacting. "
+            "Walking together, sitting quietly, holding hands, sharing an umbrella, "
+            "or enjoying a peaceful moment. "
+            "No close-up faces. Natural body language."
+        )
+
+    elif scene_type == "person":
+        subject = (
+            "One person naturally inside the environment. "
+            "Walking, reading, drinking coffee, sitting by a window, "
+            "watching the rain, standing on a bridge, looking at the sky, "
+            "or enjoying nature. "
+            "Not a portrait. Never a selfie."
+        )
+
+    elif scene_type == "object":
+        subject = (
+            "An everyday object tells the story. "
+            "Books, tea, coffee, bicycle, lantern, flowers, window, "
+            "umbrella, camera, diary, wooden chair or similar."
+        )
+
+    elif scene_type == "architecture":
+        subject = (
+            "Beautiful architecture or interior space. "
+            "Coffee shop, library, train station, old cabin, balcony, "
+            "wooden house, bridge, lighthouse or quiet street."
+        )
+
     else:
-        person_instruction = "Pure nature scene, no people. Focus on landscape."
-    
-    # Choose color palette based on mode
-    if USE_BRAND_COLORS:
-        color_instruction = """BRAND COLORS (MANDATORY): Bright pink (#FF2075) in sky/lights/highlights, dark burgundy (#610B2D) shadows, navy blue depth, muted cream accents. Pink-tinted atmosphere - pink sunset, pink mist, purple night, burgundy shadows. Color grade entire scene pink/purple/blue. NEVER: bright green, yellow, orange."""
-    else:
-        color_instruction = """Colors: Navy blue, charcoal, muted teal, burnt orange, warm amber, cream. Low saturation, moody cinematic grading."""
-    
-    return f"""
-Hand-drawn sketch illustration. Loose linework, soft watercolor, paper texture. Impressionistic editorial style.
+        subject = (
+            "Environment is the main subject. "
+            "Nature tells the story."
+        )
 
-Scene: {scene_description}
+    environment = random.choice(ENVIRONMENTS)
+    lighting = random.choice(LIGHTING)
+    mood = random.choice(MOODS)
+    foreground = random.choice(FOREGROUND_DETAILS)
+    variation = cinematic_variation()
 
-{person_instruction}
+    prompt = f"""
+        {STYLE_PROMPT}
 
-Nature: rain clouds, mist, fog, moonlight, stars, birds, waves, wind, grass, trees, flowers, water reflections.
+        Scene:
+        {scene_description}
 
-Composition: Extreme wide shot. 90-95% landscape. Huge empty sky/water. Rule of thirds. Space for text.
+        Subject:
+        {subject}
 
-Atmosphere: Calm, peaceful, melancholic, quiet, reflective, minimal. Blue hour, golden hour lighting.
+        Environment:
+        {environment}
 
-{color_instruction}
+        Lighting:
+        {lighting}
 
-Style: Artistic sketch, loose strokes, simplified forms, elegant minimalism. Abstract faces if visible.
-"""
+        Mood:
+        {mood}
+
+        Foreground:
+        {foreground}
+
+        Composition:
+        Vertical 9:16.
+        {variation["camera"]}.
+        {variation["lens"]}.
+        Professional cinematic framing.
+        Layered foreground, middle ground and background.
+        Natural depth.
+        Balanced composition.
+        Leave clean negative space for subtitles.
+
+        Quality:
+        Highly detailed.
+        Painterly illustration.
+        Soft brush strokes.
+        Rich textures.
+        Natural colors.
+        Sharp focus.
+        Beautiful lighting.
+        Clean edges.
+        Emotional storytelling.
+        Movie still.
+        Award-winning artwork.
+
+        Avoid:
+        No text.
+        No logo.
+        No watermark.
+        No blurry image.
+        No low quality.
+        No cropped subject.
+        No duplicate people.
+        No deformed anatomy.
+        No extra fingers.
+        No extra limbs.
+        No CGI.
+        No 3D render.
+        No photorealistic photo.
+        """
+
+    return compact_prompt(prompt)
 
 # ============================================================
 # CLOUDFLARE IMAGE GENERATION
@@ -502,177 +343,135 @@ Style: Artistic sketch, loose strokes, simplified forms, elegant minimalism. Abs
 def generate_image_with_cloudflare(
     prompt: str,
 ) -> Optional[Image.Image]:
+    prompt = compact_prompt(prompt)
+    negative_prompt = compact_prompt(NEGATIVE_PROMPT)
+
+    steps = random.choice([5, 6, 7])
+    guidance = random.choice([3.5,4.0, 4.5, 5.0])
 
     payload = {
-
         "prompt": prompt,
-
-        "negative_prompt": NEGATIVE_PROMPT,
-
-        "steps": 4,
-
-        "guidance": 3.5,
-
+        "negative_prompt": negative_prompt,
+        "steps": steps,
+        "guidance": guidance,
     }
 
     for account in CLOUDFLARE_ACCOUNTS:
+        print(f"\nUsing Cloudflare Account: {account['name']}")
 
         try:
-
-            print(f"\nUsing Cloudflare account: {account['name']}")
-
-            url = CLOUDFLARE_URL_TEMPLATE.format(
-                account_id=account["account_id"]
-            )
-
-            headers = {
-                "Authorization": f"Bearer {account['api_token']}",
-                "Content-Type": "application/json",
-            }
-
             response = requests.post(
-                url,
-                headers=headers,
+                CLOUDFLARE_URL_TEMPLATE.format(
+                    account_id=account["account_id"]
+                ),
+                headers={
+                    "Authorization": f"Bearer {account['api_token']}",
+                    "Content-Type": "application/json",
+                },
                 json=payload,
                 timeout=180,
             )
 
-            if response.status_code == 200:
+        except requests.RequestException as exc:
+            print(f"Network Error: {exc}")
+            continue
 
-                result = response.json()
+        if response.status_code == QUOTA_STATUS_CODE:
+            print("Quota exceeded. Trying next account...")
+            continue
 
-                if (
-                    "result" in result
-                    and "image" in result["result"]
-                ):
+        if response.status_code != 200:
+            print(f"HTTP {response.status_code}")
+            try:
+                print(response.json())
+            except Exception:
+                print(response.text)
+            continue
 
-                    image_data = base64.b64decode(
-                        result["result"]["image"]
-                    )
+        try:
+            result = response.json()
 
-                    image = Image.open(
-                        io.BytesIO(image_data)
-                    ).convert("RGB")
-
-                    print("✓ Image generated")
-
-                    return image
-
-                print("Invalid Cloudflare response.")
-
-            elif response.status_code == QUOTA_STATUS_CODE:
-
-                print(
-                    f"{account['name']} quota exceeded."
-                )
-
+            if not result.get("success", True):
+                print(result)
                 continue
 
-            else:
+            image_b64 = (
+                result
+                .get("result", {})
+                .get("image")
+            )
 
-                print(
-                    f"Status Code: {response.status_code}"
+            if not image_b64:
+                print("No image returned.")
+                continue
+
+            image = Image.open(
+                io.BytesIO(
+                    base64.b64decode(image_b64)
                 )
+            ).convert("RGB")
 
-                print(response.text)
+            print("✓ Image generated successfully")
+
+            return image
 
         except Exception as exc:
-
-            print(exc)
-
+            print(f"Image Decode Error: {exc}")
             continue
 
     print("\nAll Cloudflare accounts failed.")
 
     return None
 
-
-# ============================================================
-# PLACEHOLDER IMAGE
-# ============================================================
-
-def create_placeholder_image(
-    output_path: str,
-    scene: str,
-) -> str:
-
-    output = Path(output_path)
-
-    output.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    image = Image.new(
-        "RGB",
-        (REEL_WIDTH, REEL_HEIGHT),
-        (22, 24, 30),
-    )
-
-    draw = ImageDraw.Draw(image)
-
-    draw.rectangle(
-        (
-            80,
-            80,
-            REEL_WIDTH - 80,
-            REEL_HEIGHT - 80,
-        ),
-        outline=(90, 90, 90),
-        width=3,
-    )
-
-    draw.text(
-        (120, 140),
-        "Image Generation Failed",
-        fill=(240, 240, 240),
-    )
-
-    draw.text(
-        (120, 240),
-        scene[:200],
-        fill=(180, 180, 180),
-    )
-
-    image.save(output)
-
-    return str(output)
-
 # ============================================================
 # IMAGE PROCESSING
 # ============================================================
 
+def enhance_natural_clarity(
+    image: Image.Image,
+) -> Image.Image:
+    image = image.convert("RGB")
+
+    image = ImageEnhance.Contrast(image).enhance(1.12)
+    image = ImageEnhance.Color(image).enhance(1.08)
+    image = ImageEnhance.Sharpness(image).enhance(1.18)
+
+    image = image.filter(
+        ImageFilter.UnsharpMask(
+            radius=1.3,
+            percent=110,
+            threshold=3,
+        )
+    )
+
+    return image
+
+
+def apply_cinematic_grade(
+    image: Image.Image,
+) -> Image.Image:
+    image = image.convert("RGB")
+
+    image = ImageEnhance.Color(image).enhance(1.10)
+    image = ImageEnhance.Contrast(image).enhance(1.08)
+    image = ImageEnhance.Brightness(image).enhance(1.02)
+
+    return image
+
+
 def resize_for_reel(
     image: Image.Image,
 ) -> Image.Image:
-
-    """
-    Resize image for Instagram Reel.
-
-    Keeps aspect ratio.
-
-    Uses center crop.
-
-    Never stretches.
-
-    Final size:
-    1080 x 1920
-    """
-
     image = image.convert("RGB")
 
     width, height = image.size
 
     target_ratio = REEL_WIDTH / REEL_HEIGHT
-
     current_ratio = width / height
 
     if current_ratio > target_ratio:
-
         new_width = int(height * target_ratio)
-
         left = (width - new_width) // 2
-
         image = image.crop(
             (
                 left,
@@ -683,11 +482,8 @@ def resize_for_reel(
         )
 
     elif current_ratio < target_ratio:
-
         new_height = int(width / target_ratio)
-
         top = (height - new_height) // 2
-
         image = image.crop(
             (
                 0,
@@ -708,6 +504,15 @@ def resize_for_reel(
     return image
 
 
+def finalize_image(
+    image: Image.Image,
+) -> Image.Image:
+    image = resize_for_reel(image)
+    image = apply_cinematic_grade(image)
+    image = enhance_natural_clarity(image)
+    return image
+
+
 # ============================================================
 # SAVE IMAGE
 # ============================================================
@@ -716,7 +521,6 @@ def save_image(
     image: Image.Image,
     output_path: str,
 ) -> str:
-
     output = Path(output_path)
 
     output.parent.mkdir(
@@ -734,6 +538,257 @@ def save_image(
 
     return str(output)
 
+# ============================================================
+# SCENE DETECTION
+# ============================================================
+
+RELATIONSHIP_KEYWORDS = {
+    "love",
+    "lover",
+    "couple",
+    "relationship",
+    "holding hands",
+    "boy",
+    "girl",
+    "husband",
+    "wife",
+    "partner",
+    "together",
+}
+
+PERSON_KEYWORDS = {
+    "person",
+    "man",
+    "woman",
+    "child",
+    "friend",
+    "traveler",
+    "student",
+    "father",
+    "mother",
+    "someone",
+}
+
+OBJECT_KEYWORDS = {
+    "book",
+    "tea",
+    "coffee",
+    "cup",
+    "phone",
+    "letter",
+    "bicycle",
+    "umbrella",
+    "lantern",
+    "flower",
+    "camera",
+    "chair",
+    "window",
+}
+
+ARCHITECTURE_KEYWORDS = {
+    "library",
+    "cafe",
+    "coffee shop",
+    "station",
+    "bridge",
+    "house",
+    "home",
+    "room",
+    "balcony",
+    "street",
+    "cabin",
+    "lighthouse",
+}
+
+ENVIRONMENT_VARIATIONS = [
+    "quiet mountain lake during sunset",
+    "peaceful ocean shore with gentle waves",
+    "forest trail after light rain",
+    "golden wheat field beneath dramatic clouds",
+    "snow covered mountain path",
+    "river flowing through rocks",
+    "flower meadow in warm evening light",
+    "empty countryside road",
+    "mist-free pine forest",
+    "cliff overlooking the sea",
+]
+
+PERSON_VARIATIONS = [
+    "walking quietly along a forest path",
+    "reading a book beside a rainy window",
+    "watching the sunset from a wooden dock",
+    "drinking coffee inside a cozy cafe",
+    "standing on a bridge during blue hour",
+    "looking across a peaceful lake",
+    "walking beneath autumn trees",
+    "sitting on a lonely park bench",
+]
+
+COUPLE_VARIATIONS = [
+    "walking hand in hand along the beach",
+    "sharing an umbrella during gentle rain",
+    "sitting together on a wooden dock",
+    "watching stars from a grassy hill",
+    "walking through a flower field",
+    "drinking coffee together near a large window",
+]
+
+OBJECT_VARIATIONS = [
+    "old bicycle near wildflowers",
+    "warm tea beside a rainy window",
+    "open book on a wooden table",
+    "camera resting on a backpack",
+    "lantern glowing during sunset",
+    "umbrella beside a quiet street",
+]
+
+ARCHITECTURE_VARIATIONS = [
+    "warm coffee shop interior",
+    "peaceful old library",
+    "wooden cabin surrounded by trees",
+    "empty train station",
+    "old lighthouse beside the sea",
+    "traditional Japanese street",
+]
+
+
+def contains_keyword(
+    text: str,
+    keywords: set[str],
+) -> bool:
+    text = text.lower()
+    return any(keyword in text for keyword in keywords)
+
+
+def detect_scene_type(
+    description: str,
+    default: str = "environment",
+) -> str:
+    if contains_keyword(description, RELATIONSHIP_KEYWORDS):
+        return "couple"
+
+    if contains_keyword(description, PERSON_KEYWORDS):
+        return "person"
+
+    if contains_keyword(description, OBJECT_KEYWORDS):
+        return "object"
+
+    if contains_keyword(description, ARCHITECTURE_KEYWORDS):
+        return "architecture"
+
+    return default
+
+
+def random_scene_description(
+    scene_type: str,
+) -> str:
+    if scene_type == "couple":
+        return random.choice(COUPLE_VARIATIONS)
+
+    if scene_type == "person":
+        return random.choice(PERSON_VARIATIONS)
+
+    if scene_type == "object":
+        return random.choice(OBJECT_VARIATIONS)
+
+    if scene_type == "architecture":
+        return random.choice(ARCHITECTURE_VARIATIONS)
+
+    return random.choice(ENVIRONMENT_VARIATIONS)
+
+
+def enhance_scene_for_variety(
+    scene: Dict[str, Any],
+    index: int,
+) -> Dict[str, Any]:
+    scene_type = str(
+        scene.get("type", "environment")
+    ).lower()
+
+    description = str(
+        scene.get("description", "")
+    ).strip()
+
+    scene_type = detect_scene_type(
+        description,
+        scene_type,
+    )
+
+    if not description:
+        description = random_scene_description(
+            scene_type
+        )
+
+    lighting = random.choice(LIGHTING)
+    mood = random.choice(MOODS)
+    foreground = random.choice(FOREGROUND_DETAILS)
+
+    description += (
+        f". Lighting: {lighting}."
+        f" Mood: {mood}."
+        f" Foreground: {foreground}."
+        " Cinematic composition."
+        " Painterly illustration."
+        " Highly detailed."
+        " Beautiful natural colors."
+        " Emotional storytelling."
+        " No text."
+    )
+
+    return {
+        "type": scene_type,
+        "description": description,
+    }
+
+
+# ============================================================
+# PLACEHOLDER IMAGE
+# ============================================================
+
+def create_placeholder_image(
+    output_path: str,
+    scene: str,
+) -> str:
+    output = Path(output_path)
+    output.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    image = Image.new(
+        "RGB",
+        (REEL_WIDTH, REEL_HEIGHT),
+        (35, 35, 40),
+    )
+
+    draw = ImageDraw.Draw(image)
+
+    draw.rectangle(
+        (
+            60,
+            60,
+            REEL_WIDTH - 60,
+            REEL_HEIGHT - 60,
+        ),
+        outline=(120, 120, 120),
+        width=4,
+    )
+
+    draw.text(
+        (90, 120),
+        "IMAGE GENERATION FAILED",
+        fill=(255, 255, 255),
+    )
+
+    draw.text(
+        (90, 200),
+        scene[:250],
+        fill=(190, 190, 190),
+    )
+
+    image.save(output, optimize=True)
+
+    return str(output)
 
 # ============================================================
 # SINGLE IMAGE GENERATION
@@ -743,21 +798,12 @@ def generate_single_image(
     scene: Dict[str, Any],
     output_path: str,
 ) -> str:
-
-    scene_type = scene.get(
-        "type",
-        "environment",
-    )
-
-    scene_description = scene.get(
-        "description",
-        "",
-    )
+    scene_type = scene.get("type", "environment")
+    scene_description = scene.get("description", "").strip()
 
     print("\n" + "=" * 60)
     print("GENERATING IMAGE")
     print("=" * 60)
-
     print(f"Type : {scene_type}")
     print(f"Scene: {scene_description}")
 
@@ -766,24 +812,16 @@ def generate_single_image(
         scene_description=scene_description,
     )
 
-    image = generate_image_with_cloudflare(
-        prompt
-    )
+    image = generate_image_with_cloudflare(prompt)
 
     if image is None:
-
-        print(
-            "Using placeholder image..."
-        )
-
+        print("Image generation failed. Using placeholder.")
         return create_placeholder_image(
             output_path,
             scene_description,
         )
 
-    image = resize_for_reel(
-        image
-    )
+    image = finalize_image(image)
 
     return save_image(
         image,
@@ -802,27 +840,18 @@ def generate_images_for_reel(
 ) -> List[str]:
 
     if output_dir is None:
-
         output_dir = OUTPUT_DIR / "images"
 
     output_dir = Path(output_dir)
-
     output_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    scenes = reel_json.get(
-        "visual_scenes",
-        []
-    )
+    scenes = reel_json.get("visual_scenes")
 
     if not scenes:
-
-        scenes = reel_json.get(
-            "scenes",
-            []
-        )
+        scenes = reel_json.get("scenes", [])
 
         scenes = [
             {
@@ -833,16 +862,11 @@ def generate_images_for_reel(
         ]
 
     if not scenes:
+        raise ValueError("No scenes found.")
 
-        raise ValueError(
-            "No visual scenes found."
-        )
-
-    print()
-    print("=" * 70)
+    print("\n" + "=" * 70)
     print("AESTHETIC VIBES IMAGE GENERATION")
     print("=" * 70)
-
     print(f"Scenes : {len(scenes)}")
     print(f"Output : {output_dir}")
 
@@ -852,292 +876,18 @@ def generate_images_for_reel(
         scenes,
         start=1,
     ):
-
-        output_path = (
-            output_dir
-            /
-            f"{prefix}_{index:02d}.png"
-        )
-
-        print()
-        print("-" * 70)
-        print(
-            f"Scene {index}/{len(scenes)}"
-        )
-        print("-" * 70)
-
-        image = generate_single_image(
-            scene=scene,
-            output_path=str(output_path),
-        )
-
-        generated_images.append(
-            image
-        )
-
-    print()
-    print("=" * 70)
-    print("IMAGE GENERATION COMPLETE")
-    print("=" * 70)
-
-    return generated_images
-
-
-# ============================================================
-# LOAD REEL JSON
-# ============================================================
-
-def load_reel_json(
-    json_path: str | Path,
-) -> Dict[str, Any]:
-
-    json_path = Path(json_path)
-
-    if not json_path.exists():
-
-        raise FileNotFoundError(
-            json_path
-        )
-
-    with open(
-        json_path,
-        "r",
-        encoding="utf-8",
-    ) as file:
-
-        return json.load(file)
-
-
-# ============================================================
-# FIND ALL GENERATED IMAGES
-# ============================================================
-
-def get_generated_images(
-    image_directory: str | Path,
-) -> List[str]:
-
-    image_directory = Path(image_directory)
-
-    if not image_directory.exists():
-
-        return []
-
-    images = sorted(
-
-        image_directory.glob(
-            "scene_*.png"
-        )
-
-    )
-
-    return [
-
-        str(image)
-
-        for image in images
-
-    ]
-
-# ============================================================
-# SCENE ENHANCEMENT
-# ============================================================
-
-PERSON_ENVIRONMENTS = [
-
-    "standing alone on a quiet beach",
-
-    "walking on an empty road",
-
-    "sitting on a wooden dock",
-
-    "standing on a mountain overlook",
-
-    "walking through a foggy forest",
-
-    "standing beside a calm lake",
-
-    "sitting on a lonely park bench",
-
-    "walking through a flower field",
-
-    "standing under a large tree",
-
-    "looking toward the ocean",
-
-    "standing on a cliff",
-
-    "walking beside railway tracks",
-
-    "standing near an old bridge",
-
-    "standing under the evening sky",
-
-    "walking through tall grass"
-
-]
-
-
-SCENERY_ENVIRONMENTS = [
-
-    "quiet beach at sunset",
-
-    "misty mountain landscape",
-
-    "empty forest trail",
-
-    "moon over a calm lake",
-
-    "foggy country road",
-
-    "old wooden pier",
-
-    "field of wild flowers",
-
-    "river flowing through rocks",
-
-    "rainy city street",
-
-    "wooden cabin in the forest",
-
-    "golden wheat field",
-
-    "snow covered path",
-
-    "lighthouse near the ocean",
-
-    "peaceful ocean waves",
-
-    "dramatic clouds above mountains",
-
-    "old library interior",
-
-    "coffee shop window during rain",
-
-    "quiet village road",
-
-    "sunlight through trees",
-
-    "birds flying across the sky"
-
-]
-
-
-def normalize_scene(
-    scene: Dict[str, Any],
-    index: int,
-) -> Dict[str, Any]:
-
-    """
-    Improves scene variety.
-
-    Roughly:
-
-    40% tiny human
-
-    60% environment only
-
-    """
-
-    scene_type = scene.get(
-        "type",
-        "environment",
-    )
-
-    description = scene.get(
-        "description",
-        "",
-    ).strip()
-
-
-    if not description:
-
-        if index % 3 == 0:
-
-            description = random.choice(
-                PERSON_ENVIRONMENTS
-            )
-
-            scene_type = "person"
-
-        else:
-
-            description = random.choice(
-                SCENERY_ENVIRONMENTS
-            )
-
-            scene_type = "environment"
-
-
-    if scene_type.lower() == "person":
-
-        description += """
-
-            The person is extremely small.
-
-            The environment dominates the image.
-
-            Wide cinematic landscape.
-
-            Large empty sky.
-
-            Professional establishing shot.
-
-            """
-
-    else:
-
-        description += """
-
-            No close human subject.
-
-            Environment tells the story.
-
-            Beautiful landscape.
-
-            Large cinematic composition.
-
-            Minimal.
-
-            Peaceful.
-
-            """
-
-    return {
-
-        "type": scene_type,
-
-        "description": description,
-
-    }
-
-
-    # ============================================================
-    # UPDATE IMAGE GENERATION LOOP
-    # ============================================================
-
-    # Replace the loop inside generate_images_for_reel()
-
-    generated_images = []
-
-    for index, scene in enumerate(
-        scenes,
-        start=1,
-    ):
-
-        scene = normalize_scene(
+        scene = enhance_scene_for_variety(
             scene,
             index,
         )
 
         output_path = (
-            output_dir
-            /
+            output_dir /
             f"{prefix}_{index:02d}.png"
         )
 
-        print()
-        print("-" * 70)
-        print(f"Generating Scene {index}")
+        print("\n" + "-" * 70)
+        print(f"Scene {index}/{len(scenes)}")
         print("-" * 70)
 
         image_path = generate_single_image(
@@ -1145,138 +895,60 @@ def normalize_scene(
             output_path=str(output_path),
         )
 
-        generated_images.append(
-            image_path
-        )
+        generated_images.append(image_path)
+
+    print("\n" + "=" * 70)
+    print("IMAGE GENERATION COMPLETE")
+    print("=" * 70)
 
     return generated_images
 
-
 # ============================================================
-# STANDALONE TEST
+# CINEMATIC VARIATIONS
 # ============================================================
 
-
-if __name__ == "__main__":
-
-
-    import sys
-
-
-
-    print("\n")
-    print("=" * 60)
-    print("AESTHETIC VIBES IMAGE TEST")
-    print("=" * 60)
-
-
-
-    # Change this path for testing
-
-    TEST_JSON = (
-
-        "/Users/priyom_saha/Documents/"
-        "QuotesGenerator/Reels/"
-        "output/20260802_153536/story.json"
-
-    )
-
-
-
-    try:
-
-
-        reel_data = load_reel_json(
-
-            TEST_JSON
-
-        )
-
-
-
-        print("\nQuote:")
-
-        print(
-
-            reel_data.get(
-
-                "quote",
-
-                "No quote"
-
-            )
-
-        )
-
-
-
-        timestamp_folder = (
-
-            Path(TEST_JSON)
-
-            .parent
-
-        )
-
-
-
-        image_folder = (
-
-            timestamp_folder
-
-            /
-
-            "images"
-
-        )
-
-
-
-        images = generate_images_for_reel(
-
-            reel_json=reel_data,
-
-            output_dir=image_folder,
-
-            prefix="scene"
-
-        )
-
-
-
-        print("\n")
-        print("=" * 60)
-        print("GENERATION COMPLETE")
-        print("=" * 60)
-
-
-
-        for index, img in enumerate(
-
-            images,
-
-            start=1
-
-        ):
-
-            print(
-
-                f"{index}. {img}"
-
-            )
-
-
-
-    except Exception as exc:
-
-
-        print("\nERROR:")
-
-        print(exc)
-
-
-
-        import traceback
-
-
-        traceback.print_exc()
+CAMERA_ANGLES = [
+    "eye-level shot",
+    "low-angle shot",
+    "high-angle shot",
+    "wide establishing shot",
+    "over-the-shoulder composition",
+    "side profile composition",
+    "three-quarter composition",
+    "distant cinematic view",
+]
+
+LENS_STYLES = [
+    "24mm cinematic lens",
+    "35mm film lens",
+    "50mm natural perspective",
+    "wide landscape lens",
+]
+
+WEATHER_STYLES = [
+    "clear sky",
+    "soft rain",
+    "after rainfall",
+    "golden sunset",
+    "blue hour",
+    "early morning",
+    "autumn afternoon",
+    "winter morning",
+]
+
+COLOR_GRADES = [
+    "warm orange and teal",
+    "golden cinematic",
+    "soft pastel",
+    "muted earthy colors",
+    "warm sunset colors",
+    "cool blue evening",
+]
+
+def cinematic_variation() -> Dict[str, str]:
+    return {
+        "camera": random.choice(CAMERA_ANGLES),
+        "lens": random.choice(LENS_STYLES),
+        "weather": random.choice(WEATHER_STYLES),
+        "grade": random.choice(COLOR_GRADES),
+    }

@@ -3,7 +3,6 @@ import json
 import sys
 import os
 import shutil
-import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -13,7 +12,7 @@ from Reels.image_generation import generate_images_for_reel
 from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
 from Reels.voice_generation import generate_voice
-from Reels.hashtag_generation import generate_hashtags
+from Reels.hashtag_generation import build_reel_caption
 
 
 def load_existing_story(story_path: str) -> Dict[str, Any]:
@@ -45,206 +44,22 @@ def get_timestamp_from_story_path(story_path: Path) -> str:
 
 def upload_to_social_media(video_file: Path, caption: str, output_dir: Path) -> Dict[str, Any]:
     """
-    Upload video to Facebook and Instagram.
-    Returns upload results.
+    Upload video to Facebook and Instagram using the shared uploader.
     """
-    import requests
-    
+    from Reels.social_upload import upload_reel_to_social_media
+
     print("\n📤 Step 5/5: Uploading to social media...")
-    print(f"Caption: {caption[:50]}...")
+    print(f"Caption length: {len(caption)} chars")
+    print(f"Caption preview: {caption[:500]}")
     sys.stdout.flush()
-    
-    # Get environment variables
-    PAGE_ID = os.getenv("PAGE_ID")
-    PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
-    API_VERSION = os.getenv("API_VERSION", "v21.0")
-    IG_USER_ID = os.getenv("IG_USER_ID")
-    
-    if not all([PAGE_ID, PAGE_ACCESS_TOKEN, IG_USER_ID]):
-        print("❌ Missing required environment variables for upload")
-        print(f"PAGE_ID: {'✓' if PAGE_ID else '✗'}")
-        print(f"PAGE_ACCESS_TOKEN: {'✓' if PAGE_ACCESS_TOKEN else '✗'}")
-        print(f"IG_USER_ID: {'✓' if IG_USER_ID else '✗'}")
-        return {"facebook": None, "instagram": None}
-    
-    results = {
-        "facebook": None,
-        "instagram": None,
-        "cloudinary_url": None
-    }
-    
-    # Step 5a: Upload to Cloudinary for Instagram
-    print("\n📤 Step 5a: Uploading video to Cloudinary...")
-    sys.stdout.flush()
-    
-    cloudinary_url = None
-    cloudinary_public_id = None
-    delete_video_from_cloudinary = None
-    
-    try:
-        from Reels.cloudinary_uploader import upload_video_to_cloudinary, delete_video_from_cloudinary
-        
-        cloudinary_result = upload_video_to_cloudinary(
-            video_path=str(video_file),
-            folder="instagram_reels",
-            public_id=f"reel_{output_dir.name}"
-        )
-        
-        cloudinary_url = cloudinary_result["secure_url"]
-        cloudinary_public_id = cloudinary_result["public_id"]
-        results["cloudinary_url"] = cloudinary_url
-        
-        print(f"✅ Video uploaded to Cloudinary")
-        print(f"🔗 URL: {cloudinary_url[:80]}...")
-        sys.stdout.flush()
-        
-    except Exception as e:
-        print(f"❌ Cloudinary upload failed: {e}")
-        import traceback
-        print(traceback.format_exc())
-    
-    # Step 5b: Upload to Facebook
-    print("\n📤 Step 5b: Uploading video to Facebook...")
-    sys.stdout.flush()
-    
-    fb_url = f"https://graph.facebook.com/{API_VERSION}/{PAGE_ID}/videos"
-    
-    try:
-        with open(str(video_file), "rb") as video:
-            fb_response = requests.post(
-                fb_url,
-                files={"source": video},
-                data={
-                    "description": caption,
-                    "published": "true",
-                    "access_token": PAGE_ACCESS_TOKEN,
-                },
-                timeout=300,
-            )
-            
-            fb_result = fb_response.json()
-            fb_video_id = fb_result.get("id")
-            results["facebook"] = fb_video_id
-            
-            if fb_video_id:
-                print(f"✅ Facebook video uploaded: {fb_video_id}")
-            else:
-                print(f"❌ Facebook upload failed: {fb_result}")
-            sys.stdout.flush()
-                
-    except Exception as e:
-        print(f"❌ Facebook upload failed: {e}")
-        import traceback
-        print(traceback.format_exc())
-        sys.stdout.flush()
-    
-    # Step 5c: Upload to Instagram
-    if not cloudinary_url:
-        print("❌ Cannot post to Instagram without Cloudinary URL")
-        print("⚠️ Facebook upload completed, Instagram skipped")
-        sys.stdout.flush()
-        return results
-    
-    print("\n📱 Step 5c: Publishing to Instagram as Reel...")
-    sys.stdout.flush()
-    
-    # Create media container
-    container_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media"
-    container_res = requests.post(
-        container_url,
-        data={
-            "video_url": cloudinary_url,
-            "caption": caption,
-            "media_type": "REELS",
-            "access_token": PAGE_ACCESS_TOKEN,
-        },
-    ).json()
-    
-    creation_id = container_res.get("id")
-    
-    if not creation_id:
-        print(f"❌ IG Container creation failed: {container_res}")
-        error_message = container_res.get("error", {}).get("message", "Unknown error")
-        print(f"Error details: {error_message}")
-        sys.stdout.flush()
-        return results
-    
-    print(f"✅ IG Container created: {creation_id}")
-    sys.stdout.flush()
-    
-    # Poll container status
-    print("⏳ Polling container status (30-90 seconds)...")
-    sys.stdout.flush()
-    
-    max_attempts = 30
-    container_ready = False
-    
-    for attempt in range(1, max_attempts + 1):
-        time.sleep(3)
-        
-        status_url = f"https://graph.facebook.com/{API_VERSION}/{creation_id}"
-        status_res = requests.get(
-            status_url,
-            params={
-                "fields": "status_code",
-                "access_token": PAGE_ACCESS_TOKEN,
-            }
-        )
-        
-        status_data = status_res.json()
-        status_code = status_data.get("status_code", "UNKNOWN")
-        
-        print(f"Attempt {attempt}/{max_attempts}: Status = {status_code}")
-        sys.stdout.flush()
-        
-        if status_code == "FINISHED":
-            container_ready = True
-            print("✅ Container ready for publishing!")
-            sys.stdout.flush()
-            break
-        elif status_code in ["ERROR", "EXPIRED", "PUBLISHED"]:
-            print(f"❌ Container status invalid: {status_code}")
-            sys.stdout.flush()
-            return results
-    
-    if not container_ready:
-        print(f"❌ Container not ready after {max_attempts * 3} seconds")
-        sys.stdout.flush()
-        return results
-    
-    # Publish the reel
-    print("Publishing Instagram Reel...")
-    sys.stdout.flush()
-    
-    publish_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media_publish"
-    publish_res = requests.post(
-        publish_url,
-        data={
-            "creation_id": creation_id,
-            "access_token": PAGE_ACCESS_TOKEN,
-        },
-    ).json()
-    
-    ig_post_id = publish_res.get("id", "")
-    results["instagram"] = ig_post_id
-    
-    if ig_post_id:
-        print(f"✅ Instagram Reel published: {ig_post_id}")
-        
-        # Delete from Cloudinary after successful post
-        if cloudinary_public_id and delete_video_from_cloudinary:
-            print("🗑️ Deleting video from Cloudinary...")
-            try:
-                delete_video_from_cloudinary(cloudinary_public_id)
-                print("✅ Cloudinary video deleted")
-            except Exception as e:
-                print(f"⚠️ Failed to delete from Cloudinary: {e}")
-        sys.stdout.flush()
-    else:
-        print(f"⚠️ Instagram publish failed: {publish_res}")
-        sys.stdout.flush()
-    
-    return results
+
+    return upload_reel_to_social_media(
+        video_file=video_file,
+        caption=caption,
+        output_dir=output_dir,
+        require_facebook=True,
+        require_instagram=True,
+    )
 
 
 def generate_complete_reel(story_path: Optional[str] = None, images_only: bool = False, upload: Optional[bool] = None) -> Dict[str, Any]:
@@ -372,9 +187,10 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     
     # Upload to social media if enabled
     if upload:
-        name = story.get("title", story.get("narration", "")[:100])[:2000]
-        hashtags = generate_hashtags()
-        caption = name + "\n\n\n\n\n\n" + hashtags
+        caption = build_reel_caption(
+            title=story.get("title", ""),
+            fallback_text=story.get("narration", "")[:100],
+        )
         upload_results = upload_to_social_media(video_file, caption, output_folder)
         result["upload_results"] = upload_results
         
@@ -382,8 +198,8 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
         print(f"📦 Facebook: {upload_results.get('facebook', 'N/A')}")
         print(f"📱 Instagram: {upload_results.get('instagram', 'N/A')}")
         
-        # Clean up local files after successful upload
-        if upload_results.get("facebook") or upload_results.get("instagram"):
+        # Clean up local files after confirmed successful upload
+        if upload_results.get("success"):
             print(f"\n🗑️ Deleting output folder: {output_folder}")
             shutil.rmtree(output_folder)
             print("✅ Output folder deleted")

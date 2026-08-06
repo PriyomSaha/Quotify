@@ -180,7 +180,7 @@ HASHTAG_POOL = [
 
 def generate_hashtags(min_count=20, max_count=23):
     """
-    Returns a string of 18-20 hashtags.
+    Returns a string of 20-23 hashtags.
     Always includes:
         #LifeQuotes
         #LifeLessons
@@ -201,6 +201,20 @@ def generate_hashtags(min_count=20, max_count=23):
     random.shuffle(hashtags)
 
     return " ".join(hashtags)
+
+
+def build_reel_caption(title: str = "", fallback_text: str = "", max_title_chars: int = 300) -> str:
+    """
+    Build a Meta-safe reel caption with hashtags clearly appended.
+
+    Keep only two line breaks between title and hashtags. Too many blank lines
+    can make logs/social previews look like only the title was sent.
+    """
+    clean_title = (title or fallback_text or "Aesthetic Vibes").strip()
+    clean_title = " ".join(clean_title.split())[:max_title_chars].strip()
+    hashtags = generate_hashtags().strip()
+
+    return f"{clean_title}\n\n{hashtags}"
 
 
 if __name__ == "__main__":

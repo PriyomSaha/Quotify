@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import random
 from gist_storage import get_content_history, add_to_history
 
-# ALL 33 CONTENT TYPES organized by energy level and time appropriateness
+# ALL 35 CONTENT TYPES organized by energy level and time appropriateness
 MORNING_ENERGY_TYPES = [
     {"type": "MOTIVATIONAL_INSPIRING", "name": "Motivational/Inspiring"},
     {"type": "ELDER_WISDOM", "name": "Elder Wisdom"},
@@ -53,29 +53,53 @@ EVENING_DEEP_TYPES = [
     {"type": "TRAVEL_WANDERLUST", "name": "Travel/Wanderlust"},
 ]
 
+# Quote scheduler has only morning and evening quote slots.
+# Split afternoon content 5/5 so every content type can still be selected.
+AFTERNOON_TO_MORNING_TYPES = [
+    AFTERNOON_RELATABLE_TYPES[0],  # FUNNY_SASSY
+    AFTERNOON_RELATABLE_TYPES[4],  # POP_CULTURE_LYRICS
+    AFTERNOON_RELATABLE_TYPES[5],  # DAILY_STRUGGLE_HUMOR
+    AFTERNOON_RELATABLE_TYPES[6],  # FOOD_COMFORT
+    AFTERNOON_RELATABLE_TYPES[9],  # WHOLESOME_JOY
+]
 
+AFTERNOON_TO_EVENING_TYPES = [
+    AFTERNOON_RELATABLE_TYPES[1],  # BITTERSWEET_RELATABLE
+    AFTERNOON_RELATABLE_TYPES[2],  # SHORT_CONVERSATION
+    AFTERNOON_RELATABLE_TYPES[3],  # HE_SHE_RELATIONSHIP
+    AFTERNOON_RELATABLE_TYPES[7],  # SOCIAL_COMMENTARY
+    AFTERNOON_RELATABLE_TYPES[8],  # FRIENDSHIP_BONDS
+]
 
+MORNING_QUOTE_TYPES = MORNING_ENERGY_TYPES + AFTERNOON_TO_MORNING_TYPES
+EVENING_QUOTE_TYPES = EVENING_DEEP_TYPES + AFTERNOON_TO_EVENING_TYPES
+ALL_CONTENT_TYPES = MORNING_ENERGY_TYPES + AFTERNOON_RELATABLE_TYPES + EVENING_DEEP_TYPES
+ALL_CONTENT_TYPE_COUNT = len({content_info["type"] for content_info in ALL_CONTENT_TYPES})
 
 
 def get_time_category():
-    """Determine time category based on UTC hour (converted to IST)"""
+    """Determine quote category based on UTC hour (converted to IST)."""
     now_utc = datetime.now(timezone.utc)
     
     # Convert UTC to IST (UTC + 5:30)
     ist_hour = (now_utc.hour + 5 + (now_utc.minute + 30) // 60) % 24
     
-    # Time categories based on IST
-    if 5 <= ist_hour < 12:  # 5 AM - 12 PM IST
-        return "MORNING", MORNING_ENERGY_TYPES
-    elif 12 <= ist_hour < 17:  # 12 PM - 5 PM IST
-        return "AFTERNOON", AFTERNOON_RELATABLE_TYPES
+    # Scheduled quotes run in morning/evening only.
+    # Afternoon manual runs use the merged morning pool so no type is isolated.
+    if 5 <= ist_hour < 17:  # 5 AM - 5 PM IST
+        return "MORNING", MORNING_QUOTE_TYPES
     else:  # 5 PM - 5 AM IST
-        return "EVENING", EVENING_DEEP_TYPES
+        return "EVENING", EVENING_QUOTE_TYPES
 
 
-def get_content_type_for_time():
+def get_content_type_for_time(record_history=True):
     """
-    Randomly select appropriate content type based on time, avoiding recent repeats
+    Randomly select appropriate content type based on time, avoiding recent repeats.
+
+    Args:
+        record_history: Keep True for current behavior. Set False when caller wants
+                        to add to CONTENT_HISTORY_GIST_ID only after upload success.
+
     Returns: dict with type, name, and reason
     """
     # Get current time category
@@ -104,8 +128,9 @@ def get_content_type_for_time():
     # Randomly select from weighted pool
     selected = random.choice(weighted_types if weighted_types else available_types)
     
-    # Add to history (saves to Gist automatically)
-    add_to_history(selected["type"])
+    if record_history:
+        # Existing behavior for manual/legacy callers.
+        add_to_history(selected["type"])
     
     # Prepare response
     result = {
@@ -118,32 +143,38 @@ def get_content_type_for_time():
     print(f"📝 Selected: {result['name']} ({result['type']})")
     print(f"💡 Reason: {result['reason']}")
     print(f"📊 Recent types: {', '.join(recent_types[-5:]) if recent_types else 'None'}")
+    if not record_history:
+        print("📌 Content history will be updated after successful upload")
     
     return result
     
 
 def get_all_types_summary():
-    """Print summary of all 33 content types organized by time"""
+    """Print summary of all content types organized by original and active quote pools."""
     print("\n" + "="*70)
-    print("SMART RANDOMIZED CONTENT SYSTEM - 33 DIVERSE TYPES")
+    print(f"SMART RANDOMIZED CONTENT SYSTEM - {ALL_CONTENT_TYPE_COUNT} DIVERSE TYPES")
     print("="*70)
     
-    print("\n🌅 MORNING ENERGY (5 AM - 12 PM IST) - 8 Types:")
-    for i, info in enumerate(MORNING_ENERGY_TYPES, 1):
+    print(f"\n🌅 ACTIVE MORNING QUOTE POOL (5 AM - 5 PM IST) - {len(MORNING_QUOTE_TYPES)} Types:")
+    for i, info in enumerate(MORNING_QUOTE_TYPES, 1):
         print(f"  {i}. {info['name']}")
     
-    print("\n☀️ AFTERNOON RELATABLE (12 PM - 5 PM IST) - 10 Types:")
-    for i, info in enumerate(AFTERNOON_RELATABLE_TYPES, 1):
+    print(f"\n🌙 ACTIVE EVENING QUOTE POOL (5 PM - 5 AM IST) - {len(EVENING_QUOTE_TYPES)} Types:")
+    for i, info in enumerate(EVENING_QUOTE_TYPES, 1):
         print(f"  {i}. {info['name']}")
     
-    print("\n🌙 EVENING DEEP (5 PM - 5 AM IST) - 17 Types:")
-    for i, info in enumerate(EVENING_DEEP_TYPES, 1):
-        print(f"  {i}. {info['name']}")
+    print("\n📌 Original afternoon types were split 5/5:")
+    print("  Morning gets:")
+    for info in AFTERNOON_TO_MORNING_TYPES:
+        print(f"    • {info['name']}")
+    print("  Evening gets:")
+    for info in AFTERNOON_TO_EVENING_TYPES:
+        print(f"    • {info['name']}")
     
     print("\n" + "="*70)
     print("✅ SMART RANDOMIZATION: Avoids recent repeats (last 10 posts)")
-    print("✅ TIME-APPROPRIATE: Energy matches audience activity")
-    print("✅ MAXIMUM VARIETY: 33 types ensure nothing gets missed weekly")
+    print("✅ MORNING/EVENING COVERAGE: All content types can be used by scheduled quotes")
+    print(f"✅ MAXIMUM VARIETY: {ALL_CONTENT_TYPE_COUNT} types ensure nothing gets missed weekly")
     print("✅ WORKS WITH GITHUB ACTIONS: No strict timing required")
     print("="*70 + "\n")
 
@@ -166,7 +197,7 @@ def get_stats():
     for content_type, count in counts.most_common(5):
         print(f"  • {content_type}: {count} times")
     
-    print(f"\nTotal Unique Types Used: {len(counts)} / 33")
+    print(f"\nTotal Unique Types Used: {len(counts)} / {ALL_CONTENT_TYPE_COUNT}")
     print(f"Average posts per type: {len(history) / len(counts):.1f}")
     print("="*50 + "\n")
 

@@ -289,322 +289,78 @@ async def health_check():
 
 def execute_reel_generation():
     """
-    Generates a complete reel: story → images → voice → video → upload to FB/IG.
-    Uses the refactored generate_complete_reel() function from Reels.main
+    Generate a complete reel, upload it through the shared uploader, and return
+    a structured result. Raises on failure so GitHub Actions does not mark the
+    scheduler slot as completed after a failed upload.
     """
-    # -------------------------------------------------
-    # Initial logging & setup (unchanged)
-    # -------------------------------------------------
     logger.info("=" * 50)
     logger.info("🎬 REEL GENERATION STARTED")
     logger.info(f"Timestamp: {datetime.now().isoformat()}")
     logger.info("=" * 50)
     sys.stdout.flush()
 
+    output_dir = None
+
     try:
-        # -------------------------------------------------
-        # Import reel generation module (unchanged)
-        # -------------------------------------------------
-        logger.info("📦 Importing reel generation module...")
+        logger.info("📦 Importing reel modules...")
+        from Reels.hashtag_generation import build_reel_caption
+        from Reels.social_upload import upload_reel_to_social_media
         from Reels_main import generate_complete_reel
-        logger.info("✅ Module imported successfully")
-        sys.stdout.flush()
 
-        # -------------------------------------------------
-        # Generate the complete reel (unchanged)
-        # -------------------------------------------------
         logger.info("🎬 Generating complete reel...")
-        sys.stdout.flush()
-        
-        # Call generate_complete_reel with upload=False
-        # api.py will handle upload separately
         result = generate_complete_reel(upload=False)
-        
-        logger.info("✅ Reel generation completed successfully!")
-        logger.info(f"📁 Output folder: {result['output_folder']}")
-        logger.info(f"🎬 Video file: {result['video_file']}")
-        sys.stdout.flush()
 
-        # -------------------------------------------------
-        # Prepare paths & caption (unchanged)
-        # -------------------------------------------------
         video_file = Path(result["video_file"])
         output_dir = Path(result["output_folder"])
         story = result["story"]
-        caption = story.get("title", story.get("narration", "")[:100])[:2000]
-        logger.info(f"Caption (first 50 chars): {caption[:50]}...")
-        logger.info(f"Caption length: {len(caption)} characters")
-        sys.stdout.flush()
 
-        import requests
-        import time
-
-        # -------------------------------------------------
-        # Cloudinary upload (unchanged)
-        # -------------------------------------------------
-        cloudinary_url = None
-        cloudinary_public_id = None
-        delete_video_from_cloudinary = None  # will be set if upload succeeds
-
-        logger.info("📤 Step 5a: Uploading video to Cloudinary...")
-        sys.stdout.flush()
-        try:
-            from Reels.cloudinary_uploader import (
-                upload_video_to_cloudinary,
-                delete_video_from_cloudinary,
-            )
-
-            cloudinary_result = upload_video_to_cloudinary(
-                video_path=str(video_file),
-                folder="instagram_reels",
-                public_id=f"reel_{output_dir.name}",
-            )
-            cloudinary_url = cloudinary_result["secure_url"]
-            cloudinary_public_id = cloudinary_result["public_id"]
-            logger.info("✅ Video uploaded to Cloudinary")
-            logger.info(f"🔗 Public URL: {cloudinary_url[:80]}...")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"❌ Cloudinary upload failed: {e}")
-            import traceback
-
-            logger.error(traceback.format_exc())
-            cloudinary_url = None
-            cloudinary_public_id = None
-            delete_video_from_cloudinary = None
-
-        # -------------------------------------------------
-        # Facebook upload (unchanged)
-        # -------------------------------------------------
-        logger.info("📤 Step 5b: Uploading video to Facebook...")
-        sys.stdout.flush()
-        PAGE_ID = os.getenv("PAGE_ID")
-        PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN")
-        API_VERSION = os.getenv("API_VERSION", "v21.0")
-
-        logger.info(f"Facebook API Version: {API_VERSION}")
-        logger.info(
-            f"Page ID: {PAGE_ID[:10]}..." if PAGE_ID else "Page ID: MISSING"
-        )
-        logger.info(
-            f"Video file size: {video_file.stat().st_size / (1024*1024):.2f} MB"
-        )
-        sys.stdout.flush()
-
-        fb_url = f"https://graph.facebook.com/{API_VERSION}/{PAGE_ID}/videos"
-        logger.info(f"Facebook upload URL: {fb_url}")
-        logger.info("⏳ Uploading video to Facebook (this may take 1-3 minutes)...")
-        sys.stdout.flush()
-
-        fb_video_id = None
-        try:
-            with open(str(video_file), "rb") as video:
-                fb_response = requests.post(
-                    fb_url,
-                    files={"source": video},
-                    data={
-                        "description": caption,
-                        "published": "true",
-                        "access_token": PAGE_ACCESS_TOKEN,
-                    },
-                    timeout=300,
-                )
-                logger.info("✅ Facebook upload request completed")
-                logger.info(f"Response status code: {fb_response.status_code}")
-                sys.stdout.flush()
-
-                fb_result = fb_response.json()
-                logger.info(f"Facebook response: {fb_result}")
-                sys.stdout.flush()
-                fb_video_id = fb_result.get("id")
-                if fb_video_id:
-                    logger.info(f"✅ Facebook video uploaded: {fb_video_id}")
-                    sys.stdout.flush()
-                else:
-                    logger.error(f"❌ Facebook upload failed: {fb_result}")
-                    sys.stdout.flush()
-        except Exception as upload_error:
-            logger.error(f"❌ Facebook upload request failed: {upload_error}")
-            import traceback
-
-            logger.error(traceback.format_exc())
-        creation_id = None
-        # -------------------------------------------------
-        # Instagram Reel creation (modified)
-        # -------------------------------------------------
-        if not cloudinary_url:
-            logger.error("❌ Cannot post to Instagram without Cloudinary URL")
-            logger.warning("⚠️ Facebook upload completed, but Instagram post skipped")
-            sys.stdout.flush()
-            # Skip Instagram posting if no Cloudinary URL
-        else:
-            logger.info("📱 Step 5c: Publishing to Instagram as Reel...")
-            sys.stdout.flush()
-
-            IG_USER_ID = os.getenv("IG_USER_ID")
-            logger.info(
-                f"Instagram User ID: {IG_USER_ID[:10]}..."
-                if IG_USER_ID
-                else "IG User ID: MISSING"
-            )
-            sys.stdout.flush()
-
-            # Create media container for REEL (using Cloudinary URL)
-            logger.info("Creating Instagram media container with Cloudinary URL...")
-            sys.stdout.flush()
-
-            container_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media"
-            container_res = requests.post(
-                container_url,
-                data={
-                    "video_url": cloudinary_url,
-                    "caption": caption,
-                    "media_type": "REELS",
-                    "access_token": PAGE_ACCESS_TOKEN,
-                },
-            ).json()
-
-            creation_id = container_res.get("id")
-            logger.info(f"Container response: {container_res}")
-            sys.stdout.flush()
-
-            # ---------- Modified block ----------
-            # Abort if we didn't get a valid creation_id
-            if not creation_id:
-                logger.error(f"❌ IG Container creation failed: {container_res}")
-                error_message = container_res.get("error", {}).get(
-                    "message", "Unknown error"
-                )
-                logger.error(f"Error details: {error_message}")
-                sys.stdout.flush()
-                return            # <‑‑ stop further processing
-            else:
-                logger.info(f"✅ IG Container created: {creation_id}")
-                sys.stdout.flush()
-            # -----------------------------------
-
-        # -------------------------------------------------
-        # Poll container status (unchanged)
-        # -------------------------------------------------
-        logger.info("⏳ Polling container status (this can take 30-90 seconds)...")
-        sys.stdout.flush()
-        max_attempts = 30
-        attempt = 0
-        container_ready = False
-        status_code = "UNKNOWN"
-
-        while attempt < max_attempts:
-            attempt += 1
-            time.sleep(3)
-
-            status_url = f"https://graph.facebook.com/{API_VERSION}/{creation_id}"
-            status_res = requests.get(
-                status_url,
-                params={
-                    "fields": "status_code",
-                    "access_token": PAGE_ACCESS_TOKEN,
-                },
-            )
-            status_data = status_res.json()
-            status_code = status_data.get("status_code", "UNKNOWN")
-            logger.info(f"Attempt {attempt}/{max_attempts}: Status = {status_code}")
-            sys.stdout.flush()
-
-            if status_code == "FINISHED":
-                container_ready = True
-                logger.info("✅ Container ready for publishing!")
-                sys.stdout.flush()
-                break
-            elif status_code == "ERROR":
-                logger.error(f"❌ Container processing failed: {status_data}")
-                sys.stdout.flush()
-                return
-            elif status_code in ["EXPIRED", "PUBLISHED"]:
-                logger.error(f"❌ Container status invalid: {status_code}")
-                sys.stdout.flush()
-                return
-
-        if not container_ready:
-            logger.error(
-                f"❌ Container not ready after {max_attempts * 3} seconds"
-            )
-            logger.error(f"Final status: {status_code}")
-            sys.stdout.flush()
-            return
-
-        # -------------------------------------------------
-        # Publish the reel (unchanged)
-        # -------------------------------------------------
-        logger.info("Publishing Instagram Reel...")
-        sys.stdout.flush()
-        publish_url = f"https://graph.facebook.com/{API_VERSION}/{IG_USER_ID}/media_publish"
-        publish_res = requests.post(
-            publish_url,
-            data={
-                "creation_id": creation_id,
-                "access_token": PAGE_ACCESS_TOKEN,
-            },
-        ).json()
-        ig_post_id = publish_res.get("id", "")
-        logger.info(f"Publish response: {publish_res}")
-        sys.stdout.flush()
-
-        if ig_post_id:
-            logger.info(f"✅ Instagram Reel published: {ig_post_id}")
-
-            # ----------- Modified block -----------
-            # Safe deletion of Cloudinary video
-            if cloudinary_public_id:
-                logger.info("🗑️ Deleting video from Cloudinary...")
-                try:
-                    # Ensure the delete helper is available
-                    if delete_video_from_cloudinary:
-                        delete_video_from_cloudinary(cloudinary_public_id)
-                        logger.info(
-                            "✅ Cloudinary video deleted successfully"
-                        )
-                    else:
-                        logger.warning(
-                            "⚠️ Cloudinary delete function not available, skipping deletion"
-                        )
-                except Exception as delete_error:
-                    logger.warning(
-                        f"⚠️ Failed to delete from Cloudinary: {delete_error}"
-                    )
-                    # Continue even if deletion fails
-                sys.stdout.flush()
-            # -------------------------------------
-
-        else:
-            logger.warning(f"⚠️ Instagram publish failed: {publish_res}")
-            if cloudinary_public_id:
-                logger.info("📁 Video kept in Cloudinary for debugging")
-
-        sys.stdout.flush()
-        logger.info("🎉 Reel generation pipeline completed!")
-        sys.stdout.flush()
-        logger.info(f"📁 Output: {output_dir}")
-        logger.info(f"🎬 Video: {video_file}")
-        logger.info(
-            f"📦 Facebook: {fb_video_id if fb_video_id else 'N/A'}"
-        )
-        logger.info(
-            f"📱 Instagram: {ig_post_id if ig_post_id else 'N/A'}"
+        caption = build_reel_caption(
+            title=story.get("title", ""),
+            fallback_text=story.get("narration", "")[:100],
         )
 
-        # -------------------------------------------------
-        # Clean‑up temporary folder (unchanged)
-        # -------------------------------------------------
+        logger.info("✅ Reel generation completed successfully")
+        logger.info(f"📁 Output folder: {output_dir}")
+        logger.info(f"🎬 Video file: {video_file}")
+        logger.info(f"Caption length: {len(caption)} chars")
+        logger.info(f"Caption preview: {caption[:500]}")
+        sys.stdout.flush()
+
+        upload_results = upload_reel_to_social_media(
+            video_file=video_file,
+            caption=caption,
+            output_dir=output_dir,
+            require_facebook=True,
+            require_instagram=True,
+            log=logger.info,
+        )
+
+        result["upload_results"] = upload_results
+
+        logger.info("=" * 50)
+        logger.info("📦 Upload Results")
+        logger.info(f"Facebook: {upload_results.get('facebook') or 'N/A'}")
+        logger.info(f"Instagram: {upload_results.get('instagram') or 'N/A'}")
+        logger.info(f"Success: {upload_results.get('success')}")
+        logger.info("=" * 50)
+
+        if not upload_results.get("success"):
+            errors = upload_results.get("errors") or ["Unknown upload failure"]
+            raise RuntimeError("Reel upload failed: " + " | ".join(errors))
+
         logger.info(f"🗑️ Deleting output folder: {output_dir}")
         shutil.rmtree(output_dir)
         logger.info("✅ Output folder deleted successfully")
+        logger.info("🎉 Reel generation pipeline completed successfully")
+        return result
 
     except Exception as e:
         logger.error(f"❌ Reel generation failed: {type(e).__name__}")
         logger.error(f"Error details: {str(e)}")
-        import traceback
-
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        if output_dir:
+            logger.info(f"📁 Output folder kept for debugging: {output_dir}")
+        raise
 
 # -------------------------------------------------
 # Endpoint: Generate Reel
