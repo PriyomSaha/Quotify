@@ -1,9 +1,9 @@
 name: Reel Scheduler
 
 on:
-  # Run every 15 minutes to check reel posting windows
+  # Run every 5 minutes to reduce missed windows
   schedule:
-    - cron: '0,15,30,45 * * * *'  # Every 15 minutes
+    - cron: '*/5 * * * *'  # Every 5 minutes
   
   # Manual trigger for testing
   workflow_dispatch:

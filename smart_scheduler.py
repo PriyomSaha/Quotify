@@ -38,6 +38,8 @@ API_VERSION = os.getenv("API_VERSION", "v21.0")
 MIN_SPACING_MINUTES = 90  # Minimum time between any two posts
 REEL_GENERATION_TIME = 25  # Minutes needed to generate a reel
 WINDOW_GRACE_PERIOD = 30  # Minutes after window closes to still publish
+QUOTE_LOOKAHEAD_MINUTES = 5  # Small buffer before a quote window starts, not a random publish time
+MISSED_WINDOW_RECOVERY_MINUTES = 90  # Allow a late quote recovery after a recent missed window
 ACTIVE_JOB_TIMEOUT_MINUTES = 60  # Clear stale generation locks after this time
 
 
@@ -77,6 +79,17 @@ class PostingWindow:
         current_minutes = self.to_minutes(ist_now.hour, ist_now.minute)
         window_end = self.end_minutes()
         return window_end < current_minutes <= (window_end + WINDOW_GRACE_PERIOD)
+
+    def is_recently_missed(self, ist_now: datetime) -> bool:
+        """Check if a quote window was missed recently and still qualifies for late recovery"""
+        current_minutes = self.to_minutes(ist_now.hour, ist_now.minute)
+        window_end = self.end_minutes()
+        return window_end < current_minutes <= (window_end + MISSED_WINDOW_RECOVERY_MINUTES)
+
+    def starts_within(self, ist_now: datetime, lookahead_minutes: int) -> bool:
+        """Check whether this window starts within the next lookahead_minutes"""
+        current_minutes = self.to_minutes(ist_now.hour, ist_now.minute)
+        return 0 <= (self.start_minutes() - current_minutes) <= lookahead_minutes
     
     def should_start_generation(self, ist_now: datetime) -> bool:
         """
@@ -474,10 +487,22 @@ def get_current_windows(content_type: ContentType) -> List[PostingWindow]:
     return [w for w in all_windows if w.content_type == content_type]
 
 
+def get_pending_windows(content_type: ContentType, state: Optional[SchedulerState] = None) -> List[PostingWindow]:
+    """Get pending windows for today that have not yet been completed."""
+    state = state or get_scheduler_state()
+    return [w for w in get_current_windows(content_type) if w.name not in state.completed_slots]
+
+
+def get_next_pending_window(content_type: ContentType, state: Optional[SchedulerState] = None) -> Optional[PostingWindow]:
+    """Return the next pending window for today, if any."""
+    pending = get_pending_windows(content_type, state)
+    return pending[0] if pending else None
+
+
 def get_active_window(content_type: ContentType) -> Optional[PostingWindow]:
     """
-    Get the currently active window for this content type
-    Returns None if no window is active
+    Get the currently active window for this content type.
+    Returns None if no window is active or approaching.
     """
     ist_now = get_ist_now()
     windows = get_current_windows(content_type)
@@ -495,11 +520,24 @@ def get_active_window(content_type: ContentType) -> Optional[PostingWindow]:
         if window.is_recently_passed(ist_now):
             print(f"⏰ Window '{window.name}' just closed, within grace period")
             return window
+
+        # For quotes, if a window was missed recently and no post has happened in 90 minutes,
+        # allow late recovery for the missed window.
+        if content_type == ContentType.QUOTE and window.is_recently_missed(ist_now):
+            print(f"⏳ Quote window '{window.name}' was missed recently and may qualify for recovery")
+            return window
+
+        # For quotes, if a window starts very soon, allow early execution.
+        # This is a narrow buffer only to avoid misses, not a free-form posting time.
+        if content_type == ContentType.QUOTE and window.starts_within(ist_now, QUOTE_LOOKAHEAD_MINUTES):
+            minutes_until = window.start_minutes() - window.to_minutes(ist_now.hour, ist_now.minute)
+            print(f"⏳ Quote window '{window.name}' starts in {minutes_until} minutes, selecting it as a near-window preparation buffer")
+            return window
     
     return None
 
 
-def should_publish_quote() -> Tuple[bool, str]:
+def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
     """
     Determine if a quote should be published now
     Returns: (should_publish, reason)
@@ -512,17 +550,24 @@ def should_publish_quote() -> Tuple[bool, str]:
     print(f"📅 Current time (IST): {ist_now.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"📆 Weekday: {get_current_weekday().title()}")
     
-    # Step 1: Check if we're in a quote window
-    active_window = get_active_window(ContentType.QUOTE)
-    
-    if not active_window:
-        print("❌ Not in a quote posting window")
-        return False, "Not in a quote posting window"
-    
-    print(f"✅ Active window: {active_window.name} ({active_window.start_hour}:{active_window.start_minute:02d} - {active_window.end_hour}:{active_window.end_minute:02d})")
+    # Step 1: Determine which quote window to use
+    state = get_scheduler_state()
+    if force_publish:
+        active_window = get_next_pending_window(ContentType.QUOTE, state)
+        if active_window:
+            print(f"⚡ Manual force publish selected pending quote window: {active_window.name}")
+        else:
+            print("❌ No pending quote windows available for manual publish")
+            return False, "No pending quote windows available"
+    else:
+        active_window = get_active_window(ContentType.QUOTE)
+        if not active_window:
+            print("❌ Not in a quote posting window")
+            return False, "Not in a quote posting window"
+
+    print(f"✅ Selected window: {active_window.name} ({active_window.start_hour}:{active_window.start_minute:02d} - {active_window.end_hour}:{active_window.end_minute:02d})")
     
     # Step 2: Check if this slot is already completed
-    state = get_scheduler_state()
     
     if active_window.name in state.completed_slots:
         print(f"❌ Slot '{active_window.name}' already completed today")
@@ -561,7 +606,7 @@ def should_publish_quote() -> Tuple[bool, str]:
     return True, f"Window '{active_window.name}' active and all checks passed"
 
 
-def should_publish_reel() -> Tuple[bool, str]:
+def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     """
     Determine if a reel should be published now
     Returns: (should_publish, reason)
