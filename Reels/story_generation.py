@@ -30,11 +30,11 @@ def build_generation_prompt() -> str:
     # Get the complete prompt (returns a string, not a dict)
     final_prompt = get_prompt_for_current_time()
     
-    # Get next gender in rotation sequence
-    gender = get_next_gender()
-    gender_instruction = get_gender_instruction(gender)
-    
-    print(f"\n🎭 Character Gender for this reel: {gender.upper()}")
+    # Pick a random visual mode
+    visual_mode = get_next_gender()
+    visual_instruction = get_gender_instruction(visual_mode)
+
+    print(f"\n🎭 Visual mode for this reel: {visual_mode.upper()}")
     
     # Note: content info is already printed in PromptSelector.get_prompt_for_current_time()
     # No need to import or call get_content_type_for_time again
@@ -53,12 +53,13 @@ def build_generation_prompt() -> str:
             "title": "",
             "narration": "",
             "visual_style": {{
-                "art_style": "minimal flat editorial illustration",
+                "art_style": "cinematic painterly editorial illustration",
                 "palette": "",
                 "lighting": "",
                 "camera": "",
                 "aspect_ratio": "9:16"
             }},
+            "visual_mode": "{visual_mode}",
             "character": {{
                 "gender": "",
                 "age": "",
@@ -83,21 +84,26 @@ def build_generation_prompt() -> str:
         - exactly 6 visual scenes
         - each scene must represent one clear visual moment
         - every scene must directly match the narration
-        - use the same main character throughout all scenes
-        - if no character is needed, keep the environment consistent
-        - scenes must be illustration-friendly
+        - follow the selected visual mode exactly: {visual_mode}
+        - male and female should be treated equally; do not prefer either gender
+        - use the same main character throughout all scenes only when the visual mode uses a character
+        - if no character is needed, keep the emotional world consistent through place, color, weather, objects, or nature
+        - scenes must be illustration-friendly and visually varied
         - avoid repeating the same location unless intentional
+        - avoid sunset as the default; use varied natural aesthetics like rain, morning mist, moonlight, cloudy afternoon, warm indoor lamps, forest shade, blue hour, monsoon reflections, snow, or soft dawn
+        - avoid making every scene a lonely man looking at sunset
 
         ==================================================
         CHARACTER RULES
 
-        {gender_instruction}
-        
+        {visual_instruction}
+
         General rules:
-        - Keep character consistent across all 6 scenes
-        - Ordinary people only (no celebrities, no fantasy characters)
-        - Realistic appearance
-        - Simple, relatable clothing
+        - Ordinary people only if the selected visual mode needs people
+        - No celebrities, no fantasy characters, no glamour portraits, no selfies
+        - Use realistic, simple, relatable clothes when humans appear
+        - Prefer medium/wide cinematic shots over close-up faces
+        - Include natural or meaningful elements: plants, rain, birds, fields, rivers, windows, books, cups, letters, lamps, roads, balconies, buses, libraries, train stations
         - Avoid stereotypes and clichés
 
         ==================================================
@@ -106,7 +112,8 @@ def build_generation_prompt() -> str:
         Keep the illustration style consistent for all scenes.
 
         Art Style:
-        minimal flat editorial illustration
+        cinematic painterly editorial illustration with soft natural textures.
+        Ghibli-style can be used when it fits the reel, but keep it randomized and not mandatory every time.
 
         Aspect Ratio:
         9:16
@@ -159,29 +166,30 @@ def get_demo_story_json():
     Fallback demo story when Gemini API fails.
     """
     return {
-        "content_type": "QUIET_LOVE",
-        "title": "Two Cups of Tea",
-        "narration": "Nobody noticed the old man at the tea stall. Every evening he ordered two cups. One for himself. One for someone who never came. The shop owner finally asked why. The old man smiled. My wife passed away five years ago. But memories don't check calendars. Some habits become another way of saying I still love you.",
+        "content_type": "QUIET_MEMORY",
+        "title": "The Things That Stay",
+        "narration": "Some memories do not need people inside them to feel alive. A cup left near the window. Rain touching the balcony plants. An old book opening by itself in the fan's wind. We think love disappears when life changes, but sometimes it only changes shape. It becomes the light on the floor, the song from another room, the empty chair we still do not move. The heart remembers quietly, even when the world keeps walking.",
         "visual_style": {
-            "art_style": "minimal flat editorial illustration",
-            "palette": "warm sepia tones with soft orange sunset glow",
-            "lighting": "golden hour, soft shadows",
-            "camera": "medium shots, intimate framing",
+            "art_style": "cinematic painterly editorial illustration",
+            "palette": "soft earthy greens, warm lamp light, muted rain blues",
+            "lighting": "rainy window light and warm indoor glow",
+            "camera": "medium-wide poetic still frames",
             "aspect_ratio": "9:16"
         },
+        "visual_mode": "object",
         "character": {
-            "gender": "male",
-            "age": "70s",
-            "hair": "grey, neatly combed",
-            "clothes": "simple kurta, worn sweater"
+            "gender": "none",
+            "age": "N/A",
+            "hair": "N/A",
+            "clothes": "N/A"
         },
         "scenes": [
-            "Old man sitting alone at a small tea stall, evening light",
-            "Two steaming cups of tea on a wooden table",
-            "Shop owner looking at the old man with curiosity",
-            "Old man's gentle smile, holding one cup",
-            "Empty chair beside him with tea cup",
-            "Old man walking away slowly, sunset in background"
+            "A half-full tea cup beside a rainy apartment window, balcony plants blurred outside",
+            "An old book open on a wooden table while curtain shadows move across the pages",
+            "A small lamp glowing beside a photo frame turned slightly away",
+            "Rain drops sliding down glass with city lights reflected softly in the background",
+            "An empty chair near a quiet window with fallen leaves on the floor",
+            "Morning light entering the same room, touching the tea cup and open book"
         ]
     }
 

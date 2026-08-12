@@ -73,6 +73,7 @@ FILM_GRAIN_AMOUNT = 20
 ZOOM_MIN = 1.00
 ZOOM_MAX = 1.08  # Enable subtle zoom
 CROSSFADE_DURATION = 0.5  # Crossfade duration in seconds
+END_CARD_DURATION = 3.0  # Profile template shown after narration finishes
 
 
 # ============================================================
@@ -96,7 +97,12 @@ class ReelComposer:
             self.duration = self.audio.duration
             logger.info(f"Audio duration: {self.duration:.2f} seconds")
             
-            self.image_duration = self.duration / len(images)
+            # Account for crossfade overlaps so the scene images end exactly when narration ends.
+            # Without this, the image track becomes shorter than narration and the end card appears
+            # while the voiceover is still speaking.
+            self.image_duration = (
+                self.duration + (len(images) - 1) * CROSSFADE_DURATION
+            ) / len(images)
             logger.info(f"Image duration: {self.image_duration:.2f} seconds each")
             
             logger.info("Generating subtitles with Whisper base model...")
@@ -575,46 +581,55 @@ class ReelComposer:
     ########################################################
 
 
-    def create_audio_track(self):
+    def create_audio_track(self, total_duration=None):
         """
         Creates composite audio track with narration and optional background music.
         Background music is automatically detected from inputs folder.
+
+        Narration stays at its original length. Background music can continue
+        beyond narration for the end-card/profile-template section.
         """
         narration = self.audio
         audio_tracks = [narration]
+        target_duration = total_duration or self.duration
         
         # Check for background music in inputs folder
         inputs_dir = Path("Reels/inputs")
         
-        # Look for any audio file in inputs folder
+        # Look for all available audio files in inputs folder and choose one randomly.
         music_file = None
         if inputs_dir.exists():
-            # Check for common audio formats
-            for ext in ['*.mp3', '*.wav', '*.m4a', '*.ogg']:
-                audio_files = list(inputs_dir.glob(ext))
-                if audio_files:
-                    music_file = audio_files[0]  # Use first found
-                    break
+            audio_files = []
+            for ext in ["*.mp3", "*.wav", "*.m4a", "*.ogg"]:
+                audio_files.extend(inputs_dir.glob(ext))
+
+            audio_files = sorted(audio_files)
+            if audio_files:
+                music_file = random.choice(audio_files)
+                print(
+                    "Available background music: "
+                    + ", ".join(file.name for file in audio_files)
+                )
         
         # Fallback to config path if no file found in inputs
         if not music_file and Path(BACKGROUND_MUSIC).exists():
             music_file = Path(BACKGROUND_MUSIC)
         
         if music_file and music_file.exists():
-            print(f"Adding background music: {music_file.name}")
+            print(f"Adding random background music: {music_file.name}")
             
             music = AudioFileClip(str(music_file))
             
             # Set very low volume (from config)
             music = music.with_volume_scaled(MUSIC_VOLUME)
             
-            # Loop music if shorter than narration
-            if music.duration < self.duration:
-                loops = int(self.duration // music.duration) + 1
+            # Loop music if shorter than the full video duration.
+            if music.duration < target_duration:
+                loops = int(target_duration // music.duration) + 1
                 music = concatenate_audioclips([music] * loops)
             
-            # Trim to match narration duration
-            music = music.subclipped(0, self.duration)
+            # Trim to match the full video duration, including the end card.
+            music = music.subclipped(0, target_duration)
             
             audio_tracks.append(music)
             print(f"Background music volume: {MUSIC_VOLUME * 100:.1f}%")
@@ -661,29 +676,21 @@ class ReelComposer:
         print("Creating subtitles...")
         subtitle_track = self.create_subtitle_track()
 
+        # Make sure the story visuals run until narration is complete.
+        # The profile template/end card should appear only after this point.
+        if abs(image_track.duration - self.duration) > 0.05:
+            image_track = image_track.with_duration(self.duration)
+
+        print(f"Adding profile end card after narration ({END_CARD_DURATION:.1f}s)...")
+        end_card = self.create_end_card(duration=END_CARD_DURATION)
+        image_track = concatenate_videoclips(
+            [image_track, end_card],
+            method="compose"
+        )
+        final_video_duration = self.duration + END_CARD_DURATION
+
         print("Creating audio...")
-        audio_track = self.create_audio_track()
-        
-        # Calculate if there's a black screen at the end
-        video_duration = image_track.duration
-        audio_duration = audio_track.duration
-        
-        has_end_card = False
-        # If audio is longer than video, we'll have black screen
-        if audio_duration > video_duration:
-            black_duration = audio_duration - video_duration
-            print(f"Adding end card ({black_duration:.1f}s)...")
-            
-            # Create end card
-            end_card = self.create_end_card(duration=black_duration)
-            
-            # Concatenate image track with end card
-            from moviepy import concatenate_videoclips
-            image_track = concatenate_videoclips(
-                [image_track, end_card],
-                method="compose"
-            )
-            has_end_card = True
+        audio_track = self.create_audio_track(total_duration=final_video_duration)
         
         # Create watermark (synced with image transitions)
         print("Adding watermarks synced with images...")
