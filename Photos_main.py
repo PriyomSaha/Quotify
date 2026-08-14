@@ -1,16 +1,42 @@
+import argparse
+import os
 import time
+from dotenv import load_dotenv
 from QuoteGeneration import generate_quote
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
+from event_detector import build_quote_caption, get_today_event
+
+load_dotenv()
 
 
-def main():
+def get_bool_env(name, default=False):
+    """Read a boolean environment variable from .env / environment."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def main(no_upload=None, output_path="image.jpg"):
     """
     Main runner that orchestrates the entire quote-to-social-media pipeline.
     Generates a quote → Creates neon image → Uploads to Facebook → Posts to Instagram.
     """
     
     try:
+        if no_upload is None:
+            no_upload = get_bool_env("NO_UPLOAD_QUOTES", default=False)
+
+        print(f"📤 Quote upload enabled: {not no_upload}")
+
+        event = get_today_event()
+        if event:
+            print(f"🎉 Event mode for quote flow: {event.get('name')}")
+        else:
+            print("ℹ️ No event active. Using normal random quote flow.")
+
         # -------------------------------------------------
         # Step 1: Generate Quote
         # -------------------------------------------------
@@ -30,9 +56,14 @@ def main():
         create_neon_quote_image(
             raw_text=quote_input,
             template_path="template.jpg",
-            output_path="image.jpg",
+            output_path=output_path,
         )
-        print("✅ Image created successfully: image.jpg")
+        print(f"✅ Image created successfully: {output_path}")
+
+        if no_upload:
+            print("\n✅ Quote test flow completed without upload")
+            print(f"🖼️ Image: {output_path}")
+            return
         
         # -------------------------------------------------
         # Step 3: Wait 10 seconds
@@ -45,9 +76,13 @@ def main():
         # Step 4: Upload to Facebook and get CDN URL
         # -------------------------------------------------
         print("\n📤 Step 4: Uploading image to Facebook...")
+        caption = build_quote_caption(event)
+        if caption:
+            print(f"Caption preview: {caption[:200]}")
+
         fb_cdn_url = schedule_photo_after(
-            image_path="image.jpg",
-            caption="",  # Blank caption as specified
+            image_path=output_path,
+            caption=caption,
             minutes=0,
             hours=0
         )
@@ -64,7 +99,7 @@ def main():
         print("\n📱 Step 5: Publishing to Instagram...")
         ig_result = post_to_instagram_from_fb_url(
             fb_image_url=fb_cdn_url,
-            caption=""  # Blank caption as specified
+            caption=caption
         )
         
         ig_post_id = ig_result.get("id")
@@ -93,4 +128,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main() # main call
+    parser = argparse.ArgumentParser(description="Run quote flow. Use EVENT_TEST_DATE and NO_UPLOAD_QUOTES in .env for local testing.")
+    parser.add_argument("--output", default="image.jpg", help="Output image path")
+    args = parser.parse_args()
+
+    main(
+        output_path=args.output,
+    )

@@ -1,0 +1,1038 @@
+{
+  "fixed_events": {
+    "01-01": {
+      "name": "New Year",
+      "region": "Global / India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 1,
+      "language_style": "simple emotional English",
+      "quote_theme": "new beginnings, old memories, people left behind, hope, starting again",
+      "reel_theme": "a nostalgic New Year reel about looking back at everything the previous year changed while quietly hoping the new year feels kinder",
+      "visual_hints": [
+        "old diary beside a warm lamp",
+        "city lights through a rainy window",
+        "calendar page turning",
+        "old photographs on a wooden table",
+        "quiet balcony at midnight"
+      ],
+      "hashtags": [
+        "#NewYear",
+        "#NewBeginnings",
+        "#Memories",
+        "#NewYearVibes",
+        "#2026"
+      ]
+    },
+    "01-14": {
+      "name": "Poush Sankranti / Makar Sankranti",
+      "region": "India / Bengal",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple warm Bengali-English emotional tone",
+      "quote_theme": "winter mornings, childhood, family, homemade sweets, rooftops, changing seasons, home",
+      "reel_theme": "a nostalgic winter morning filled with rooftop memories, homemade sweets, sunlight, family voices and childhood simplicity",
+      "visual_hints": [
+        "winter sunlight entering an old Bengali home",
+        "pithe and payesh on a steel plate",
+        "rooftop under a pale winter sky",
+        "old family house courtyard",
+        "hands serving homemade sweets"
+      ],
+      "hashtags": [
+        "#PoushSankranti",
+        "#MakarSankranti",
+        "#BengaliCulture",
+        "#WinterMemories",
+        "#Nostalgia"
+      ]
+    },
+    "01-23": {
+      "name": "Netaji Jayanti",
+      "region": "India / Bengal",
+      "priority": "high",
+      "active_before_days": 0,
+      "active_after_days": 0,
+      "language_style": "simple English with warm Bengali cultural emotion",
+      "quote_theme": "courage, sacrifice, leadership, patriotism, self-belief, service to the nation",
+      "reel_theme": "an emotional patriotic story inspired by courage, sacrifice, ordinary people, and hope for India",
+      "visual_hints": [
+        "old Kolkata street in soft morning light",
+        "a handwritten letter beside a small Indian flag",
+        "young students walking past an old building",
+        "a quiet room with books, maps, and warm lamp light",
+        "people standing with hope and respect"
+      ],
+      "hashtags": [
+        "#NetajiJayanti",
+        "#SubhasChandraBose",
+        "#India",
+        "#Bengal",
+        "#Patriotism"
+      ]
+    },
+    "02-14": {
+      "name": "Valentine's Day",
+      "region": "Global / India",
+      "priority": "high",
+      "active_before_days": 7,
+      "active_after_days": 0,
+      "language_style": "simple modern emotional English",
+      "quote_theme": "first love, unfinished love, memories, distance, missed chances, people who became strangers",
+      "reel_theme": "a cinematic heartbreak reel about remembering someone you once thought would always be there",
+      "visual_hints": [
+        "old handwritten note",
+        "two cups of tea with one untouched",
+        "rainy bus window",
+        "old photograph inside a book",
+        "empty bench at sunset"
+      ],
+      "hashtags": [
+        "#ValentinesDay",
+        "#Love",
+        "#Heartbreak",
+        "#LostLove",
+        "#Memories"
+      ]
+    },
+    "05-09": {
+      "name": "Rabindra Jayanti",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple English with Bengali-English emotional words",
+      "quote_theme": "Tagore-inspired original wisdom, poetry, art, nature, inner freedom, life, love, creativity",
+      "reel_theme": "a Bengali cultural emotional reel inspired by poetry, old books, rain, music, art, and quiet inner freedom",
+      "visual_hints": [
+        "old book open beside a rainy window",
+        "Kolkata balcony with plants and soft curtain shadows",
+        "red-bordered saree details without close glamour portrait",
+        "harmonium or old music notebook in warm light",
+        "peaceful Santiniketan-inspired nature path"
+      ],
+      "hashtags": [
+        "#RabindraJayanti",
+        "#Tagore",
+        "#RabindranathTagore",
+        "#BengaliCulture",
+        "#Kolkata"
+      ]
+    },
+    "05-10": {
+      "name": "Mothers' Day",
+      "region": "Global / India",
+      "priority": "high",
+      "active_before_days": 2,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "mother's sacrifices, home, childhood, unconditional love, growing up, missing home",
+      "reel_theme": "an emotional story about realizing the small things mother did only after growing old enough to leave home",
+      "visual_hints": [
+        "mother's hands preparing breakfast",
+        "old kitchen in morning light",
+        "school lunchbox beside flowers",
+        "old family photograph",
+        "empty childhood bedroom"
+      ],
+      "hashtags": [
+        "#MothersDay",
+        "#MotherLove",
+        "#Family",
+        "#Home",
+        "#Memories"
+      ]
+    },
+    "06-21": {
+      "name": "Fathers' Day",
+      "region": "Global / India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "quiet sacrifices, fatherhood, childhood, protection, growing up, unspoken love",
+      "reel_theme": "a quiet emotional story about realizing that many of father's biggest expressions of love were never spoken",
+      "visual_hints": [
+        "old wristwatch on a table",
+        "father's worn shoes near the door",
+        "bicycle or scooter keys",
+        "old family balcony",
+        "father sitting quietly with morning tea"
+      ],
+      "hashtags": [
+        "#FathersDay",
+        "#FatherLove",
+        "#Family",
+        "#Childhood",
+        "#Memories"
+      ]
+    },
+    "06-21": {
+      "name": "World Music Day",
+      "region": "Global / India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple poetic English",
+      "quote_theme": "songs tied to memories, old playlists, childhood music, people remembered through songs",
+      "reel_theme": "a nostalgic reel about how one old song can suddenly bring back an entire person, room or year",
+      "visual_hints": [
+        "old cassette player",
+        "headphones beside a window",
+        "handwritten playlist",
+        "rainy evening with music playing",
+        "old music notebook"
+      ],
+      "hashtags": [
+        "#WorldMusicDay",
+        "#MusicMemories",
+        "#Nostalgia",
+        "#OldSongs",
+        "#Memories"
+      ]
+    },
+    "08-02": {
+      "name": "Friendship Day",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple nostalgic English / light Hinglish",
+      "quote_theme": "school friends, college friends, old chats, growing apart, friendships that remain in memory",
+      "reel_theme": "a nostalgic reel about friends who once knew every small detail of your life but now only exist in old photographs and chats",
+      "visual_hints": [
+        "old group photograph",
+        "school bench",
+        "old chat screenshots without readable personal text",
+        "friends walking down a familiar street",
+        "empty college corridor"
+      ],
+      "hashtags": [
+        "#FriendshipDay",
+        "#BestFriends",
+        "#OldFriends",
+        "#SchoolMemories",
+        "#Nostalgia"
+      ]
+    },
+    "09-05": {
+      "name": "Teachers' Day",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 0,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "gratitude for teachers, guidance, learning, patience, life lessons, respect",
+      "reel_theme": "an emotional story about a teacher's quiet impact on one student's life",
+      "visual_hints": [
+        "empty classroom with morning light",
+        "chalkboard with no readable text",
+        "old notebook and pen on a desk",
+        "teacher arranging books quietly",
+        "student looking grateful from a distance"
+      ],
+      "hashtags": [
+        "#TeachersDay",
+        "#Teacher",
+        "#Gratitude",
+        "#Learning",
+        "#LifeLessons"
+      ]
+    },
+    "08-15": {
+      "name": "Independence Day",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple English / light Hinglish emotional tone",
+      "quote_theme": "freedom, sacrifice, national pride, hope, responsibility, unity, future of India",
+      "reel_theme": "a cinematic emotional patriotic reel about freedom, sacrifice, ordinary citizens, flag, memory, and hope",
+      "visual_hints": [
+        "Indian flag moving in soft dawn light",
+        "old handwritten letter with tricolor ribbon",
+        "school children holding small flags",
+        "quiet soldier memorial mood without violence",
+        "families watching flag hoisting from balconies"
+      ],
+      "hashtags": [
+        "#IndependenceDay",
+        "#IndependenceDayIndia",
+        "#India",
+        "#Freedom",
+        "#JaiHind"
+      ]
+    },
+    "08-28": {
+      "name": "Raksha Bandhan",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English / light Hinglish",
+      "quote_theme": "siblings, childhood fights, growing up, family, distance, homecoming",
+      "reel_theme": "an emotional sibling story about growing from childhood fights into adults who secretly miss those noisy days",
+      "visual_hints": [
+        "rakhi beside an old childhood photograph",
+        "siblings in an old family home",
+        "gift box on a table",
+        "childhood toys",
+        "family dining table"
+      ],
+      "hashtags": [
+        "#RakshaBandhan",
+        "#Rakhi",
+        "#SiblingLove",
+        "#ChildhoodMemories",
+        "#Family"
+      ]
+    },
+    "10-02": {
+      "name": "Gandhi Jayanti",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 0,
+      "active_after_days": 0,
+      "language_style": "simple respectful English",
+      "quote_theme": "peace, truth, simplicity, kindness, non-violence, self-discipline",
+      "reel_theme": "a peaceful reflective reel about truth, kindness, simplicity, and quiet courage",
+      "visual_hints": [
+        "simple cotton cloth texture",
+        "morning light in a quiet room",
+        "people helping each other in a street",
+        "spinning wheel inspired symbolic scene without text",
+        "peaceful village road"
+      ],
+      "hashtags": [
+        "#GandhiJayanti",
+        "#Peace",
+        "#Truth",
+        "#Kindness",
+        "#India"
+      ]
+    },
+    "11-20": {
+      "name": "Children's Day",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple nostalgic English",
+      "quote_theme": "childhood, school memories, innocence, old friends, simple happiness, growing up",
+      "reel_theme": "a nostalgic reel comparing the freedom and innocence of childhood with the responsibilities of adulthood",
+      "visual_hints": [
+        "old school bag",
+        "school corridor in afternoon light",
+        "childhood playground",
+        "old class photograph",
+        "tiffin box and notebooks"
+      ],
+      "hashtags": [
+        "#ChildrensDay",
+        "#ChildhoodMemories",
+        "#SchoolDays",
+        "#Nostalgia",
+        "#GrowingUp"
+      ]
+    },
+    "12-25": {
+      "name": "Christmas",
+      "region": "Global / India",
+      "priority": "medium",
+      "active_before_days": 2,
+      "active_after_days": 0,
+      "language_style": "simple warm English",
+      "quote_theme": "warmth, giving, family, kindness, winter nostalgia, hope, togetherness",
+      "reel_theme": "a cozy emotional reel about kindness, winter lights, family warmth, and small acts of love",
+      "visual_hints": [
+        "warm fairy lights near a window",
+        "cozy room with winter evening glow",
+        "hands wrapping a small gift",
+        "quiet street with festive lights",
+        "cup of tea beside soft lights"
+      ],
+      "hashtags": [
+        "#Christmas",
+        "#MerryChristmas",
+        "#Kindness",
+        "#WinterVibes",
+        "#Family"
+      ]
+    }
+  },
+  "dated_events": {
+    "2026-01-23": {
+      "name": "Saraswati Puja",
+      "region": "Bengal / India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English nostalgic tone",
+      "quote_theme": "school days, college memories, first crushes, yellow clothes, friendship, books, youth",
+      "reel_theme": "a deeply nostalgic Saraswati Puja story about school corridors, yellow clothes, friends, first love, books and the feeling of being young forever",
+      "visual_hints": [
+        "yellow flowers beside old textbooks",
+        "empty school corridor in afternoon light",
+        "yellow saree or kurta details",
+        "friends walking outside a school gate",
+        "old notebook with handwritten memories"
+      ],
+      "hashtags": [
+        "#SaraswatiPuja",
+        "#SaraswatiPuja2026",
+        "#BengaliCulture",
+        "#Kolkata",
+        "#SchoolMemories"
+      ]
+    },
+    "2026-02-15": {
+      "name": "Maha Shivaratri",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple respectful English",
+      "quote_theme": "silence, patience, faith, inner strength, letting go, transformation",
+      "reel_theme": "a peaceful reflective story about surviving difficult seasons and finding strength in silence",
+      "visual_hints": [
+        "quiet temple before sunrise",
+        "oil lamp in darkness",
+        "flowers beside stone steps",
+        "misty morning road",
+        "hands folded in quiet prayer"
+      ],
+      "hashtags": [
+        "#MahaShivratri",
+        "#Faith",
+        "#InnerPeace",
+        "#Strength",
+        "#India"
+      ]
+    },
+    "2026-03-04": {
+      "name": "Holi / Dol Jatra",
+      "region": "India / Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English festive emotional tone",
+      "quote_theme": "old friends, childhood Holi, changing relationships, laughter, memories",
+      "reel_theme": "a nostalgic evening remembering childhood Dol, friends, colours and the people who slowly disappeared from our lives",
+      "visual_hints": [
+        "softly lit Bengali courtyard",
+        "coloured powder beside old photographs",
+        "friends walking home after Holi",
+        "children playing with colours",
+        "sunset over an old neighbourhood"
+      ],
+      "hashtags": [
+        "#DolJatra",
+        "#Holi",
+        "#HoliMemories",
+        "#BengaliCulture",
+        "#Nostalgia"
+      ]
+    },
+    "2026-04-02": {
+      "name": "Hanuman Jayanti",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple inspirational English",
+      "quote_theme": "strength, loyalty, courage, devotion, overcoming fear",
+      "reel_theme": "an inspiring emotional reel about finding courage when life feels bigger than you",
+      "visual_hints": [
+        "temple at sunrise",
+        "red flowers beside a lamp",
+        "quiet early morning street",
+        "devotees walking toward a temple",
+        "warm sunlight through temple arches"
+      ],
+      "hashtags": [
+        "#HanumanJayanti",
+        "#Courage",
+        "#Faith",
+        "#Strength",
+        "#India"
+      ]
+    },
+    "2026-04-15": {
+      "name": "Poila Boishakh",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English emotional tone; use Subho Noboborsho naturally",
+      "quote_theme": "new beginnings, Bengali New Year, home, hope, family, sweetness, fresh start",
+      "reel_theme": "a warm Bengali New Year reel about morning rituals, family, sweets, new clothes, hope, and nostalgia",
+      "visual_hints": [
+        "red and white Bengali festive details",
+        "sweets on a plate in morning light",
+        "Kolkata street with festive mood",
+        "new clothes folded beside flowers",
+        "family home balcony with soft sunlight"
+      ],
+      "hashtags": [
+        "#PoilaBoishakh",
+        "#SubhoNoboborsho",
+        "#BengaliNewYear",
+        "#BengaliCulture",
+        "#Kolkata"
+      ]
+    },
+    "2026-05-10": {
+      "name": "Mothers' Day",
+      "region": "Global / India",
+      "priority": "high",
+      "active_before_days": 2,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "mother's sacrifices, childhood, home, unconditional love, distance",
+      "reel_theme": "an emotional story about realizing the invisible ways a mother made childhood feel safe",
+      "visual_hints": [
+        "mother preparing breakfast",
+        "old kitchen",
+        "childhood lunchbox",
+        "family photograph",
+        "empty childhood room"
+      ],
+      "hashtags": [
+        "#MothersDay",
+        "#MotherLove",
+        "#Family",
+        "#Home",
+        "#Memories"
+      ]
+    },
+    "2026-06-21": {
+      "name": "Fathers' Day",
+      "region": "Global / India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "quiet sacrifices, fatherhood, childhood, protection, growing up, unspoken love",
+      "reel_theme": "a quiet emotional story about realizing that father's love was often hidden inside ordinary routines",
+      "visual_hints": [
+        "old wristwatch",
+        "father's shoes near the door",
+        "old bicycle or scooter",
+        "morning tea by a window",
+        "father sitting quietly"
+      ],
+      "hashtags": [
+        "#FathersDay",
+        "#FatherLove",
+        "#Family",
+        "#Childhood",
+        "#Memories"
+      ]
+    },
+    "2026-07-16": {
+      "name": "Rath Yatra",
+      "region": "India / Bengal",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple warm Bengali-English tone",
+      "quote_theme": "childhood fairs, family outings, monsoon memories, local traditions",
+      "reel_theme": "a nostalgic monsoon story about childhood Rath Mela visits, crowded streets, sweets and family hands",
+      "visual_hints": [
+        "rainy Bengali street fair",
+        "small wooden toy stalls",
+        "family walking under umbrellas",
+        "colourful fair lights",
+        "traditional sweets"
+      ],
+      "hashtags": [
+        "#RathYatra",
+        "#RathMela",
+        "#ChildhoodMemories",
+        "#Bengal",
+        "#Nostalgia"
+      ]
+    },
+    "2026-07-29": {
+      "name": "Guru Purnima",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "teachers, mentors, gratitude, old classrooms, forgotten lessons",
+      "reel_theme": "a reflective story about a teacher whose one small sentence stayed with someone for years",
+      "visual_hints": [
+        "empty classroom",
+        "old chalkboard",
+        "teacher's desk",
+        "notebook with handwritten notes",
+        "school corridor at sunset"
+      ],
+      "hashtags": [
+        "#GuruPurnima",
+        "#Teachers",
+        "#Mentors",
+        "#Gratitude",
+        "#LifeLessons"
+      ]
+    },
+    "2026-08-02": {
+      "name": "Friendship Day",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple nostalgic English / light Hinglish",
+      "quote_theme": "school friends, college friends, old chats, growing apart, friendships that remain in memory",
+      "reel_theme": "a nostalgic reel about friends who once knew every small detail of your life but now only exist in old photographs and chats",
+      "visual_hints": [
+        "old group photograph",
+        "school bench",
+        "old friendship bands",
+        "friends walking down a familiar street",
+        "empty college corridor"
+      ],
+      "hashtags": [
+        "#FriendshipDay",
+        "#BestFriends",
+        "#OldFriends",
+        "#SchoolMemories",
+        "#Nostalgia"
+      ]
+    },
+    "2026-08-28": {
+      "name": "Raksha Bandhan",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English / light Hinglish",
+      "quote_theme": "siblings, childhood fights, growing up, family, distance, homecoming",
+      "reel_theme": "an emotional sibling story about growing from childhood fights into adults who secretly miss those noisy days",
+      "visual_hints": [
+        "rakhi beside an old childhood photograph",
+        "siblings in an old family home",
+        "gift box on a table",
+        "childhood toys",
+        "family dining table"
+      ],
+      "hashtags": [
+        "#RakshaBandhan",
+        "#Rakhi",
+        "#SiblingLove",
+        "#ChildhoodMemories",
+        "#Family"
+      ]
+    },
+    "2026-08-15": {
+      "name": "Independence Day",
+      "region": "India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple English / light Hinglish emotional tone",
+      "quote_theme": "freedom, sacrifice, national pride, hope, responsibility, unity, future of India",
+      "reel_theme": "a cinematic emotional patriotic reel about freedom, sacrifice, ordinary citizens, flag, memory, and hope",
+      "visual_hints": [
+        "Indian flag moving in soft dawn light",
+        "old handwritten letter with tricolor ribbon",
+        "school children holding small flags",
+        "quiet memorial mood without violence",
+        "families watching flag hoisting from balconies"
+      ],
+      "hashtags": [
+        "#IndependenceDay",
+        "#IndependenceDayIndia",
+        "#India",
+        "#Freedom",
+        "#JaiHind"
+      ]
+    },
+    "2026-09-05": {
+      "name": "Teachers' Day",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 0,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt English",
+      "quote_theme": "gratitude for teachers, guidance, learning, patience, life lessons, respect",
+      "reel_theme": "an emotional story about a teacher's quiet impact on one student's life",
+      "visual_hints": [
+        "empty classroom with morning light",
+        "chalkboard with no readable text",
+        "old notebook and pen on a desk",
+        "teacher arranging books quietly",
+        "student looking grateful from a distance"
+      ],
+      "hashtags": [
+        "#TeachersDay",
+        "#Teacher",
+        "#Gratitude",
+        "#Learning",
+        "#LifeLessons"
+      ]
+    },
+    "2026-09-17": {
+      "name": "Vishwakarma Puja",
+      "region": "Bengal / Eastern India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English nostalgic tone",
+      "quote_theme": "Kolkata rooftops, kites, childhood, neighbourhoods, old workplaces, monsoon ending",
+      "reel_theme": "a deeply nostalgic Kolkata rooftop story about Vishwakarma Puja, kites, loudspeakers, neighbours and childhood afternoons",
+      "visual_hints": [
+        "Kolkata rooftop with kites",
+        "blue September sky",
+        "old radio or loudspeaker",
+        "neighbourhood rooftops",
+        "children flying kites"
+      ],
+      "hashtags": [
+        "#VishwakarmaPuja",
+        "#Kolkata",
+        "#KiteFlying",
+        "#BengaliCulture",
+        "#ChildhoodMemories"
+      ]
+    },
+    "2026-10-02": {
+      "name": "Gandhi Jayanti",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 0,
+      "active_after_days": 0,
+      "language_style": "simple respectful English",
+      "quote_theme": "peace, truth, simplicity, kindness, non-violence, self-discipline",
+      "reel_theme": "a peaceful reflective reel about truth, kindness, simplicity, and quiet courage",
+      "visual_hints": [
+        "simple cotton cloth texture",
+        "morning light in a quiet room",
+        "people helping each other in a street",
+        "spinning wheel inspired symbolic scene without text",
+        "peaceful village road"
+      ],
+      "hashtags": [
+        "#GandhiJayanti",
+        "#Peace",
+        "#Truth",
+        "#Kindness",
+        "#India"
+      ]
+    },
+    "2026-10-10": {
+      "name": "Mahalaya",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 2,
+      "active_after_days": 0,
+      "language_style": "simple English with Bengali emotional mood",
+      "quote_theme": "Mahalaya dawn, Mahishasuramardini memories, homecoming, autumn, shiuli flowers, Durga Puja anticipation",
+      "reel_theme": "a deeply nostalgic Mahalaya dawn story about waking before sunrise, listening to the radio, smelling shiuli flowers and feeling Pujo arriving at home",
+      "visual_hints": [
+        "old radio beside a window before sunrise",
+        "shiuli flowers on wet ground",
+        "soft blue autumn dawn",
+        "old Kolkata lane",
+        "family members waking quietly"
+      ],
+      "hashtags": [
+        "#Mahalaya",
+        "#Mahishasuramardini",
+        "#DurgaPuja",
+        "#Kolkata",
+        "#PujoAsche"
+      ]
+    },
+    "2026-10-16": {
+      "name": "Durga Puja Maha Panchami",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English festive emotional tone",
+      "quote_theme": "Pujo preparation, childhood anticipation, new clothes, pandal construction, homecoming",
+      "reel_theme": "the feeling that starts before Pujo officially begins — new clothes, streets changing, lights appearing and childhood excitement returning",
+      "visual_hints": [
+        "pandal construction at dusk",
+        "new clothes on a bed",
+        "Kolkata street decorations",
+        "children watching idol preparation",
+        "warm home before Pujo"
+      ],
+      "hashtags": [
+        "#DurgaPuja",
+        "#MahaPanchami",
+        "#PujoAsche",
+        "#Kolkata",
+        "#PujoMemories"
+      ]
+    },
+    "2026-10-17": {
+      "name": "Durga Puja Maha Shashthi",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English festive emotional tone",
+      "quote_theme": "Bodhon, homecoming, childhood excitement, family, pandal nights",
+      "reel_theme": "an emotional Shashthi reel about the exact moment Pujo finally feels real",
+      "visual_hints": [
+        "Durga idol in soft evening light",
+        "dhak preparation",
+        "family leaving home",
+        "pandal entrance",
+        "street lights at blue hour"
+      ],
+      "hashtags": [
+        "#MahaShashthi",
+        "#DurgaPuja",
+        "#PujoAsche",
+        "#Kolkata",
+        "#PujoNostalgia"
+      ]
+    },
+    "2026-10-18": {
+      "name": "Durga Puja Maha Saptami",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English festive emotional tone",
+      "quote_theme": "pandal hopping, friends, dhaak, food, new clothes, childhood Pujo memories",
+      "reel_theme": "a highly shareable nostalgic Saptami reel about walking through crowded pandals with friends and forgetting everything else for one night",
+      "visual_hints": [
+        "Kolkata pandal lights",
+        "dhaak drums",
+        "friends walking through crowds",
+        "street food stalls",
+        "red-white festive clothing"
+      ],
+      "hashtags": [
+        "#MahaSaptami",
+        "#DurgaPuja",
+        "#PandalHopping",
+        "#Kolkata",
+        "#Pujo"
+      ]
+    },
+    "2026-10-19": {
+      "name": "Durga Puja Maha Ashtami",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple emotional Bengali-English",
+      "quote_theme": "Ashtami anjali, family, childhood, dhunuchi, devotion, memories",
+      "reel_theme": "an emotional Ashtami morning story about anjali, incense, flowers and the memories of people who are no longer standing beside you",
+      "visual_hints": [
+        "morning anjali flowers",
+        "dhunuchi smoke",
+        "family standing together",
+        "soft sunlight inside a pandal",
+        "old family photograph"
+      ],
+      "hashtags": [
+        "#MahaAshtami",
+        "#DurgaPuja",
+        "#Anjali",
+        "#BengaliCulture",
+        "#Kolkata"
+      ]
+    },
+    "2026-10-20": {
+      "name": "Durga Puja Maha Navami",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English emotional tone",
+      "quote_theme": "last Pujo night, celebration, food, family, growing older, memories",
+      "reel_theme": "a bittersweet Navami night reel about knowing the celebration is almost over and wishing time could stay still",
+      "visual_hints": [
+        "late-night pandal lights",
+        "family eating together",
+        "empty street after crowds leave",
+        "dhunuchi smoke",
+        "old childhood Pujo photograph"
+      ],
+      "hashtags": [
+        "#MahaNavami",
+        "#DurgaPuja",
+        "#PujoNights",
+        "#Kolkata",
+        "#Nostalgia"
+      ]
+    },
+    "2026-10-21": {
+      "name": "Durga Puja Dashami / Bijoya Dashami",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 1,
+      "language_style": "simple deeply emotional Bengali-English tone",
+      "quote_theme": "farewell, visarjan, homecoming, Bijoya, hugs, distance, memories, people leaving",
+      "reel_theme": "a cinematic Bijoya reel comparing idol farewell with the feeling of saying goodbye to people and versions of life we cannot bring back",
+      "visual_hints": [
+        "empty pandal after immersion",
+        "red sindoor details",
+        "river at sunset",
+        "wet streets after Pujo",
+        "family saying goodbye"
+      ],
+      "hashtags": [
+        "#BijoyaDashami",
+        "#DurgaPuja",
+        "#Bisarjan",
+        "#Kolkata",
+        "#PujoMemories"
+      ]
+    },
+    "2026-10-25": {
+      "name": "Kojagari Lakshmi Puja",
+      "region": "Bengal",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple warm Bengali-English tone",
+      "quote_theme": "quiet home after Pujo, family, rice, prosperity, old household rituals, peace",
+      "reel_theme": "a cozy post-Pujo story about returning home, cleaning the house, preparing Lakshmi Puja and finding beauty in ordinary family rituals",
+      "visual_hints": [
+        "quiet Bengali home",
+        "alpana on floor",
+        "rice grains and flowers",
+        "oil lamp near a window",
+        "family preparing puja together"
+      ],
+      "hashtags": [
+        "#LakshmiPuja",
+        "#KojagariLakshmiPuja",
+        "#BengaliCulture",
+        "#Kolkata",
+        "#Home"
+      ]
+    },
+    "2026-11-08": {
+      "name": "Kali Puja / Diwali",
+      "region": "Bengal / India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple warm Bengali-English emotional tone",
+      "quote_theme": "childhood fireworks, balconies, old Kolkata nights, family, lights, people no longer home",
+      "reel_theme": "a nostalgic Kali Puja night about childhood fireworks, terrace lights, family gatherings and the strange silence that comes with growing older",
+      "visual_hints": [
+        "Kolkata balcony with diyas",
+        "soft fireworks in distant sky",
+        "old family home",
+        "candles beside childhood toys",
+        "quiet terrace at night"
+      ],
+      "hashtags": [
+        "#KaliPuja",
+        "#Diwali",
+        "#Kolkata",
+        "#BengaliCulture",
+        "#ChildhoodMemories"
+      ]
+    },
+    "2026-11-11": {
+      "name": "Bhai Phonta / Bhai Dooj",
+      "region": "Bengal / India",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple heartfelt Bengali-English tone",
+      "quote_theme": "siblings, childhood fights, family traditions, growing older, homecoming",
+      "reel_theme": "a warm nostalgic Bhaiphonta story about siblings returning home and remembering the childhood home that no longer feels exactly the same",
+      "visual_hints": [
+        "bhaiphonta ritual at home",
+        "old sibling photographs",
+        "family dining table",
+        "childhood room",
+        "traditional sweets"
+      ],
+      "hashtags": [
+        "#Bhaiphonta",
+        "#BhaiDooj",
+        "#SiblingLove",
+        "#BengaliCulture",
+        "#FamilyMemories"
+      ]
+    },
+    "2026-11-15": {
+      "name": "Chhath Puja",
+      "region": "India",
+      "priority": "medium",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple respectful emotional English",
+      "quote_theme": "family, devotion, rivers, sunrise, sacrifice, gratitude",
+      "reel_theme": "a peaceful sunrise story about family devotion, riverside rituals, sacrifice and gratitude",
+      "visual_hints": [
+        "riverbank before sunrise",
+        "devotees carrying baskets",
+        "warm sunrise reflections",
+        "family standing near water",
+        "traditional offerings"
+      ],
+      "hashtags": [
+        "#ChhathPuja",
+        "#Chhath",
+        "#Family",
+        "#Faith",
+        "#Sunrise"
+      ]
+    },
+    "2026-11-19": {
+      "name": "Jagaddhatri Puja",
+      "region": "Bengal / Chandannagar",
+      "priority": "high",
+      "active_before_days": 1,
+      "active_after_days": 0,
+      "language_style": "simple Bengali-English festive emotional tone",
+      "quote_theme": "Chandannagar lights, family outings, old Bengal, winter evenings, childhood fair memories",
+      "reel_theme": "a nostalgic Chandannagar night story about Jagaddhatri Puja lights, family outings and the magic of Bengal after the main Puja season has ended",
+      "visual_hints": [
+        "Chandannagar festival lights",
+        "family walking through illuminated streets",
+        "Jagaddhatri idol silhouette",
+        "winter evening atmosphere",
+        "old Bengal neighbourhood"
+      ],
+      "hashtags": [
+        "#JagaddhatriPuja",
+        "#Chandannagar",
+        "#BengaliCulture",
+        "#Kolkata",
+        "#Nostalgia"
+      ]
+    },
+    "2026-12-25": {
+      "name": "Christmas",
+      "region": "Global / India",
+      "priority": "medium",
+      "active_before_days": 2,
+      "active_after_days": 0,
+      "language_style": "simple warm English",
+      "quote_theme": "warmth, giving, family, kindness, winter nostalgia, hope, togetherness",
+      "reel_theme": "a cozy emotional reel about kindness, winter lights, family warmth, and small acts of love",
+      "visual_hints": [
+        "warm fairy lights near a window",
+        "cozy room with winter evening glow",
+        "hands wrapping a small gift",
+        "quiet street with festive lights",
+        "cup of tea beside soft lights"
+      ],
+      "hashtags": [
+        "#Christmas",
+        "#MerryChristmas",
+        "#Kindness",
+        "#WinterVibes",
+        "#Family"
+      ]
+    }
+  }
+}

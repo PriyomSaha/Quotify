@@ -19,6 +19,7 @@ from google import genai
 from .config import GEMINI_API_KEY, GEMINI_MODEL
 from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
 from .gender_tracker import get_next_gender, get_gender_instruction
+from event_detector import build_reel_event_instruction, get_today_event
 import json
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -36,12 +37,19 @@ def build_generation_prompt() -> str:
 
     print(f"\n🎭 Visual mode for this reel: {visual_mode.upper()}")
     
+    # Optional enhancement: if today is a configured special event,
+    # add event context without changing the default random logic.
+    event = get_today_event()
+    event_instruction = build_reel_event_instruction(event) if event else ""
+
     # Note: content info is already printed in PromptSelector.get_prompt_for_current_time()
     # No need to import or call get_content_type_for_time again
 
     # Add JSON output format requirements to the prompt
     return f"""
         {final_prompt}
+
+        {event_instruction}
 
         ==================================================
         OUTPUT FORMAT
@@ -81,6 +89,7 @@ def build_generation_prompt() -> str:
 
         - narration must contain 80-110 words
         - narration must strictly follow the selected content category
+        - if SPECIAL DATE REEL MODE is present, the narration and scenes must feel connected to that occasion
         - exactly 6 visual scenes
         - each scene must represent one clear visual moment
         - every scene must directly match the narration

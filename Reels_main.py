@@ -13,6 +13,7 @@ from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
 from Reels.voice_generation import generate_voice
 from Reels.hashtag_generation import build_reel_caption
+from event_detector import get_today_event
 
 
 def load_existing_story(story_path: str) -> Dict[str, Any]:
@@ -76,6 +77,8 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
         dict: Paths to generated files and upload results
     """
     
+    event = get_today_event()
+
     # Determine upload behavior
     # Priority: explicit parameter > environment variable > default (True)
     if upload is None:
@@ -190,6 +193,7 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
         caption = build_reel_caption(
             title=story.get("title", ""),
             fallback_text=story.get("narration", "")[:100],
+            event=event,
         )
         upload_results = upload_to_social_media(video_file, caption, output_folder)
         result["upload_results"] = upload_results
@@ -208,12 +212,14 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
 
 
 if __name__ == "__main__":
-    # Parse command line arguments
-    use_existing_story = len(sys.argv) > 1 and sys.argv[1].endswith('.json')
-    images_only = '--images-only' in sys.argv
-    no_upload = '--no-upload' in sys.argv
+    # Parse command line arguments.
+    # For event-date testing, set EVENT_TEST_DATE in .env instead of passing --test-date.
+    args = sys.argv[1:]
+    use_existing_story = len(args) > 0 and args[0].endswith('.json')
+    images_only = '--images-only' in args
+    no_upload = '--no-upload' in args
     
-    story_path_arg: Optional[str] = sys.argv[1] if use_existing_story else None
+    story_path_arg: Optional[str] = args[0] if use_existing_story else None
     
     # Determine upload parameter
     # Command line --no-upload flag overrides env variable

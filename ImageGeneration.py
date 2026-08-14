@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from QuoteGeneration import generate_quote
@@ -12,9 +13,17 @@ def format_quote_lines(text, max_chars=28):
     Returns: (formatted_lines, is_conversation)
     """
     
-    # Check if this is a conversation format (has "Name: text" pattern)
+    # Check if this is a true multi-line conversation format (Name: dialogue per line).
+    # Do NOT treat single-line quote formats like "Childhood: ... / Adulthood: ..."
+    # as conversations, otherwise wrapped lines repeat "Childhood:" on every line.
     lines_raw = text.strip().split('\n')
-    is_conversation = any(':' in line and len(line.split(':', 1)) == 2 for line in lines_raw if line.strip())
+    speaker_line_pattern = re.compile(r"^[A-Z][A-Za-z .'-]{1,20}:\s+\S+")
+    speaker_lines = [
+        line for line in lines_raw
+        if speaker_line_pattern.match(line.strip())
+    ]
+    is_comparison_quote = "/" in text and len(speaker_lines) <= 2
+    is_conversation = len(speaker_lines) >= 2 and not is_comparison_quote
     
     if is_conversation:
         # Conversation format - check each line and wrap if too long

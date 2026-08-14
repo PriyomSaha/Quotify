@@ -1,4 +1,7 @@
 import random
+from typing import Optional, Dict, Any
+
+from event_detector import build_event_caption_prefix, get_event_hashtags
 
 # Always included
 FIXED_HASHTAGS = [
@@ -178,7 +181,7 @@ HASHTAG_POOL = [
 ]
 
 
-def generate_hashtags(min_count=20, max_count=23):
+def generate_hashtags(min_count=20, max_count=23, event: Optional[Dict[str, Any]] = None):
     """
     Returns a string of 20-23 hashtags.
     Always includes:
@@ -187,23 +190,36 @@ def generate_hashtags(min_count=20, max_count=23):
         #Reels
     """
 
-    if min_count < len(FIXED_HASHTAGS):
-        raise ValueError("min_count must be at least 3")
+    event_tags = get_event_hashtags(event)
+    fixed_tags = list(dict.fromkeys(FIXED_HASHTAGS + event_tags))
+
+    if min_count < len(fixed_tags):
+        min_count = len(fixed_tags)
+
+    if max_count < min_count:
+        max_count = min_count
 
     total = random.randint(min_count, max_count)
+    available_pool = [tag for tag in HASHTAG_POOL if tag not in fixed_tags]
+    random_count = min(total - len(fixed_tags), len(available_pool))
 
     random_tags = random.sample(
-        HASHTAG_POOL,
-        total - len(FIXED_HASHTAGS)
+        available_pool,
+        random_count
     )
 
-    hashtags = FIXED_HASHTAGS + random_tags
+    hashtags = fixed_tags + random_tags
     random.shuffle(hashtags)
 
     return " ".join(hashtags)
 
 
-def build_reel_caption(title: str = "", fallback_text: str = "", max_title_chars: int = 300) -> str:
+def build_reel_caption(
+    title: str = "",
+    fallback_text: str = "",
+    max_title_chars: int = 300,
+    event: Optional[Dict[str, Any]] = None,
+) -> str:
     """
     Build a Meta-safe reel caption with hashtags clearly appended.
 
@@ -212,7 +228,12 @@ def build_reel_caption(title: str = "", fallback_text: str = "", max_title_chars
     """
     clean_title = (title or fallback_text or "Aesthetic Vibes").strip()
     clean_title = " ".join(clean_title.split())[:max_title_chars].strip()
-    hashtags = generate_hashtags().strip()
+
+    event_prefix = build_event_caption_prefix(event)
+    if event_prefix and event_prefix.lower() not in clean_title.lower():
+        clean_title = f"{event_prefix}: {clean_title}"
+
+    hashtags = generate_hashtags(event=event).strip()
 
     return f"{clean_title}\n\n{hashtags}"
 
