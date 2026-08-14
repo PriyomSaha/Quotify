@@ -48,6 +48,7 @@ jobs:
       - name: Check if reel should be generated
         id: check
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
           CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -89,6 +90,7 @@ jobs:
       - name: Generate and upload reel
         if: steps.check.outputs.should_publish == 'true'
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
           CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

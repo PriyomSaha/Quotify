@@ -35,6 +35,7 @@ jobs:
       - name: Check if quote should be published
         id: check
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
           CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -77,6 +78,7 @@ jobs:
       - name: Generate and post quote
         if: steps.check.outputs.should_publish == 'true'
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
           CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}

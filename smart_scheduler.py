@@ -480,6 +480,11 @@ def get_current_weekday() -> str:
     return ist_now.strftime("%A").lower()
 
 
+def is_manual_dispatch_trigger() -> bool:
+    """Return True when the workflow was started manually from GitHub Actions."""
+    return os.getenv("GITHUB_EVENT_NAME", "").strip().lower() == "workflow_dispatch"
+
+
 def get_current_windows(content_type: ContentType) -> List[PostingWindow]:
     """Get all windows for today that match the content type"""
     weekday = get_current_weekday()
@@ -504,6 +509,17 @@ def get_active_window(content_type: ContentType) -> Optional[PostingWindow]:
     Get the currently active window for this content type.
     Returns None if no window is active or approaching.
     """
+    if is_manual_dispatch_trigger():
+        pending = get_pending_windows(content_type)
+        if pending:
+            print(f"⚡ Manual workflow_dispatch trigger: selecting pending {content_type.value} window '{pending[0].name}'")
+            return pending[0]
+        windows = get_current_windows(content_type)
+        if windows:
+            print(f"⚡ Manual workflow_dispatch trigger: selecting fallback {content_type.value} window '{windows[0].name}'")
+            return windows[0]
+        return None
+
     ist_now = get_ist_now()
     windows = get_current_windows(content_type)
     
@@ -542,6 +558,13 @@ def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
     Determine if a quote should be published now
     Returns: (should_publish, reason)
     """
+    if is_manual_dispatch_trigger():
+        print("\n" + "="*70)
+        print("⚡ MANUAL DISPATCH OVERRIDE - QUOTE")
+        print("="*70)
+        print("Manual workflow_dispatch trigger detected: bypassing all schedule/spacing/day-limit checks")
+        return True, "Manual workflow_dispatch trigger: bypassing scheduling checks"
+
     print("\n" + "="*70)
     print("🤔 QUOTE SCHEDULER - Decision Process")
     print("="*70)
@@ -611,6 +634,13 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     Determine if a reel should be published now
     Returns: (should_publish, reason)
     """
+    if is_manual_dispatch_trigger():
+        print("\n" + "="*70)
+        print("⚡ MANUAL DISPATCH OVERRIDE - REEL")
+        print("="*70)
+        print("Manual workflow_dispatch trigger detected: bypassing all schedule/spacing/day-limit checks")
+        return True, "Manual workflow_dispatch trigger: bypassing scheduling checks"
+
     print("\n" + "="*70)
     print("🎬 REEL SCHEDULER - Decision Process")
     print("="*70)
