@@ -19,6 +19,7 @@ from google import genai
 from .config import GEMINI_API_KEY, GEMINI_MODEL
 from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
 from .gender_tracker import get_next_gender, get_gender_instruction
+from event_detector import CONTENT_REEL, build_reel_event_instruction, get_today_event
 import json
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -36,12 +37,53 @@ def build_generation_prompt() -> str:
 
     print(f"\n🎭 Visual mode for this reel: {visual_mode.upper()}")
     
+    # Optional enhancement: if today is a configured special event,
+    # build the event reel instruction AND an override that makes the event
+    # story win over the base "not a story / no events" direction.
+    event = get_today_event(content_type=CONTENT_REEL)
+    event_instruction = build_reel_event_instruction(event) if event else ""
+    event_override = ""
+    rule_category = "- narration must strictly follow the selected content category"
+    rule_event = (
+        "- if SPECIAL DATE REEL MODE is present, the narration and scenes must "
+        "feel connected to that occasion"
+    )
+
+    if event_instruction and event:
+        event_name = str(event.get("name", "this occasion")).strip()
+        event_override = f"""
+
+==================================================
+EVENT DAY OVERRIDE — READ BEFORE WRITING
+==================================================
+The base instructions above say "content is NOT a story", "Do not create
+events, places, characters or fictional situations". IGNORE all of those today.
+
+Today is {event_name}: write the 80-110 word nostalgic, first-person memory
+story described in SPECIAL DATE REEL MODE. The selected content category only
+sets the mood; it NEVER sets the subject. If the category (e.g. jokes, love
+drama, or generic wisdom) contradicts the occasion, choose the occasion's
+nostalgic memory instead.
+        """
+        rule_category = (
+            "- TODAY the narration MUST be a nostalgic, first-person memory story "
+            "about the occasion listed in SPECIAL DATE REEL MODE; the content "
+            "category only supplies mood and is never the subject"
+        )
+        rule_event = (
+            "- TODAY the narration and all 6 scenes must be unmistakably about the "
+            "occasion, nostalgic and memory-driven; no generic or unrelated stories"
+        )
+
     # Note: content info is already printed in PromptSelector.get_prompt_for_current_time()
     # No need to import or call get_content_type_for_time again
 
     # Add JSON output format requirements to the prompt
     return f"""
         {final_prompt}
+
+        {event_instruction}
+        {event_override}
 
         ==================================================
         OUTPUT FORMAT
@@ -80,7 +122,8 @@ def build_generation_prompt() -> str:
         JSON RULES
 
         - narration must contain 80-110 words
-        - narration must strictly follow the selected content category
+        {rule_category}
+        {rule_event}
         - exactly 6 visual scenes
         - each scene must represent one clear visual moment
         - every scene must directly match the narration

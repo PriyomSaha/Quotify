@@ -7,6 +7,19 @@ on:
   
   # Manual trigger for testing
   workflow_dispatch:
+    inputs:
+      test_date:
+        description: 'Optional event test date in YYYY-MM-DD format, e.g. 2026-08-15'
+        required: false
+        default: ''
+      force_publish:
+        description: 'Bypass scheduler window for manual testing'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 concurrency:
   group: aesthetic-vibes-publisher
@@ -56,6 +69,8 @@ jobs:
           PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
           API_VERSION: ${{ secrets.API_VERSION }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          EVENT_TEST_DATE: ${{ github.event.inputs.test_date }}
+          FORCE_PUBLISH: ${{ github.event.inputs.force_publish }}
         run: |
           python -c "
           from smart_scheduler import should_publish_reel, get_schedule_summary
@@ -65,8 +80,14 @@ jobs:
           # Show today's schedule
           get_schedule_summary()
           
+          import os
+          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
+
           # Check if we should generate reel
-          should_publish, reason = should_publish_reel()
+          if force_publish:
+              should_publish, reason = True, 'Manual force_publish enabled'
+          else:
+              should_publish, reason = should_publish_reel()
           
           print(f'\n📊 Decision: {\"GENERATE REEL\" if should_publish else \"SKIP\"}')
           print(f'📝 Reason: {reason}\n')
@@ -110,6 +131,8 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           AUTO_UPLOAD_REELS: "true"
+          EVENT_TEST_DATE: ${{ github.event.inputs.test_date }}
+          FORCE_PUBLISH: ${{ github.event.inputs.force_publish }}
         run: |
           python -c "
           import sys
@@ -129,13 +152,18 @@ jobs:
           
           from api import execute_reel_generation
           from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
+          import os
           
+          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
           active_window = get_active_window(ContentType.REEL)
-          if not active_window:
+
+          if active_window:
+              if not acquire_run_lock(ContentType.REEL, active_window):
+                  raise RuntimeError('Could not acquire scheduler run lock')
+          elif not force_publish:
               raise RuntimeError('No active reel window found before generation')
-          
-          if not acquire_run_lock(ContentType.REEL, active_window):
-              raise RuntimeError('Could not acquire scheduler run lock')
+          else:
+              print('🧪 Manual test mode: no active reel window, skipping scheduler lock')
           
           try:
               # This raises if upload is not fully successful.
@@ -145,12 +173,16 @@ jobs:
               print('🎉 REEL GENERATION AND UPLOAD COMPLETE')
               print('='*70 + '\n')
               
-              print(f'✅ Marking slot "{active_window.name}" as completed...')
-              mark_slot_completed(active_window)
+              if active_window:
+                  print(f'✅ Marking slot "{active_window.name}" as completed...')
+                  mark_slot_completed(active_window)
+              else:
+                  print('🧪 Manual test mode: no scheduler slot to mark completed')
               sys.exit(0)
               
           except Exception as e:
-              release_run_lock(ContentType.REEL, active_window)
+              if active_window:
+                  release_run_lock(ContentType.REEL, active_window)
               logger.error(f'❌ Reel generation failed: {e}')
               import traceback
               logger.error(traceback.format_exc())

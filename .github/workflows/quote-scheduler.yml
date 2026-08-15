@@ -7,6 +7,19 @@ on:
   
   # Manual trigger for testing
   workflow_dispatch:
+    inputs:
+      test_date:
+        description: 'Optional event test date in YYYY-MM-DD format, e.g. 2026-08-15'
+        required: false
+        default: ''
+      force_publish:
+        description: 'Bypass scheduler window for manual testing'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 concurrency:
   group: aesthetic-vibes-publisher
@@ -44,6 +57,8 @@ jobs:
           API_VERSION: ${{ secrets.API_VERSION }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EVENT_TEST_DATE: ${{ github.event.inputs.test_date }}
+          FORCE_PUBLISH: ${{ github.event.inputs.force_publish }}
         run: |
           python -c "
           from smart_scheduler import should_publish_quote, get_schedule_summary
@@ -53,8 +68,14 @@ jobs:
           # Show today's schedule
           get_schedule_summary()
           
+          import os
+          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
+
           # Check if we should publish
-          should_publish, reason = should_publish_quote()
+          if force_publish:
+              should_publish, reason = True, 'Manual force_publish enabled'
+          else:
+              should_publish, reason = should_publish_quote()
           
           print(f'\n📊 Decision: {\"PUBLISH\" if should_publish else \"SKIP\"}')
           print(f'📝 Reason: {reason}\n')
@@ -87,6 +108,8 @@ jobs:
           PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
           API_VERSION: ${{ secrets.API_VERSION }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          EVENT_TEST_DATE: ${{ github.event.inputs.test_date }}
+          FORCE_PUBLISH: ${{ github.event.inputs.force_publish }}
         run: |
           python -c "
           print('\n' + '='*70)
@@ -99,15 +122,20 @@ jobs:
           from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
           from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
           from gist_storage import add_to_history
+          from event_detector import build_quote_caption, get_today_event
           import os
           import PromptSelector
           
+          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
           active_window = get_active_window(ContentType.QUOTE)
-          if not active_window:
+
+          if active_window:
+              if not acquire_run_lock(ContentType.QUOTE, active_window):
+                  raise RuntimeError('Could not acquire scheduler run lock')
+          elif not force_publish:
               raise RuntimeError('No active quote window found before posting')
-          
-          if not acquire_run_lock(ContentType.QUOTE, active_window):
-              raise RuntimeError('Could not acquire scheduler run lock')
+          else:
+              print('🧪 Manual test mode: no active quote window, skipping scheduler lock')
           
           try:
               # Generate quote without updating content history yet.
@@ -126,9 +154,14 @@ jobs:
               
               # Upload to Facebook
               print('📤 Step 3/4: Uploading to Facebook...')
+              event = get_today_event(content_type='quote')
+              caption = build_quote_caption(event)
+              if caption:
+                  print(f'Caption preview: {caption[:200]}')
+
               fb_cdn_url = schedule_photo_after(
                   image_path='image.jpg',
-                  caption='',
+                  caption=caption,
                   hours=0,
                   minutes=0
               )
@@ -140,7 +173,7 @@ jobs:
               print('📱 Step 4/4: Publishing to Instagram...')
               ig_result = post_to_instagram_from_fb_url(
                   fb_image_url=fb_cdn_url,
-                  caption=''
+                  caption=caption
               )
               ig_post_id = ig_result.get('id', '')
               if not ig_post_id:
@@ -152,14 +185,18 @@ jobs:
               if selected and selected.get('type'):
                   add_to_history(selected['type'])
               
-              print(f'✅ Marking slot "{active_window.name}" as completed...')
-              mark_slot_completed(active_window)
+              if active_window:
+                  print(f'✅ Marking slot "{active_window.name}" as completed...')
+                  mark_slot_completed(active_window)
+              else:
+                  print('🧪 Manual test mode: no scheduler slot to mark completed')
               
               print('\n' + '='*70)
               print('🎉 QUOTE POSTED SUCCESSFULLY!')
               print('='*70 + '\n')
           except Exception:
-              release_run_lock(ContentType.QUOTE, active_window)
+              if active_window:
+                  release_run_lock(ContentType.QUOTE, active_window)
               raise
           finally:
               if os.path.exists('image.jpg'):

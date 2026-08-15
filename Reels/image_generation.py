@@ -11,6 +11,7 @@ import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 from dotenv import load_dotenv
 
+from event_detector import build_event_image_instruction
 from .config import OUTPUT_DIR
 
 load_dotenv()
@@ -71,7 +72,7 @@ REEL_HEIGHT = 1920
 BASE_STYLE_PROMPT = """
 Create a beautiful cinematic digital painting.
 
-Japanese slice-of-life inspired illustration with South Asian everyday warmth.
+Clean, culturally specific, and symbol-driven visual storytelling.
 
 Painterly brush strokes.
 
@@ -81,9 +82,9 @@ Natural atmospheric lighting that matches the scene.
 
 Rich but realistic colors.
 
-Emotional storytelling through nature, objects, places, weather, and ordinary people.
+Emotional storytelling through iconic symbols, places, atmosphere, and meaningful national or cultural context.
 
-Peaceful aesthetic atmosphere.
+Premium cinematic composition.
 
 Highly detailed environment.
 
@@ -101,11 +102,12 @@ No text.
 """
 
 STYLE_VARIATIONS = [
-    "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
     "Japanese slice-of-life anime film look, hand-painted background art, peaceful everyday emotion.",
     "Cinematic painterly editorial illustration, natural textures, grounded emotional realism.",
     "Dreamy animated movie background style, lush plants, soft clouds, warm nostalgic color palette.",
     "Watercolor-like painterly illustration, quiet poetic atmosphere, delicate light and shadow.",
+    "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
+    "Hand-painted 2D illustration, soft watercolor and gouache textures, delicate linework, cinematic composition, warm nostalgic mood, expressive painted backgrounds, rich natural colors, non-photorealistic."
 ]
 
 NEGATIVE_PROMPT = """
@@ -134,7 +136,19 @@ mutated,
 cgi,
 render,
 photograph,
-photorealistic
+photorealistic,
+generic cozy home interior,
+cozy family room,
+small wooden cabin,
+house exterior,
+bungalow,
+balcony scene,
+window-view apartment,
+tea stall,
+coffee shop,
+old city lane,
+random rainy street,
+generic apartment balcony for no reason
 """
 
 # ============================================================
@@ -242,15 +256,26 @@ def compact_prompt(text: str) -> str:
 # PROMPT BUILDER
 # ============================================================
 
-def build_style_prompt() -> str:
-    """Return the base style plus one random aesthetic variation."""
-    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{random.choice(STYLE_VARIATIONS)}"
+def build_style_prompt(event_mode: bool = False) -> str:
+    """Return the base style, with event mode avoiding cozy generic default imagery."""
+    if event_mode:
+        return (
+            f"{BASE_STYLE_PROMPT}\n\n"
+            "Event-first artistic direction:\n"
+            "Use iconic occasion symbols and clear visual identity. "
+            "Do not default to cozy home interiors, balcony scenes, cabin settings, or generic rainy-city imagery unless the occasion itself requires them. "
+            "The image must clearly communicate what the event is famous for. "
+            "Ghibli-style elements are integrated throughout—hand-painted backgrounds, whimsical nature, and gentle character design."
+        )
+
+    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{STYLE_VARIATIONS[0]}"
 
 
-def build_prompt(
+def build_prompt_for_normal_day(
     scene_type: str,
     scene_description: str,
 ) -> str:
+    """Build prompt for normal days with random environment, lighting, mood, and foreground variations."""
     scene_type = (scene_type or "environment").lower().strip()
     scene_description = (scene_description or "").strip()
 
@@ -282,8 +307,7 @@ def build_prompt(
     elif scene_type == "architecture":
         subject = (
             "Beautiful architecture or interior space. "
-            "Coffee shop, library, train station, old cabin, balcony, "
-            "wooden house, bridge, lighthouse, tea stall, classroom, bus stop or quiet street. "
+            "Coffee shop, library, train station, bridge, tea stall, classroom, bus stop, quiet street or other public place. "
             "The place itself carries the emotion."
         )
 
@@ -321,14 +345,16 @@ def build_prompt(
             "No human characters unless explicitly required by the scene."
         )
 
+    # For normal days: use random variations
     environment = random.choice(ENVIRONMENTS)
     lighting = random.choice(LIGHTING)
     mood = random.choice(MOODS)
     foreground = random.choice(FOREGROUND_DETAILS)
+
     variation = cinematic_variation()
 
     prompt = f"""
-        {build_style_prompt()}
+        {build_style_prompt(event_mode=False)}
 
         Scene:
         {scene_description}
@@ -389,18 +415,166 @@ def build_prompt(
 
     return compact_prompt(prompt)
 
+
+def build_prompt_for_event(
+    scene_type: str,
+    scene_description: str,
+    event_instruction: str,
+    event_data: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Build prompt for event days with event-specific visual cues from calendar data."""
+    scene_type = (scene_type or "environment").lower().strip()
+    scene_description = (scene_description or "").strip()
+    event_instruction = (event_instruction or "").strip()
+
+    # Sanitize scene description for events: remove generic/conflicting elements
+    scene_description_clean = scene_description
+    
+    # Remove generic keywords that contradict event focus
+    generic_keywords_to_remove = {
+        "dog", "cat", "animal", "quiet", "resting", "sleeping",
+        "coffee shop", "tea stall", "library", "classroom", "bus stop",
+        "balcony", "cabin", "home", "house", "cozy", "interior",
+        "rainy", "monsoon", "puddle", "umbrella", "car", "lady", "woman",
+        "man", "person", "people",
+    }
+    
+    words = scene_description_clean.lower().split()
+    filtered_words = [
+        word for word in words 
+        if not any(generic in word.lower() for generic in generic_keywords_to_remove)
+    ]
+    
+    if filtered_words:
+        scene_description_clean = " ".join(filtered_words).strip()
+    
+    # If cleaning removed too much, use event instruction as base
+    if not scene_description_clean or len(scene_description_clean) < 15:
+        scene_description_clean = event_instruction
+
+    # Extract styling from event calendar data
+    camera_angle = "wide establishing shot"
+    lens_style = "35mm film lens"
+    weather_style = "golden light"
+    color_grade = "vibrant natural colors"
+    style_variation = "Bold cinematic visual storytelling with cultural pride and national symbolism."
+    
+    if event_data:
+        camera_angle = event_data.get("camera_angle", camera_angle)
+        lens_style = event_data.get("lens_style", lens_style)
+        weather_style = event_data.get("weather", weather_style)
+        color_grade = event_data.get("color_grade", color_grade)
+        style_variation = event_data.get("style_variation", style_variation)
+
+    # Build ASSERTIVE event prompt with MANDATORY event focus
+    prompt = f"""
+CRITICAL: This image MUST represent {event_instruction}
+DO NOT generate random, generic, or unrelated content.
+Every element must serve the event narrative.
+
+{build_style_prompt(event_mode=True)}
+
+MANDATORY EVENT FOCUS:
+{event_instruction}
+
+This is the primary visual identity. Prioritize event-specific symbols, landmarks, colors, and cultural elements above all else.
+
+Scene Context:
+{scene_description_clean}
+
+Style Direction:
+{style_variation}
+
+Composition:
+Vertical 9:16 reel format.
+{camera_angle}.
+{lens_style}.
+Professional cinematic framing with clear visual hierarchy.
+Bold, memorable imagery that immediately communicates the event.
+
+Lighting & Atmosphere:
+{weather_style}
+Natural, warm, celebratory mood matching the occasion.
+
+Color Palette:
+{color_grade}
+Use culturally significant colors prominently.
+
+Quality Standards:
+Highly detailed, award-winning illustration.
+Soft painterly style with rich textures.
+Sharp focus. Movie-quality composition.
+Emotional depth matching the event significance.
+
+CRITICAL NEGATIVES - DO NOT GENERATE:
+- Random cars, vehicles, or transportation
+- Random people (men, women, children) unrelated to event
+- Generic coffee shops, homes, offices
+- Rainy or mundane weather unless event-specific
+- Abstract vague imagery
+- Anything that doesn't directly support the event narrative
+- Low quality, blurry, or poorly rendered content
+- Text, logos, watermarks, or signatures
+        """
+
+    return compact_prompt(prompt)
+
+
+def build_prompt(
+    scene_type: Optional[str] = None,
+    scene_description: Optional[str] = None,
+    event_instruction: Optional[str] = None,
+    event_data: Optional[Dict[str, Any]] = None,
+) -> str:
+    """
+    Backward compatibility wrapper.
+    Routes to build_prompt_for_event() if event_instruction is provided,
+    otherwise to build_prompt_for_normal_day().
+    """
+    # Normalize optional parameters to strings
+    scene_type_str = (scene_type or "environment").lower().strip()
+    scene_description_str = (scene_description or "").strip()
+    event_instruction_str = (event_instruction or "").strip()
+    
+    if event_instruction_str:
+        return build_prompt_for_event(
+            scene_type=scene_type_str,
+            scene_description=scene_description_str,
+            event_instruction=event_instruction_str,
+            event_data=event_data,
+        )
+    else:
+        return build_prompt_for_normal_day(
+            scene_type=scene_type_str,
+            scene_description=scene_description_str,
+        )
+
+
 # ============================================================
 # CLOUDFLARE IMAGE GENERATION
 # ============================================================
 
 def generate_image_with_cloudflare(
     prompt: str,
+    event_mode: bool = False,
 ) -> Optional[Image.Image]:
     prompt = compact_prompt(prompt)
     negative_prompt = compact_prompt(NEGATIVE_PROMPT)
 
-    steps = random.choice([5, 6, 7])
-    guidance = random.choice([3.5,4.0, 4.5, 5.0])
+    if event_mode:
+        steps = 8
+        guidance = 12.0
+        negative_prompt = compact_prompt(
+            NEGATIVE_PROMPT
+            + ", random people, random cars, random vehicles, random objects, random animals, "
+            + "generic home scene, balcony with plants, cabin, bungalow, cozy room, rainy city street, "
+            + "tea stall, coffee shop, apartment interior, abstract vague imagery, unclear composition, "
+            + "unrelated subject matter, off-topic content, random lady, random man, random woman, "
+            + "random child, random stranger, random face, random portrait, low resolution, poorly rendered"
+        )
+    else:
+        steps = random.choice([5, 6, 7])
+        guidance = random.choice([3.5, 4.0, 4.5, 5.0])
 
     payload = {
         "prompt": prompt,
@@ -408,6 +582,8 @@ def generate_image_with_cloudflare(
         "steps": steps,
         "guidance": guidance,
     }
+
+    print(f"\nCloudflare prompt (event_mode={event_mode}):\n{prompt[:1200]}\n")
 
     for account in CLOUDFLARE_ACCOUNTS:
         print(f"\nUsing Cloudflare Account: {account['name']}")
@@ -433,35 +609,57 @@ def generate_image_with_cloudflare(
             print("Quota exceeded. Trying next account...")
             continue
 
+        # if response.status_code != 200:
+        #     print(f"HTTP {response.status_code}")
+        #     try:
+        #         print(response.json())
+        #     except Exception:
+        #         print(response.text)
+        # try:
+        #     result = response.json()
+
+        #     if not result.get("success", True):
+        #         print(result)
+        #         continue
+
+        #     image_b64 = (
+        #         result
+        #         .get("result", {})
+        #         .get("image")
+        #     )
+
+        #     if not image_b64:
+        #         print("No image returned.")
+        #         continue
+
+        #     image = Image.open(
+        #         io.BytesIO(
+        #             base64.b64decode(image_b64)
+        #         )
+        #     ).convert("RGB")
+
+        #     print("✓ Image generated successfully")
+
+        #     return image
+        # except Exception as exc:
+        #     print(f"Image Decode Error: {exc}")
+        #     continue
+
         if response.status_code != 200:
             print(f"HTTP {response.status_code}")
+
             try:
                 print(response.json())
             except Exception:
                 print(response.text)
+
             continue
 
         try:
-            result = response.json()
-
-            if not result.get("success", True):
-                print(result)
-                continue
-
-            image_b64 = (
-                result
-                .get("result", {})
-                .get("image")
-            )
-
-            if not image_b64:
-                print("No image returned.")
-                continue
-
+            # New Cloudflare model returns the actual PNG binary,
+            # not JSON containing a Base64 image.
             image = Image.open(
-                io.BytesIO(
-                    base64.b64decode(image_b64)
-                )
+                io.BytesIO(response.content)
             ).convert("RGB")
 
             print("✓ Image generated successfully")
@@ -471,7 +669,6 @@ def generate_image_with_cloudflare(
         except Exception as exc:
             print(f"Image Decode Error: {exc}")
             continue
-
     print("\nAll Cloudflare accounts failed.")
 
     return None
@@ -653,13 +850,8 @@ ARCHITECTURE_KEYWORDS = {
     "coffee shop",
     "station",
     "bridge",
-    "house",
-    "home",
     "room",
-    "balcony",
     "street",
-    "cabin",
-    "lighthouse",
     "classroom",
     "bus stop",
     "tea stall",
@@ -894,10 +1086,51 @@ def random_scene_description(
     return random.choice(ENVIRONMENT_VARIATIONS)
 
 
+GENERIC_EVENT_KW = {
+    "house",
+    "cabin",
+    "balcony",
+    "cozy",
+    "home",
+    "tea stall",
+    "coffee shop",
+    "rainy city",
+    "wet street",
+    "bus stop",
+    "room",
+    "classroom",
+    "library",
+    "bridge",
+    "street",
+    "forest trail",
+    "quiet road",
+    "old city lane",
+}
+
+
+def sanitize_event_scene_description(
+    description: str,
+    event_name: str,
+) -> str:
+    cleaned = str(description or "").strip()
+    if not cleaned:
+        return f"{event_name} celebration scene with iconic visual symbolism and strong cultural identity."
+
+    lowered = cleaned.lower()
+    if any(keyword in lowered for keyword in GENERIC_EVENT_KW):
+        cleaned = ""
+
+    if not cleaned:
+        return f"{event_name} celebration scene using iconic festival visuals, national symbolism, and emotionally rich storytelling."
+
+    return cleaned
+
+
 def enhance_scene_for_variety(
     scene: Dict[str, Any],
     index: int,
     visual_mode: str = "environment",
+    event: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     scene_type = str(
         scene.get("type") or visual_mode or "environment"
@@ -916,6 +1149,20 @@ def enhance_scene_for_variety(
         description = random_scene_description(
             scene_type
         )
+
+    if event:
+        event_name = str(event.get("name", "special occasion")).strip() or "special occasion"
+        event_instruction = build_event_image_instruction(event)
+        description = sanitize_event_scene_description(description, event_name)
+        description = (
+            f"{event_instruction} "
+            f"{description}. "
+            "Cinematic composition. Painterly illustration. Highly detailed. Beautiful natural colors. Emotional storytelling. No text."
+        )
+        return {
+            "type": "event",
+            "description": description,
+        }
 
     lighting = random.choice(LIGHTING)
     mood = random.choice(MOODS)
@@ -996,6 +1243,8 @@ def create_placeholder_image(
 def generate_single_image(
     scene: Dict[str, Any],
     output_path: str,
+    event_instruction: Optional[str] = None,
+    event_data: Optional[Dict[str, Any]] = None,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1009,9 +1258,14 @@ def generate_single_image(
     prompt = build_prompt(
         scene_type=scene_type,
         scene_description=scene_description,
+        event_instruction=event_instruction,
+        event_data=event_data,
     )
 
-    image = generate_image_with_cloudflare(prompt)
+    image = generate_image_with_cloudflare(
+        prompt,
+        event_mode=bool(event_instruction),
+    )
 
     if image is None:
         print("Image generation failed. Using placeholder.")
@@ -1037,6 +1291,10 @@ def generate_images_for_reel(
     output_dir: str | Path | None = None,
     prefix: str = "scene",
 ) -> List[str]:
+    from event_detector import CONTENT_REEL, get_today_event
+
+    event = get_today_event(content_type=CONTENT_REEL)
+    event_instruction = build_event_image_instruction(event) if event else None
 
     if output_dir is None:
         output_dir = OUTPUT_DIR / "images"
@@ -1089,6 +1347,7 @@ def generate_images_for_reel(
             scene,
             index,
             visual_mode,
+            event=event,
         )
 
         output_path = (
@@ -1103,6 +1362,8 @@ def generate_images_for_reel(
         image_path = generate_single_image(
             scene=scene,
             output_path=str(output_path),
+            event_instruction=event_instruction,
+            event_data=event,
         )
 
         generated_images.append(image_path)
