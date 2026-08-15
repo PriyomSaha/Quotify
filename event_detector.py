@@ -201,10 +201,121 @@ def get_event_wish(event: Optional[Dict[str, Any]]) -> str:
     return f"Happy {name}"
 
 
+def _event_iconic_visuals(event: Dict[str, Any]) -> List[str]:
+    """Return a prioritized list of event-signature visual cues and iconic elements."""
+    event_name = str(event.get("name", "")).lower()
+    mapped = {
+        "independence day": [
+            "Indian tricolor flag",
+            "India Gate or iconic Indian monument",
+            "flag hoisting scene",
+            "patriotic crowd with tricolor energy",
+            "sunrise over India with saffron-white-green tones",
+        ],
+        "republic day": [
+            "Indian tricolor flag",
+            "Republic Day parade",
+            "India Gate and patriotic crowd",
+            "constitution and democratic pride",
+            "red fort or parade formation with national colors",
+        ],
+        "gandhi jayanti": [
+            "peaceful Indian village or simple morning scene",
+            "spinning wheel / charkha symbol",
+            "truth and non-violence imagery",
+            "quiet dignity and simplicity",
+        ],
+        "teachers' day": [
+            "classroom or teacher-student learning scene",
+            "chalkboard, notebook, pen, or desk",
+            "gratitude for guidance",
+        ],
+        "mothers' day": [
+            "old kitchen or family home morning scene",
+            "mother's hands preparing food",
+            "family warmth and care",
+        ],
+        "fathers' day": [
+            "father's everyday gestures",
+            "wristwatch, keys, morning tea, quiet support",
+            "family bond and protection",
+        ],
+        "friendship day": [
+            "school or college friends",
+            "old group photo or shared street scene",
+            "nostalgic childhood friendship moments",
+        ],
+        "raksha bandhan": [
+            "rakhi thread",
+            "siblings together",
+            "family celebration scene",
+        ],
+        "valentine's day": [
+            "old handwritten note",
+            "two cups of tea",
+            "rainy window or empty bench",
+            "love and distance imagery",
+        ],
+    }
+
+    visual_cues = []
+    for name_key, cues in mapped.items():
+        if name_key in event_name:
+            visual_cues.extend(cues)
+
+    visual_hints = event.get("visual_hints", []) or []
+    if visual_hints:
+        visual_cues.extend([str(v) for v in visual_hints if str(v).strip()])
+
+    deduped = []
+    seen = set()
+    for cue in visual_cues:
+        if cue not in seen:
+            seen.add(cue)
+            deduped.append(cue)
+    return deduped[:10]
+
+
+def build_event_identity_instruction(event: Dict[str, Any]) -> str:
+    """Add strong event identity guidance without affecting normal non-event days."""
+    event_name = str(event.get("name", "special occasion")).strip()
+    visual_cues = _event_iconic_visuals(event)
+    visual_text = ", ".join(visual_cues) if visual_cues else "iconic cues tied to this occasion"
+
+    return f"""
+
+EVENT IDENTITY RULE
+- The content must clearly represent {event_name} and should be unmistakably about this occasion.
+- It must include iconic elements strongly associated with {event_name} rather than generic abstract mood imagery.
+- The visuals/text should clearly say what this event is famous for.
+- Use recognizable cues such as: {visual_text}.
+- Avoid generic scenes that could belong to any random emotional post.
+- Keep it respectful, premium, emotional, and culturally specific.
+"""
+
+
+def build_event_image_instruction(event: Dict[str, Any]) -> str:
+    """Create a short but explicit visual identity instruction for image scenes."""
+    if not event:
+        return ""
+
+    event_name = str(event.get("name", "special occasion")).strip()
+    visuals = _event_iconic_visuals(event)
+    visual_text = ", ".join(visuals[:5]) if visuals else "iconic symbols tied to the occasion"
+
+    return (
+        f"EVENT IMAGE FOCUS: The scene must clearly read as {event_name}. "
+        f"Prioritize iconic visual elements: {visual_text}. "
+        "Do not use generic abstract nature or random rainy-city imagery unless it supports the occasion. "
+        "The composition should clearly communicate what this event is famous for."
+    )
+
+
 def build_quote_event_instruction(event: Dict[str, Any]) -> str:
     """Build prompt text to steer quote generation for an active event."""
     hashtags = " ".join(event.get("hashtags", [])[:5])
     wish = get_event_wish(event)
+    event_identity = build_event_identity_instruction(event)
 
     return f"""
 
@@ -218,6 +329,7 @@ Theme: {event.get('quote_theme', '')}.
 
 Generate content that feels timely, emotional, respectful, and highly shareable for this occasion.
 Keep the existing format and word-length rules from the selected content type, but make the emotion clearly connected to this occasion.
+{event_identity}
 Do not include wishes like "{wish}" in the generated quote text. Event wishes are handled only in the social caption.
 
 Safety rules:
@@ -242,6 +354,7 @@ def build_reel_event_instruction(event: Dict[str, Any]) -> str:
     visual_hints = event.get("visual_hints", []) or []
     visual_hint_text = "\n".join(f"- {hint}" for hint in visual_hints)
     hashtags = " ".join(event.get("hashtags", [])[:6])
+    event_identity = build_event_identity_instruction(event)
 
     return f"""
 
@@ -256,6 +369,7 @@ Quote/emotional theme: {event.get('quote_theme', '')}.
 
 Create the reel so people connected to this occasion can feel it, save it, and share it.
 Use the selected normal content category as the base emotion, but make the story clearly relevant to this occasion.
+{event_identity}
 
 Visual hints to naturally include where suitable:
 {visual_hint_text}
