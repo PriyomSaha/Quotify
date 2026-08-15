@@ -107,7 +107,8 @@ STYLE_VARIATIONS = [
     "Dreamy animated movie background style, lush plants, soft clouds, warm nostalgic color palette.",
     "Watercolor-like painterly illustration, quiet poetic atmosphere, delicate light and shadow.",
     "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
-    "Hand-painted 2D illustration, soft watercolor and gouache textures, delicate linework, cinematic composition, warm nostalgic mood, expressive painted backgrounds, rich natural colors, non-photorealistic."
+    "Soft aesthetic film style, pastel palette, gentle haze, dreamy nostalgic mood, minimalist composition.",
+    "Hand-painted 2D watercolor illustration, delicate linework, warm nostalgic mood, rich natural colors.",
 ]
 
 NEGATIVE_PROMPT = """
@@ -238,7 +239,7 @@ FOREGROUND_DETAILS = [
 # PROMPT HELPERS
 # ============================================================
 
-MAX_PROMPT_LENGTH = 1800
+MAX_PROMPT_LENGTH = 5000
 
 
 def normalize_prompt_text(text: str) -> str:
@@ -250,13 +251,20 @@ def compact_prompt(text: str) -> str:
     text = normalize_prompt_text(text)
     if len(text) > MAX_PROMPT_LENGTH:
         text = text[:MAX_PROMPT_LENGTH].rstrip()
+        # Cut at a word boundary to avoid splitting mid-word
+        last_space = text.rfind(" ")
+        if last_space > int(MAX_PROMPT_LENGTH * 0.5):
+            text = text[:last_space].rstrip()
     return text
 
 # ============================================================
 # PROMPT BUILDER
 # ============================================================
 
-def build_style_prompt(event_mode: bool = False) -> str:
+def build_style_prompt(
+    event_mode: bool = False,
+    style_variation: Optional[str] = None,
+) -> str:
     """Return the base style, with event mode avoiding cozy generic default imagery."""
     if event_mode:
         return (
@@ -268,12 +276,14 @@ def build_style_prompt(event_mode: bool = False) -> str:
             "Ghibli-style elements are integrated throughout—hand-painted backgrounds, whimsical nature, and gentle character design."
         )
 
-    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{STYLE_VARIATIONS[0]}"
+    variation = style_variation or STYLE_VARIATIONS[0]
+    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{variation}"
 
 
 def build_prompt_for_normal_day(
     scene_type: str,
     scene_description: str,
+    style_variation: Optional[str] = None,
 ) -> str:
     """Build prompt for normal days with random environment, lighting, mood, and foreground variations."""
     scene_type = (scene_type or "environment").lower().strip()
@@ -354,7 +364,7 @@ def build_prompt_for_normal_day(
     variation = cinematic_variation()
 
     prompt = f"""
-        {build_style_prompt(event_mode=False)}
+        {build_style_prompt(event_mode=False, style_variation=style_variation)}
 
         Scene:
         {scene_description}
@@ -466,54 +476,40 @@ def build_prompt_for_event(
         color_grade = event_data.get("color_grade", color_grade)
         style_variation = event_data.get("style_variation", style_variation)
 
-    # Build ASSERTIVE event prompt with MANDATORY event focus
+    # Build event prompt with event focus + scene FIRST (critical content
+    # at the front). The DO-NOT-GENERATE guidance is placed at the END
+    # because negatives are already passed separately via ``negative_prompt``
+    # in the API payload — they are the least critical part of the main prompt.
     prompt = f"""
-CRITICAL: This image MUST represent {event_instruction}
-DO NOT generate random, generic, or unrelated content.
-Every element must serve the event narrative.
+EVENT: This scene MUST clearly represent the occasion.
+{event_instruction}
+
+SCENE TO RENDER:
+{scene_description_clean}
+
+STYLE DIRECTION:
+{style_variation}
+
+COMPOSITION:
+Vertical 9:16 reel format. {camera_angle}. {lens_style}. Professional cinematic framing with clear visual hierarchy.
+
+LIGHTING & ATMOSPHERE:
+{weather_style}. Natural, warm, celebratory mood matching the occasion.
+
+COLOR PALETTE:
+{color_grade}. Use culturally significant colors prominently.
 
 {build_style_prompt(event_mode=True)}
 
-MANDATORY EVENT FOCUS:
-{event_instruction}
+QUALITY STANDARDS:
+Highly detailed, award-winning illustration. Soft painterly style. Sharp focus. Emotional depth matching the event significance.
 
-This is the primary visual identity. Prioritize event-specific symbols, landmarks, colors, and cultural elements above all else.
-
-Scene Context:
-{scene_description_clean}
-
-Style Direction:
-{style_variation}
-
-Composition:
-Vertical 9:16 reel format.
-{camera_angle}.
-{lens_style}.
-Professional cinematic framing with clear visual hierarchy.
-Bold, memorable imagery that immediately communicates the event.
-
-Lighting & Atmosphere:
-{weather_style}
-Natural, warm, celebratory mood matching the occasion.
-
-Color Palette:
-{color_grade}
-Use culturally significant colors prominently.
-
-Quality Standards:
-Highly detailed, award-winning illustration.
-Soft painterly style with rich textures.
-Sharp focus. Movie-quality composition.
-Emotional depth matching the event significance.
-
-CRITICAL NEGATIVES - DO NOT GENERATE:
+DO NOT GENERATE (already enforced via negative_prompt):
 - Random cars, vehicles, or transportation
-- Random people (men, women, children) unrelated to event
+- Random people (men, women, children) unrelated to the event
 - Generic coffee shops, homes, offices
 - Rainy or mundane weather unless event-specific
 - Abstract vague imagery
-- Anything that doesn't directly support the event narrative
-- Low quality, blurry, or poorly rendered content
 - Text, logos, watermarks, or signatures
         """
 
@@ -525,6 +521,7 @@ def build_prompt(
     scene_description: Optional[str] = None,
     event_instruction: Optional[str] = None,
     event_data: Optional[Dict[str, Any]] = None,
+    style_variation: Optional[str] = None,
 ) -> str:
     """
     Backward compatibility wrapper.
@@ -547,6 +544,7 @@ def build_prompt(
         return build_prompt_for_normal_day(
             scene_type=scene_type_str,
             scene_description=scene_description_str,
+            style_variation=style_variation,
         )
 
 
@@ -1131,6 +1129,7 @@ def enhance_scene_for_variety(
     index: int,
     visual_mode: str = "environment",
     event: Optional[Dict[str, Any]] = None,
+    hint_offset: int = 0,
 ) -> Dict[str, Any]:
     scene_type = str(
         scene.get("type") or visual_mode or "environment"
@@ -1152,7 +1151,7 @@ def enhance_scene_for_variety(
 
     if event:
         event_name = str(event.get("name", "special occasion")).strip() or "special occasion"
-        event_instruction = build_event_image_instruction(event)
+        event_instruction = build_event_image_instruction(event, hint_offset=hint_offset)
         description = sanitize_event_scene_description(description, event_name)
         description = (
             f"{event_instruction} "
@@ -1245,6 +1244,7 @@ def generate_single_image(
     output_path: str,
     event_instruction: Optional[str] = None,
     event_data: Optional[Dict[str, Any]] = None,
+    style_variation: Optional[str] = None,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1260,6 +1260,7 @@ def generate_single_image(
         scene_description=scene_description,
         event_instruction=event_instruction,
         event_data=event_data,
+        style_variation=style_variation,
     )
 
     image = generate_image_with_cloudflare(
@@ -1294,7 +1295,13 @@ def generate_images_for_reel(
     from event_detector import CONTENT_REEL, get_today_event
 
     event = get_today_event(content_type=CONTENT_REEL)
-    event_instruction = build_event_image_instruction(event) if event else None
+
+    # Select ONE style variation for the entire reel (used for non-event scenes)
+    selected_style_variation = None
+    if not event:
+        selected_style_variation = random.choice(STYLE_VARIATIONS)
+        print(f"🎨 Selected style variation for this reel: "
+              f"{selected_style_variation[:70]}...")
 
     if output_dir is None:
         output_dir = OUTPUT_DIR / "images"
@@ -1339,15 +1346,22 @@ def generate_images_for_reel(
 
     generated_images = []
 
+    # Randomize the base offset so each reel starts at a different rotation point
+    hint_offset_base = random.randint(0, 100) if event else 0
+
     for index, scene in enumerate(
         scenes,
         start=1,
     ):
+        # Each scene gets a unique but randomized offset
+        scene_hint_offset = hint_offset_base + index
+
         scene = enhance_scene_for_variety(
             scene,
             index,
             visual_mode,
             event=event,
+            hint_offset=scene_hint_offset,
         )
 
         output_path = (
@@ -1359,11 +1373,17 @@ def generate_images_for_reel(
         print(f"Scene {index}/{len(scenes)}")
         print("-" * 70)
 
+        scene_event_instruction = (
+            build_event_image_instruction(event, hint_offset=scene_hint_offset)
+            if event else None
+        )
+
         image_path = generate_single_image(
             scene=scene,
             output_path=str(output_path),
-            event_instruction=event_instruction,
+            event_instruction=scene_event_instruction,
             event_data=event,
+            style_variation=selected_style_variation,
         )
 
         generated_images.append(image_path)

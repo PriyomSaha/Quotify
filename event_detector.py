@@ -416,14 +416,33 @@ EVENT IDENTITY RULE
 """
 
 
-def build_event_image_instruction(event: Dict[str, Any]) -> str:
-    """Create a short but explicit visual identity instruction for image scenes."""
+def build_event_image_instruction(
+    event: Dict[str, Any],
+    hint_offset: int = 0,
+) -> str:
+    """Create a short but explicit visual identity instruction for image scenes.
+
+    ``hint_offset`` seeds a deterministic random pick of a few visual hints
+    so that different scenes within the same reel spotlight different aspects
+    of the event instead of always leading with the same hint (e.g. radio).
+    """
     if not event:
         return ""
 
     event_name = str(event.get("name", "special occasion")).strip()
     visuals = _event_iconic_visuals(event)
-    visual_text = ", ".join(visuals[:5]) if visuals else "iconic symbols tied to the occasion"
+
+    if not visuals:
+        visual_text = "iconic symbols tied to the occasion"
+    else:
+        # Pick a small RANDOM subset of distinct hints, seeded by the
+        # per-scene hint_offset so it is deterministic for each scene.
+        # This way no single hint (e.g. the radio for Mahalaya) dominates
+        # every scene — each scene emphasizes a different small set instead.
+        num_hints = min(3, len(visuals))
+        rng = random.Random(hint_offset)
+        selected = rng.sample(visuals, num_hints)
+        visual_text = ", ".join(selected)
 
     return (
         f"EVENT IMAGE FOCUS: The scene must clearly read as {event_name}. "
