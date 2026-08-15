@@ -13,7 +13,7 @@ from Reels.story_generation import generate_story
 from Reels.video_generation import create_reel
 from Reels.voice_generation import generate_voice
 from Reels.hashtag_generation import build_reel_caption
-from event_detector import get_today_event
+from event_detector import CONTENT_REEL, get_today_event
 
 
 def load_existing_story(story_path: str) -> Dict[str, Any]:
@@ -77,7 +77,7 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
         dict: Paths to generated files and upload results
     """
     
-    event = get_today_event()
+    event = get_today_event(content_type=CONTENT_REEL)
 
     # Determine upload behavior
     # Priority: explicit parameter > environment variable > default (True)

@@ -2,7 +2,7 @@ from google import genai
 import os
 from dotenv import load_dotenv
 from PromptSelector import get_prompt_for_current_time
-from event_detector import build_quote_event_instruction, get_today_event
+from event_detector import CONTENT_QUOTE, build_quote_event_instruction, get_today_event
 
 load_dotenv()
 
@@ -20,7 +20,7 @@ def generate_quote(record_history=True):
 
     # Optional enhancement: if today is a configured special event,
     # add event context without changing the default random logic.
-    event = get_today_event()
+    event = get_today_event(content_type=CONTENT_QUOTE)
     if event:
         prompt += build_quote_event_instruction(event)
     

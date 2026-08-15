@@ -152,7 +152,7 @@ jobs:
               
               # Upload to Facebook
               print('📤 Step 3/4: Uploading to Facebook...')
-              event = get_today_event()
+              event = get_today_event(content_type='quote')
               caption = build_quote_caption(event)
               if caption:
                   print(f'Caption preview: {caption[:200]}')

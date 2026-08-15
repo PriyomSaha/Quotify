@@ -4,27 +4,55 @@ event_detector.py
 Date-aware content enhancement for Aesthetic Vibes.
 
 This module adds an optional event layer on top of the existing random content
-logic. If today matches an event in content_calendar.json, quote/reel prompts
-and captions can become event-aware. If no event matches, the existing random
-logic continues unchanged.
+logic. The event lookup flow is:
+
+    current date -> event_date_lookup.json (date -> event name)
+                 -> content_calendar.json (event name -> event details)
+
+Event resolution order:
+1. Fixed (recurring MM-DD) events are resolved first; the best fixed event
+   wins whenever one is active for the day.
+2. Dated (year-specific YYYY-MM-DD) events are only considered when no fixed
+   event is active that day.
+3. If a fixed and a dated event overlap on the same day (e.g. Netaji Jayanti
+   + Saraswati Puja on 2026-01-23, or World Music Day + Fathers' Day on
+   2026-06-21), the day's content is distributed across both: each quote/reel
+   run picks the next event from the fixed-then-dated rotation, so both
+   occasions receive a few quotes and a few reels.
+
+If no event matches, the existing random logic continues unchanged.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 IST = timezone(timedelta(hours=5, minutes=30))
 CALENDAR_FILE = Path(__file__).resolve().parent / "content_calendar.json"
+DATE_NAME_LOOKUP_FILES = [
+    Path(__file__).resolve().parent / "event_date_lookup_2026.json",
+    Path(__file__).resolve().parent / "event_date_lookup.json",
+]
 
 PRIORITY_WEIGHT = {
     "high": 3,
     "medium": 2,
     "low": 1,
 }
+
+# Event source/bucket tags attached to every active event.
+SOURCE_FIXED = "fixed_events"   # recurring MM-DD dates
+SOURCE_DATED = "dated_events"   # year-specific YYYY-MM-DD dates
+
+# Content types (matched against smart_scheduler.ContentType.value) used to
+# rotate overlapping fixed/dated events across the day.
+CONTENT_QUOTE = "quote"
+CONTENT_REEL = "reel"
 
 TEST_DATE_ENV = "EVENT_TEST_DATE"
 
@@ -93,21 +121,72 @@ def set_event_test_date(date_text: Optional[str]) -> None:
         os.environ.pop(TEST_DATE_ENV, None)
 
 
+def _load_date_name_lookup() -> Dict[str, str]:
+    """Load the year-specific date-to-name mapping from a separate JSON file."""
+    for candidate in DATE_NAME_LOOKUP_FILES:
+        if not candidate.exists():
+            continue
+        try:
+            with candidate.open("r", encoding="utf-8") as file:
+                payload = json.load(file)
+        except Exception as exc:
+            print(f"⚠️ Could not read date-name lookup '{candidate.name}': {exc}")
+            continue
+
+        if isinstance(payload, dict):
+            cleaned = {}
+            for date_key, event_name in payload.items():
+                if isinstance(date_key, str) and isinstance(event_name, str):
+                    cleaned[date_key.strip()] = event_name.strip()
+            return cleaned
+
+    return {}
+
+
+def _load_calendar_from_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Load events keyed by event name from content_calendar.json."""
+    events: Dict[str, Dict[str, Any]] = {}
+
+    # New structure: {"events": {event_name: details}}
+    events_bucket = data.get("events", {}) or {}
+    if isinstance(events_bucket, dict):
+        for event_name, event_data in events_bucket.items():
+            if not isinstance(event_data, dict):
+                continue
+            cleaned_name = str(event_data.get("name") or event_name).strip()
+            cleaned_data = dict(event_data)
+            cleaned_data["name"] = cleaned_name
+            events[cleaned_name] = cleaned_data
+
+    # Backward compatibility: legacy fixed_events/dated_events buckets.
+    if not events:
+        for bucket_name in ("fixed_events", "dated_events"):
+            bucket = data.get(bucket_name, {}) or {}
+            if not isinstance(bucket, dict):
+                continue
+            for event_name, event_data in bucket.items():
+                if not isinstance(event_data, dict):
+                    continue
+                cleaned_name = str(event_data.get("name") or event_name).strip()
+                cleaned_data = dict(event_data)
+                cleaned_data["name"] = cleaned_name
+                events[cleaned_name] = cleaned_data
+
+    return {"events": events}
+
+
 def _load_calendar() -> Dict[str, Any]:
     if not CALENDAR_FILE.exists():
-        return {"fixed_events": {}, "dated_events": {}}
+        return {"events": {}}
 
     try:
         with CALENDAR_FILE.open("r", encoding="utf-8") as file:
             data = json.load(file)
     except Exception as exc:
         print(f"⚠️ Could not read event calendar: {exc}")
-        return {"fixed_events": {}, "dated_events": {}}
+        return {"events": {}}
 
-    return {
-        "fixed_events": data.get("fixed_events", {}) or {},
-        "dated_events": data.get("dated_events", {}) or {},
-    }
+    return _load_calendar_from_data(data)
 
 
 def _event_matches(event_date: datetime, today: datetime, event: Dict[str, Any]) -> bool:
@@ -137,35 +216,46 @@ def _with_runtime_fields(
 
 
 def get_active_events(now: Optional[datetime] = None) -> List[Dict[str, Any]]:
-    """Return all calendar events active for today in IST."""
+    """Return all calendar events active for today in IST.
+
+    Flow: current date -> event_date_lookup.json (date -> event name)
+          -> content_calendar.json (event name -> event details).
+    """
     today = get_effective_now(now)
     calendar = _load_calendar()
-    events: List[Dict[str, Any]] = []
+    events_by_name = calendar.get("events", {})
+    date_name_lookup = _load_date_name_lookup()
 
-    for date_key, event in calendar["fixed_events"].items():
+    active_events: List[Dict[str, Any]] = []
+
+    for date_key, event_name in date_name_lookup.items():
+        event = events_by_name.get(str(event_name).strip())
+        if not event:
+            continue
+
         try:
-            month, day = map(int, date_key.split("-"))
-            event_date = today.replace(month=month, day=day)
+            if len(date_key.split("-")) == 2:
+                # Fixed date (MM-DD) that recurs every year.
+                month, day = map(int, date_key.split("-"))
+                event_date = today.replace(month=month, day=day)
+                source = SOURCE_FIXED
+            else:
+                # Year-specific date (YYYY-MM-DD).
+                event_date = datetime.strptime(date_key, "%Y-%m-%d").replace(tzinfo=IST)
+                source = SOURCE_DATED
         except Exception:
-            print(f"⚠️ Invalid fixed event date key: {date_key}")
+            print(f"⚠️ Invalid event date key: {date_key}")
             continue
 
         if _event_matches(event_date, today, event):
-            events.append(_with_runtime_fields(event, event_date, today, date_key, "fixed_events"))
-
-    for date_key, event in calendar["dated_events"].items():
-        try:
-            event_date = datetime.strptime(date_key, "%Y-%m-%d").replace(tzinfo=IST)
-        except Exception:
-            print(f"⚠️ Invalid dated event date key: {date_key}")
-            continue
-
-        if _event_matches(event_date, today, event):
-            events.append(_with_runtime_fields(event, event_date, today, date_key, "dated_events"))
+            active_events.append(_with_runtime_fields(event, event_date, today, date_key, source))
 
     return sorted(
-        events,
+        active_events,
         key=lambda item: (
+            # Fixed (recurring MM-DD) events always take precedence over
+            # year-specific dated events, then sort by priority/exactness.
+            1 if item.get("source") == SOURCE_FIXED else 0,
             PRIORITY_WEIGHT.get(str(item.get("priority", "low")).lower(), 1),
             1 if item.get("is_exact_date") else 0,
             -abs(int(item.get("days_until", 0))),
@@ -174,14 +264,104 @@ def get_active_events(now: Optional[datetime] = None) -> List[Dict[str, Any]]:
     )
 
 
-def get_today_event(now: Optional[datetime] = None) -> Optional[Dict[str, Any]]:
-    """Return the highest-priority active event for today, or None."""
+def _content_run_index(content_type: Optional[str], now: Optional[datetime] = None) -> int:
+    """Return the 0-based run offset of today for a given content type.
+
+    Quotes post twice a day (morning/evening) and reels three times
+    (afternoon/prime/late) in smart_scheduler.py's WEEKLY_SCHEDULE. Hours are
+    IST. Used only when fixed and dated events overlap on the same day, so the
+    day's slots alternate between the two occasions instead of always favouring
+    one.
+    """
+    ist = get_effective_now(now).astimezone(IST)
+    minutes = ist.hour * 60 + ist.minute
+
+    if content_type == CONTENT_REEL:
+        if minutes < 17 * 60:
+            return 0  # afternoon_reel
+        if minutes < 22 * 60:
+            return 1  # prime_reel
+        return 2      # late_reel
+    if content_type == CONTENT_QUOTE:
+        if minutes < 13 * 60:
+            return 0  # morning_quote
+        return 1      # evening_quote
+    return 0
+
+
+def get_today_event(
+    now: Optional[datetime] = None,
+    content_type: Optional[str] = None,
+    run_index: Optional[int] = None,
+) -> Optional[Dict[str, Any]]:
+    """Return the event to theme the current content run around.
+
+    Resolution order:
+    1. Fixed (recurring MM-DD) events are checked first; the best fixed
+       event wins whenever one is active for the day.
+    2. Dated (year-specific YYYY-MM-DD) events are only considered when no
+       fixed event is active.
+    3. If a fixed and a dated event fall on the exact same day, the day's
+       content is distributed between them: each quote/reel run picks the
+       next event from the fixed-then-dated rotation, so both occasions
+       gather a few quotes and a few reels. Lead/linger windows ("1 day
+       before") are not counted as overlaps.
+
+    Args:
+        now: Optional datetime to evaluate against (IST-aware or naive).
+        content_type: "quote" or "reel" — used to derive the day's run slot
+            when fixed and dated events overlap. None keeps legacy behaviour
+            (the fixed event wins).
+        run_index: Explicit 0-based run of the day for ``content_type``;
+            overrides the time-based derivation (mainly for testing).
+    """
     events = get_active_events(now=now)
     if not events:
         return None
 
-    event = events[0]
-    print(f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')})")
+    fixed_events = [event for event in events if event.get("source") == SOURCE_FIXED]
+    dated_events = [event for event in events if event.get("source") == SOURCE_DATED]
+
+    if not fixed_events:
+        # No recurring (MM-DD) event today — fall back to dated events.
+        event = dated_events[0]
+        print(f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')}) [dated]")
+        return event
+
+    if not dated_events:
+        # A fixed event is active and nothing overlaps it.
+        event = fixed_events[0]
+        print(f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')}) [fixed]")
+        return event
+
+    # A real overlap only exists when BOTH occasions fall exactly on today's
+    # date (lead/linger windows such as "1 day before" are not treated as an
+    # overlap, they are just the surrounding pre/post window of the occasion).
+    exact_fixed = [event for event in fixed_events if event.get("is_exact_date")]
+    exact_dated = [event for event in dated_events if event.get("is_exact_date")]
+
+    if exact_fixed and exact_dated and content_type:
+        # Same-day overlap: rotate fixed -> dated -> fixed -> ... across the
+        # day's slots so both occasions get a few quotes and a few reels.
+        pool = exact_fixed + exact_dated
+        idx = run_index if run_index is not None else _content_run_index(content_type, now)
+        event = pool[idx % len(pool)]
+        print(
+            f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')}) "
+            f"[overlap: {content_type} slot #{idx}]"
+        )
+        return event
+
+    if exact_dated and not exact_fixed:
+        # The dated event is today's exact occasion; any active fixed event is
+        # only in a lead/linger window around its own date.
+        event = exact_dated[0]
+        print(f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')}) [dated exact]")
+        return event
+
+    # Fixed event is today's occasion (or active without an exact dated match).
+    event = fixed_events[0]
+    print(f"🎉 Event mode active: {event.get('name')} ({event.get('date_key')}) [fixed]")
     return event
 
 
@@ -202,74 +382,16 @@ def get_event_wish(event: Optional[Dict[str, Any]]) -> str:
 
 
 def _event_iconic_visuals(event: Dict[str, Any]) -> List[str]:
-    """Return a prioritized list of event-signature visual cues and iconic elements."""
-    event_name = str(event.get("name", "")).lower()
-    mapped = {
-        "independence day": [
-            "Indian tricolor flag",
-            "India Gate or iconic Indian monument",
-            "flag hoisting scene",
-            "patriotic crowd with tricolor energy",
-            "sunrise over India with saffron-white-green tones",
-        ],
-        "republic day": [
-            "Indian tricolor flag",
-            "Republic Day parade",
-            "India Gate and patriotic crowd",
-            "constitution and democratic pride",
-            "red fort or parade formation with national colors",
-        ],
-        "gandhi jayanti": [
-            "peaceful Indian village or simple morning scene",
-            "spinning wheel / charkha symbol",
-            "truth and non-violence imagery",
-            "quiet dignity and simplicity",
-        ],
-        "teachers' day": [
-            "classroom or teacher-student learning scene",
-            "chalkboard, notebook, pen, or desk",
-            "gratitude for guidance",
-        ],
-        "mothers' day": [
-            "old kitchen or family home morning scene",
-            "mother's hands preparing food",
-            "family warmth and care",
-        ],
-        "fathers' day": [
-            "father's everyday gestures",
-            "wristwatch, keys, morning tea, quiet support",
-            "family bond and protection",
-        ],
-        "friendship day": [
-            "school or college friends",
-            "old group photo or shared street scene",
-            "nostalgic childhood friendship moments",
-        ],
-        "raksha bandhan": [
-            "rakhi thread",
-            "siblings together",
-            "family celebration scene",
-        ],
-        "valentine's day": [
-            "old handwritten note",
-            "two cups of tea",
-            "rainy window or empty bench",
-            "love and distance imagery",
-        ],
-    }
+    """Return prioritized event visual cues.
 
-    visual_cues = []
-    for name_key, cues in mapped.items():
-        if name_key in event_name:
-            visual_cues.extend(cues)
-
-    visual_hints = event.get("visual_hints", []) or []
-    if visual_hints:
-        visual_cues.extend([str(v) for v in visual_hints if str(v).strip()])
-
+    Single source of truth is ``visual_hints`` inside each event entry in
+    content_calendar.json — edit only that file to add/change keywords and
+    items for an event's image prompts. No code-side maps.
+    """
+    cues = [str(v).strip() for v in (event.get("visual_hints") or []) if str(v).strip()]
     deduped = []
     seen = set()
-    for cue in visual_cues:
+    for cue in cues:
         if cue not in seen:
             seen.add(cue)
             deduped.append(cue)
@@ -350,43 +472,80 @@ Helpful hashtags/context, do not include hashtags in the quote unless the origin
 
 
 def build_reel_event_instruction(event: Dict[str, Any]) -> str:
-    """Build prompt text to steer reel story generation for an active event."""
+    """Build prompt text to steer reel story generation for an active event.
+
+    Event days only. Makes Gemini write a nostalgic, first-person memory story
+    about the occasion — explicitly overriding the generic "not a story / no
+    events" base direction of the reel prompt.
+    """
     visual_hints = event.get("visual_hints", []) or []
     visual_hint_text = "\n".join(f"- {hint}" for hint in visual_hints)
     hashtags = " ".join(event.get("hashtags", [])[:6])
     event_identity = build_event_identity_instruction(event)
+    name = str(event.get("name", "a special occasion")).strip() or "a special occasion"
 
     return f"""
 
 ==================================================
-SPECIAL DATE REEL MODE
+SPECIAL DATE REEL MODE  (ABSOLUTE OVERRIDE — ONLY RUNS TODAY)
+==================================================
 
-Today is related to: {event.get('name', 'a special occasion')}.
+Today is the occasion: {name}.
 Region/Audience: {event.get('region', 'South Asian audience')}.
 Language style: {event.get('language_style', 'simple emotional English')}.
-Reel theme: {event.get('reel_theme', '')}.
-Quote/emotional theme: {event.get('quote_theme', '')}.
 
-Create the reel so people connected to this occasion can feel it, save it, and share it.
-Use the selected normal content category as the base emotion, but make the story clearly relevant to this occasion.
+Occasion story to follow (this is the heart of the narration):
+{event.get('reel_theme', 'a nostalgic memory of this occasion')}
+
+Emotional/quote themes to borrow nostalgia from:
+{event.get('quote_theme', '')}
+
+RULE 1 — WRITE THE OCCASION'S STORY, NOT A GENERIC POST
+The narration MUST be an 80-110 word first-person nostalgic story clearly about {name}.
+Earlier instructions saying "content is not a story", "no events", "no places",
+"no characters", "no fictional situations" DO NOT APPLY today — ignore them.
+The selected content category only supplies the mood/emotion; it is never the
+subject. Do not list dates, facts, history, or "Happy {name}" greetings.
+
+RULE 2 — NOSTALGIA BEFORE EVERYTHING
+Make it feel like remembering, not reporting: childhood or earlier years, the
+places and rituals the occasion always carried, sounds and smells it brought,
+family and friends who were around then, people who are now farther away,
+routines we stopped repeating but still miss.
+
+NOSTALGIC STORY BEATS (use all four in order within the 80-110 words):
+1. Open on ONE specific sensory memory connected to {name} — a sound, smell,
+   light, food, object, or a small thing that only the occasion had.
+2. Grow it into the feeling the occasion once gave: home, togetherness,
+   innocence, or belonging.
+3. Turn quietly toward today: time has passed, things changed, some people are
+   no longer near.
+4. End warm and shareable: even now, the occasion still lives inside these
+   memories.
+
+RULE 3 — SCENES ARE FRAMES OF THE MEMORY
+Each of the 6 scenes must look like a frame from that memory (not a postcard
+of the event): old familiar places, afternoon or monsoon/dawn light, common
+objects, small gestures, quiet colour. Weave in these visuals where suitable:
+{visual_hint_text}
 {event_identity}
 
-Visual hints to naturally include where suitable:
-{visual_hint_text}
+RULE 4 — VOICE
+Keep the {event.get('language_style', 'simple emotional English')} tone.
+Gender-neutral when people appear. Simple, warm, believable — no forced poetry.
 
 Safety rules:
-- Keep it inclusive, respectful, and culturally warm.
 - Make event narration gender-neutral unless a specific culturally necessary role is required. Prefer someone, people, we, us, they, families, friends, children, elders, citizens, or a person.
-- Do not make event reels centered on he/she relationship drama. The occasion should feel universal and shareable.
+- Do not make event reels centred on romance/he-she drama; the occasion should feel universal and shareable.
 - Avoid political party references.
 - Avoid religious superiority or comparison.
 - Avoid hate, controversy, violence, or aggressive slogans.
 - Do not copy copyrighted poems, songs, speeches, or famous quotes.
-- Keep it original, cinematic, emotional, and shareable.
+- Keep it original, cinematic, and nostalgic without being sad or hopeless.
 
 Caption context/hashtags for later:
 {hashtags}
-==================================================
+===================================================
 """
 
 

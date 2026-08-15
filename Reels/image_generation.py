@@ -102,11 +102,12 @@ No text.
 """
 
 STYLE_VARIATIONS = [
-    "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
     "Japanese slice-of-life anime film look, hand-painted background art, peaceful everyday emotion.",
     "Cinematic painterly editorial illustration, natural textures, grounded emotional realism.",
     "Dreamy animated movie background style, lush plants, soft clouds, warm nostalgic color palette.",
     "Watercolor-like painterly illustration, quiet poetic atmosphere, delicate light and shadow.",
+    "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
+    "Hand-painted 2D illustration, soft watercolor and gouache textures, delicate linework, cinematic composition, warm nostalgic mood, expressive painted backgrounds, rich natural colors, non-photorealistic."
 ]
 
 NEGATIVE_PROMPT = """
@@ -263,10 +264,11 @@ def build_style_prompt(event_mode: bool = False) -> str:
             "Event-first artistic direction:\n"
             "Use iconic occasion symbols and clear visual identity. "
             "Do not default to cozy home interiors, balcony scenes, cabin settings, or generic rainy-city imagery unless the occasion itself requires them. "
-            "The image must clearly communicate what the event is famous for."
+            "The image must clearly communicate what the event is famous for. "
+            "Ghibli-style elements are integrated throughout—hand-painted backgrounds, whimsical nature, and gentle character design."
         )
 
-    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{random.choice(STYLE_VARIATIONS)}"
+    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{STYLE_VARIATIONS[0]}"
 
 
 def build_prompt_for_normal_day(
@@ -1289,9 +1291,9 @@ def generate_images_for_reel(
     output_dir: str | Path | None = None,
     prefix: str = "scene",
 ) -> List[str]:
-    from event_detector import get_today_event
+    from event_detector import CONTENT_REEL, get_today_event
 
-    event = get_today_event()
+    event = get_today_event(content_type=CONTENT_REEL)
     event_instruction = build_event_image_instruction(event) if event else None
 
     if output_dir is None:

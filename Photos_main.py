@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from QuoteGeneration import generate_quote
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
-from event_detector import build_quote_caption, get_today_event
+from event_detector import CONTENT_QUOTE, build_quote_caption, get_today_event
 
 load_dotenv()
 
@@ -31,7 +31,7 @@ def main(no_upload=None, output_path="image.jpg"):
 
         print(f"📤 Quote upload enabled: {not no_upload}")
 
-        event = get_today_event()
+        event = get_today_event(content_type=CONTENT_QUOTE)
         if event:
             print(f"🎉 Event mode for quote flow: {event.get('name')}")
         else:

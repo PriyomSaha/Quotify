@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from QuoteGeneration import generate_quote
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
-from event_detector import build_quote_caption, get_today_event
+from event_detector import CONTENT_QUOTE, CONTENT_REEL, build_quote_caption, get_today_event
 
 # -------------------------------------------------
 # Logging Configuration
@@ -133,7 +133,7 @@ def execute_full_pipeline(caption: str, template_path: str, output_path: str):
         # Step 3: Upload to Facebook
         logger.info("📤 Step 3/4: Uploading to Facebook...")
         try:
-            event = get_today_event()
+            event = get_today_event(content_type=CONTENT_QUOTE)
             final_caption = build_quote_caption(event, caption)
             if event:
                 logger.info(f"🎉 Event caption enhancement active: {event.get('name')}")
@@ -313,7 +313,7 @@ def execute_reel_generation():
         from Reels.social_upload import upload_reel_to_social_media
         from Reels_main import generate_complete_reel
 
-        event = get_today_event()
+        event = get_today_event(content_type=CONTENT_REEL)
 
         logger.info("🎬 Generating complete reel...")
         result = generate_complete_reel(upload=False)

@@ -10,13 +10,13 @@ from QuoteGeneration import generate_quote
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
 from check_last_post import should_publish_new_post
-from event_detector import build_quote_caption, get_today_event
+from event_detector import CONTENT_QUOTE, build_quote_caption, get_today_event
 
 def main(no_upload=False, skip_recent_check=False, output_path="image.jpg"):
     try:
         print("🚀 Autopilot started")
 
-        event = get_today_event()
+        event = get_today_event(content_type=CONTENT_QUOTE)
         if event:
             print(f"🎉 Event mode for quote flow: {event.get('name')}")
         else:
