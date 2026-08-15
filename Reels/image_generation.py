@@ -25,7 +25,7 @@ CF_TOKEN = os.getenv("CF_TOKEN_1")
 CF_ACCOUNT_ID_2 = os.getenv("CF_ACCOUNT_ID_2")
 CF_TOKEN_2 = os.getenv("CF_TOKEN_2")
 
-CF_MODEL = "@cf/black-forest-labs/flux-1-schnell"
+CF_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
 
 CLOUDFLARE_URL_TEMPLATE = (
     "https://api.cloudflare.com/client/v4/accounts/"
