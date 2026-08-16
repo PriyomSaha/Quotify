@@ -29,7 +29,8 @@ CF_TOKEN_2 = os.getenv("CF_TOKEN_2")
 CF_ACCOUNT_ID_3 = os.getenv("CF_ACCOUNT_ID_3")
 CF_TOKEN_3 = os.getenv("CF_TOKEN_3")
 
-CF_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
+# CF_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
+CF_MODEL = "@cf/leonardo/lucid-origin"
 
 CLOUDFLARE_URL_TEMPLATE = (
     "https://api.cloudflare.com/client/v4/accounts/"
@@ -122,7 +123,7 @@ BASE_STYLE_PROMPT = """
 
 STYLE_VARIATIONS = [
     "Cinematic 2D cel-shaded animation, bold ink outlines, muted colors, posterized shadows, subtle film grain.",
-    "Japanese animated-film frame, graphic linework, flat color blocks, muted vintage tones, analog grain.",
+    "Japanese 2D anime frame, graphic linework, flat color blocks, muted vintage tones, analog grain.",
     "Cinematic 2D illustration, strong dark outlines, simplified shading, earthy colors, textured film grain.",
     "Mature anime film aesthetic, cel-shaded forms, graphic outlines, subdued colors, atmospheric grain.",
     "Vintage 2D animation frame, bold linework, flat layered colors, cinematic shadows, subtle print texture.",
@@ -187,6 +188,19 @@ photorealistic,
 glossy digital art,
 realistic skin texture,
 hyperrealism,
+close-up,
+extreme close-up,
+medium close-up,
+portrait,
+portrait framing,
+face close-up,
+headshot,
+facial close-up,
+zoomed-in composition,
+tight framing,
+tight crop,
+subject filling the frame,
+face dominating the frame,
 """
 
 # ============================================================
@@ -777,25 +791,29 @@ def build_prompt(
 
     elif scene_type == "person":
         subject = (
-            "One clearly visible person is the emotional focus. "
-            "Natural full-body or medium-distance pose, interacting with the environment. "
-            "Subtle body language expressing the story. Not a portrait, never a selfie."
+            "One visible person interacts naturally with the environment. "
+            "The person is secondary to the overall environment and occupies only "
+            "a small portion of the frame. Full body visible from head to feet. "
+            "Distant or long-shot scale. Natural body language expressing the story. "
+            "Never a portrait, never a close-up, never a selfie."
         )
 
     elif scene_type == "object":
         subject = (
-            "An important everyday object supports the story, with a person naturally interacting with it."
-            "Books, tea, coffee, bicycle, lantern, flowers, window, "
-            "umbrella, camera, diary, wooden chair, phone, bus ticket, keys, shoes, lamp, photo frame or similar. "
+            "The story's specified object is visible within its surrounding environment. "
+            "The object must not become a close-up subject. "
+            "Show the object at natural scale within a wide environmental composition. "
+            "Include a visible person interacting naturally with it when appropriate. "
+            "The surrounding location remains clearly visible."
         )
 
     elif scene_type == "architecture":
         subject = (
-            "Architecture is important, but include 1–3 people naturally within the environment."
-            "Beautiful architecture or interior space. "
-            "Coffee shop, library, train station, old cabin, balcony, "
-            "wooden house, bridge, lighthouse, tea stall, classroom, bus stop or quiet street. "
-            "The place itself carries the emotion."
+            "The location and surrounding environment are the main visual subject. "
+            "Show the complete architectural/environmental setting in a wide shot. "
+            "Only include people if the story explicitly requires them. "
+            "Any person must remain small and naturally integrated into the environment. "
+            "Never use portrait framing."
         )
 
     elif scene_type == "animal_life":
@@ -821,8 +839,11 @@ def build_prompt(
 
     elif scene_type == "abstract_emotion":
         subject = (
-            "Emotion is shown through concrete environments, light, space, shadow, weather, doors, windows, roads, water, seasons, and empty spaces. "
-            "Represent the emotion through a visible person interacting with the environment."
+            "Emotion is communicated through the environment, light, space, "
+            "shadow, weather, architecture, roads, water, windows and empty spaces. "
+            "Show one visible person interacting naturally with the environment. "
+            "The person is small within the frame and never the dominant subject. "
+            "Use a distant environmental composition, not a portrait."
         )
 
     else:
@@ -897,9 +918,19 @@ FOREGROUND DETAILS:
 {foreground}
 
 CINEMATIC COMPOSITION:
-Vertical 9:16, one continuous shot - {variation['camera']}, {variation['lens']}.
-Full-bleed single frame. Layered depth, natural proportions, clean
-subtitle space. Detailed, sharp, cinematic movie still.
+Vertical 9:16, one continuous full-bleed shot.
+{variation['camera']}, {variation['lens']}.
+Environment-dominant composition.
+The camera is physically far from the subject.
+Show the entire surrounding environment clearly.
+If a person is present, show the complete body at a small-to-medium scale,
+never a face close-up or portrait.
+The environment must occupy most of the frame.
+Use strong foreground, middle-ground and background depth.
+Do not crop the person or important environmental objects.
+No close-up, no medium close-up, no portrait framing.
+Full scene visible from a natural cinematic distance.
+Detailed, sharp, cinematic movie still.
 
 STORY FIDELITY:
 The scene description is the source of truth. Do not contradict or replace
@@ -984,60 +1015,35 @@ def generate_image_with_cloudflare(
             print("Quota exceeded. Trying next account...")
             continue
 
-        # if response.status_code != 200:
-        #     print(f"HTTP {response.status_code}")
-        #     try:
-        #         print(response.json())
-        #     except Exception:
-        #         print(response.text)
-        #     continue
-
-        # try:
-        #     result = response.json()
-
-        #     if not result.get("success", True):
-        #         print(result)
-        #         continue
-
-        #     image_b64 = (
-        #         result
-        #         .get("result", {})
-        #         .get("image")
-        #     )
-
-        #     if not image_b64:
-        #         print("No image returned.")
-        #         continue
-
-        #     image = Image.open(
-        #         io.BytesIO(
-        #             base64.b64decode(image_b64)
-        #         )
-        #     ).convert("RGB")
-
-        #     print("✓ Image generated successfully")
-
-        #     return image
-
-        # except Exception as exc:
-        #     print(f"Image Decode Error: {exc}")
-        #     continue
-
         if response.status_code != 200:
             print(f"HTTP {response.status_code}")
-
             try:
                 print(response.json())
             except Exception:
                 print(response.text)
-
             continue
 
         try:
-            # New Cloudflare model returns the actual PNG binary,
-            # not JSON containing a Base64 image.
+            result = response.json()
+
+            if not result.get("success", True):
+                print(result)
+                continue
+
+            image_b64 = (
+                result
+                .get("result", {})
+                .get("image")
+            )
+
+            if not image_b64:
+                print("No image returned.")
+                continue
+
             image = Image.open(
-                io.BytesIO(response.content)
+                io.BytesIO(
+                    base64.b64decode(image_b64)
+                )
             ).convert("RGB")
 
             print("✓ Image generated successfully")
@@ -1047,6 +1053,31 @@ def generate_image_with_cloudflare(
         except Exception as exc:
             print(f"Image Decode Error: {exc}")
             continue
+
+        # if response.status_code != 200:
+        #     print(f"HTTP {response.status_code}")
+
+        #     try:
+        #         print(response.json())
+        #     except Exception:
+        #         print(response.text)
+
+        #     continue
+
+        # try:
+        #     # New Cloudflare model returns the actual PNG binary,
+        #     # not JSON containing a Base64 image.
+        #     image = Image.open(
+        #         io.BytesIO(response.content)
+        #     ).convert("RGB")
+
+        #     print("✓ Image generated successfully")
+
+        #     return image
+
+        # except Exception as exc:
+        #     print(f"Image Decode Error: {exc}")
+        #     continue
 
     print("\nAll Cloudflare accounts failed.")
 
@@ -1690,21 +1721,20 @@ def generate_images_for_reel(
 # ============================================================
 
 CAMERA_ANGLES = [
-    "eye-level shot",
-    "low-angle shot",
-    "high-angle shot",
     "wide establishing shot",
-    "over-the-shoulder composition",
-    "side profile composition",
-    "three-quarter composition",
-    "distant cinematic view",
+    "distant cinematic wide shot",
+    "long shot",
+    "full-scene wide shot",
+    "environment-dominant wide composition",
+    "distant full-body composition",
 ]
 
 LENS_STYLES = [
-    "24mm cinematic lens",
-    "35mm film lens",
-    "50mm natural perspective",
-    "wide landscape lens",
+    "24mm wide cinematic lens",
+    "24mm environmental lens",
+    "28mm wide film lens",
+    "28mm cinematic lens",
+    "35mm environmental film lens",
 ]
 
 WEATHER_STYLES = [
@@ -1736,6 +1766,6 @@ def cinematic_variation() -> Dict[str, str]:
     return {
         "camera": random.choice(CAMERA_ANGLES),
         "lens": random.choice(LENS_STYLES),
-        "weather": random.choice(WEATHER_STYLES),
-        "grade": random.choice(COLOR_GRADES),
+        # "weather": random.choice(WEATHER_STYLES),
+        # "grade": random.choice(COLOR_GRADES),
     }
