@@ -853,66 +853,30 @@ def create_reel(
 # STANDALONE TEST
 # ============================================================
 
+# ============================================================
+# STANDALONE TEST
+# ============================================================
+
 
 if __name__ == "__main__":
     from pathlib import Path
-    import sys
 
-    # Find the most recent output folder (handle both relative paths)
-    output_base = Path("output")
-    
-    # If running from root, check Reels/output
-    if not output_base.exists():
-        output_base = Path("Reels/output")
-    
-    if not output_base.exists():
-        print("Error: No output folder found. Run main.py first to generate content.")
-        sys.exit(1)
-    
-    # Get all timestamp folders
-    folders = sorted([f for f in output_base.iterdir() if f.is_dir() and len(f.name) == 15])
-    
-    if not folders:
-        print("Error: No reel folders found in output/. Run main.py first.")
-        sys.exit(1)
-    
-    # Use the most recent folder
-    REEL_FOLDER = folders[-1]
-    print(f"Using folder: {REEL_FOLDER}")
+    REEL_FOLDER = Path("Reels/output/20260816_130557")
 
     image_folder = REEL_FOLDER / "images"
-    narration_file = REEL_FOLDER / "voiceover.mp3"
+    voiceover = REEL_FOLDER / "voiceover.mp3"
     output_file = REEL_FOLDER / "reel.mp4"
 
-    # Check if images exist
-    if not image_folder.exists():
-        print(f"Error: Images folder not found: {image_folder}")
-        print(f"Available in {REEL_FOLDER}:")
-        for item in REEL_FOLDER.iterdir():
-            print(f"  - {item.name}")
-        sys.exit(1)
-
-    images = sorted([str(img) for img in image_folder.glob("*.png")])
+    images = sorted(str(p) for p in image_folder.glob("*.png"))
 
     if not images:
-        print(f"Error: No images found in {image_folder}")
-        sys.exit(1)
+        raise ValueError(f"No images found in {image_folder}")
 
-    print(f"\nImages found: {len(images)}")
-    for img in images:
-        print(f"  {Path(img).name}")
+    if not voiceover.exists():
+        raise FileNotFoundError(f"Voiceover not found: {voiceover}")
 
-    # Check audio
-    if not narration_file.exists():
-        print(f"Error: Voice file missing: {narration_file}")
-        sys.exit(1)
-
-    print(f"\nVoice: {narration_file.name}")
-
-    # Create reel
-    print(f"\nCreating reel: {output_file}\n")
     create_reel(
         images=images,
-        narration_audio=str(narration_file),
-        output_file=str(output_file)
+        narration_audio=str(voiceover),
+        output_file=str(output_file),
     )

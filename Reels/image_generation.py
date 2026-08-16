@@ -11,7 +11,6 @@ import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 from dotenv import load_dotenv
 
-from event_detector import build_event_image_instruction
 from .config import OUTPUT_DIR
 
 load_dotenv()
@@ -25,6 +24,10 @@ CF_TOKEN = os.getenv("CF_TOKEN_1")
 
 CF_ACCOUNT_ID_2 = os.getenv("CF_ACCOUNT_ID_2")
 CF_TOKEN_2 = os.getenv("CF_TOKEN_2")
+
+
+CF_ACCOUNT_ID_3 = os.getenv("CF_ACCOUNT_ID_3")
+CF_TOKEN_3 = os.getenv("CF_TOKEN_3")
 
 CF_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
 
@@ -46,6 +49,11 @@ CLOUDFLARE_ACCOUNTS = [
         "name": "Secondary",
         "account_id": CF_ACCOUNT_ID_2,
         "api_token": CF_TOKEN_2,
+    },
+        {
+        "name": "Secondary 1",
+        "account_id": CF_ACCOUNT_ID_3,
+        "api_token": CF_TOKEN_3,
     },
 ]
 
@@ -69,46 +77,58 @@ REEL_HEIGHT = 1920
 # IMAGE STYLE
 # ============================================================
 
+# BASE_STYLE_PROMPT = """
+# Create a beautiful cinematic digital painting.
+# Clean, culturally specific, and symbol-driven visual storytelling.
+# Painterly brush strokes.
+# Soft natural textures.
+# Natural atmospheric lighting that matches the scene.
+# Rich but realistic colors.
+# Emotional storytelling through iconic symbols, places, atmosphere, and meaningful national or cultural context.
+# Premium cinematic composition.
+# Highly detailed environment.
+# Natural perspective.
+# Award-winning illustration.
+# Movie still.
+# Professional composition.
+# Vertical 9:16.
+# No text.
+# """
+
+# STYLE_VARIATIONS = [
+#     "Japanese slice-of-life anime film look, hand-painted background art, peaceful everyday emotion.",
+#     "Cinematic painterly editorial illustration, natural textures, grounded emotional realism.",
+#     "Dreamy animated movie background style, lush plants, soft clouds, warm nostalgic color palette.",
+#     "Watercolor-like painterly illustration, quiet poetic atmosphere, delicate light and shadow.",
+#     "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
+#     "Soft aesthetic film style, pastel palette, gentle haze, dreamy nostalgic mood, minimalist composition.",
+#     "Hand-painted 2D watercolor illustration, delicate linework, warm nostalgic mood, rich natural colors.",
+# ]
+
 BASE_STYLE_PROMPT = """
-Create a beautiful cinematic digital painting.
-
-Clean, culturally specific, and symbol-driven visual storytelling.
-
-Painterly brush strokes.
-
-Soft natural textures.
-
-Natural atmospheric lighting that matches the scene.
-
-Rich but realistic colors.
-
-Emotional storytelling through iconic symbols, places, atmosphere, and meaningful national or cultural context.
-
-Premium cinematic composition.
-
-Highly detailed environment.
-
-Natural perspective.
-
-Award-winning illustration.
-
-Movie still.
-
-Professional composition.
-
-Vertical 9:16.
-
-No text.
-"""
+        Create a cinematic 2D animated-film frame.
+        Graphic cel-shaded illustration with bold dark ink outlines.
+        Flat layered color blocks and simplified posterized shadows.
+        Natural cinematic composition and believable perspective.
+        Muted vintage color grading with strong atmospheric contrast.
+        Detailed environments with simplified hand-drawn forms.
+        Subtle analog film grain and screen-print texture.
+        Expressive but understated characters.
+        Cinematic lighting and deep environmental atmosphere.
+        Looks like a still from a mature Japanese animated film.
+        Vertical 9:16.
+        No text.
+    """
 
 STYLE_VARIATIONS = [
-    "Japanese slice-of-life anime film look, hand-painted background art, peaceful everyday emotion.",
-    "Cinematic painterly editorial illustration, natural textures, grounded emotional realism.",
-    "Dreamy animated movie background style, lush plants, soft clouds, warm nostalgic color palette.",
-    "Watercolor-like painterly illustration, quiet poetic atmosphere, delicate light and shadow.",
-    "Soft Ghibli-style animated film mood, hand-painted backgrounds, whimsical nature, gentle character design.",
-    "Soft aesthetic film style, pastel palette, gentle haze, dreamy nostalgic mood, minimalist composition.",
-    "Hand-painted 2D watercolor illustration, delicate linework, warm nostalgic mood, rich natural colors.",
+    "Cinematic 2D cel-shaded animation, bold ink outlines, muted colors, posterized shadows, subtle film grain.",
+    "Japanese animated-film frame, graphic linework, flat color blocks, muted vintage tones, analog grain.",
+    "Cinematic 2D illustration, strong dark outlines, simplified shading, earthy colors, textured film grain.",
+    "Mature anime film aesthetic, cel-shaded forms, graphic outlines, subdued colors, atmospheric grain.",
+    "Vintage 2D animation frame, bold linework, flat layered colors, cinematic shadows, subtle print texture.",
+    "Cinematic animated-film style, clean ink contours, posterized lighting, muted palette, analog film texture.",
+    "Japanese 2D film illustration, graphic shadows, dark outlines, restrained colors, nostalgic grain texture.",
+    "Stylized cinematic 2D animation, crisp outlines, simplified shading, vintage color grade, subtle film grain."
 ]
 
 NEGATIVE_PROMPT = """
@@ -120,6 +140,15 @@ watermark,
 signature,
 frame,
 border,
+collage,
+multiple panels,
+comic panels,
+multi-panel,
+grid layout,
+split-screen,
+storyboard,
+mosaic of images,
+frame borders,
 low quality,
 blurry,
 pixelated,
@@ -149,7 +178,15 @@ tea stall,
 coffee shop,
 old city lane,
 random rainy street,
-generic apartment balcony for no reason
+generic apartment balcony for no reason,
+watercolor,
+oil painting,
+soft watercolor wash,
+photorealistic,
+3d render,
+glossy digital art,
+realistic skin texture,
+hyperrealism,
 """
 
 # ============================================================
@@ -239,7 +276,11 @@ FOREGROUND_DETAILS = [
 # PROMPT HELPERS
 # ============================================================
 
-MAX_PROMPT_LENGTH = 5000
+# Maximum prompt length for @cf/stabilityai/stable-diffusion-xl-base-1.0
+# on Cloudflare Workers AI. This matches the model's hard limit of 2048
+# characters. Prompts are always kept within this bound; compact_prompt's
+# word-boundary-safe truncation is a safety net only for edge cases.
+MAX_PROMPT_LENGTH = 2048
 
 
 def normalize_prompt_text(text: str) -> str:
@@ -251,73 +292,509 @@ def compact_prompt(text: str) -> str:
     text = normalize_prompt_text(text)
     if len(text) > MAX_PROMPT_LENGTH:
         text = text[:MAX_PROMPT_LENGTH].rstrip()
-        # Cut at a word boundary to avoid splitting mid-word
+        # Cut at a word boundary instead of mid-word.
         last_space = text.rfind(" ")
         if last_space > int(MAX_PROMPT_LENGTH * 0.5):
             text = text[:last_space].rstrip()
     return text
 
+
 # ============================================================
-# PROMPT BUILDER
+# STORY-AWARE SCENE ANALYSIS
+# ============================================================
+# The scene description is the SOURCE OF TRUTH for what the image
+# must contain. The resolvers below only ADD variation for aspects
+# the story does NOT already specify, and every random choice is
+# constrained so it can never contradict the story's location,
+# weather, season, time, mood or objects.
+
+
+def _kw_matches(text: str, keywords: List[str]) -> bool:
+    """True when any keyword appears in text.
+
+    Single words use word boundaries ('sea' never matches 'search'),
+    multi-word phrases use plain substring matching ('rainy city
+    street' still matches "rainy city street with soft reflections").
+    """
+    lowered = (text or "").lower()
+    for kw in keywords:
+        if " " in kw:
+            if kw in lowered:
+                return True
+        elif re.search(rf"\b{re.escape(kw)}\b", lowered):
+            return True
+    return False
+
+
+def _matched_labels(text: str, label_groups) -> List[str]:
+    """Return labels whose keywords appear in text.
+
+    ``label_groups`` is priority-ordered: the first matching group is
+    the one that must win, so a literal environment in the story
+    (beach, train, field...) always beats a generic word.
+    """
+    return [
+        label
+        for label, keywords in label_groups
+        if _kw_matches(text, keywords)
+    ]
+
+
+# --- Environment groups (priority ordered: most specific wins) ---
+ENVIRONMENT_GROUPS = [
+    ("coastal / beach", ["beach", "ocean", "sea", "seafront", "seashore",
+                         "seaside", "coast", "shore", "waves", "sand",
+                         "cliff"]),
+    ("train", ["train", "railway", "rail track", "platform", "metro",
+               "compartment", "carriage"]),
+    ("bus", ["bus", "bus stop", "bus window"]),
+    ("mountain", ["mountain", "mountains", "hill", "hills", "slope",
+                  "peak", "ridge"]),
+    ("forest", ["forest", "pine", "woodland", "woods", "jungle",
+                "trees", "thicket"]),
+    ("field / meadow", ["field", "meadow", "grassland", "wheat",
+                        "pasture"]),
+    ("river / lake", ["river", "lake", "pond", "stream", "canal"]),
+    ("desert", ["desert", "dunes"]),
+    ("school / classroom", ["classroom", "school", "college"]),
+    ("library", ["library"]),
+    ("coffee / cafe", ["coffee", "cafe", "café"]),
+    ("tea stall", ["tea", "chai"]),
+    ("rooftop", ["rooftop", "roof"]),
+    ("balcony", ["balcony"]),
+    ("bridge", ["bridge"]),
+    ("station", ["station"]),
+    ("airport / travel", ["airport", "flight", "plane"]),
+    ("village / countryside", ["village", "countryside", "rural"]),
+    ("park / garden", ["park", "garden"]),
+    ("room / home / interior", ["room", "house", "home", "apartment",
+                                "bedroom", "living room", "kitchen",
+                                "hall", "interior", "cabin", "veranda",
+                                "window", "doorway"]),
+    ("city / street", ["city", "urban", "street", "road", "avenue",
+                       "alley", "lane", "market"]),
+]
+
+ENVIRONMENT_PHRASES = {
+    "coastal / beach": "coastal ocean beach with sand, waves and shoreline",
+    "train": "train / railway setting - platform or compartment interior",
+    "bus": "bus / bus stop setting",
+    "mountain": "mountain setting with slopes and distant peaks",
+    "forest": "forest / woodland setting with trees",
+    "field / meadow": "open field / meadow setting",
+    "river / lake": "river / lake / water body setting",
+    "desert": "desert setting with dry sand",
+    "school / classroom": "classroom / school setting",
+    "library": "library / reading room setting",
+    "coffee / cafe": "coffee shop / cafe setting",
+    "tea stall": "tea stall / chai shop setting",
+    "rooftop": "rooftop setting",
+    "balcony": "balcony setting",
+    "bridge": "bridge / crossing setting",
+    "station": "public transport station / platform setting",
+    "airport / travel": "airport / travel terminal setting",
+    "village / countryside": "village / countryside setting",
+    "park / garden": "park / garden setting",
+    "room / home / interior": "indoor room / home / interior space",
+    "city / street": "city street / urban road setting",
+}
+
+# --- Weather groups (priority: rain > snow > fog > cloudy > sunny > wind) ---
+WEATHER_GROUPS = [
+    ("rain", ["rain", "rainy", "raining", "monsoon", "drizzle", "downpour",
+              "shower", "wet", "puddle", "puddles", "stormy", "storm",
+              "rainfall", "raindrop", "raindrops"]),
+    ("snow", ["snow", "snowy", "snowing", "snowfall", "frost", "frosty",
+              "ice", "icy", "sleet"]),
+    ("fog", ["fog", "foggy", "mist", "misty", "haze", "hazy"]),
+    ("cloudy", ["cloudy", "cloud", "clouds", "overcast"]),
+    ("sunny", ["sunny", "sunshine", "sunlit", "sunlight", "clear sky",
+               "bright"]),
+    ("windy", ["wind", "winds", "windy", "breeze", "gust", "gusty"]),
+]
+
+WEATHER_PHRASES = {
+    "rain": "rain / wet surfaces with puddles and reflective shine",
+    "snow": "snow / snowfall with snow building up on the ground",
+    "fog": "fog / mist softly wrapping the scene",
+    "cloudy": "cloudy / overcast sky",
+    "sunny": "sunny and bright with strong daylight",
+    "windy": "windy with visible air movement",
+}
+
+# --- Time of day groups (priority: night > dawn > morning > afternoon > sunset) ---
+TIME_GROUPS = [
+    ("night", ["night", "midnight", "moon", "moonlit", "moonlight",
+               "stars", "starry", "dark"]),
+    ("dawn", ["dawn", "sunrise", "daybreak", "first light"]),
+    ("morning", ["morning"]),
+    ("afternoon", ["noon", "afternoon", "midday"]),
+    ("sunset / dusk", ["sunset", "dusk", "twilight", "evening",
+                       "golden hour"]),
+]
+
+TIME_PHRASES = {
+    "night": "night / after dark",
+    "dawn": "dawn / sunrise",
+    "morning": "morning",
+    "afternoon": "afternoon / midday",
+    "sunset / dusk": "sunset / dusk / evening",
+}
+
+# --- Season groups ---
+SEASON_GROUPS = [
+    ("summer", ["summer"]),
+    ("winter", ["winter", "wintry"]),
+    ("spring", ["spring", "blossom"]),
+    ("autumn", ["autumn", "fallen leaves", "falling leaves"]),
+    ("monsoon", ["monsoon"]),
+]
+
+SEASON_PHRASES = {
+    "summer": "summer",
+    "winter": "winter",
+    "spring": "spring",
+    "autumn": "autumn / fall",
+    "monsoon": "monsoon / rainy season",
+}
+
+def _normalize_weather_labels(
+    story_labels: List[str],
+    time_labels: List[str],
+    season_labels: List[str],
+) -> List[str]:
+    """Keep the story's weather words but drop impossible combos."""
+    labels = [label for label in story_labels]
+    if "sunny" in labels and (
+        "night" in time_labels
+        or "rain" in labels
+        or "snow" in labels
+        or "winter" in season_labels
+        or "monsoon" in season_labels
+    ):
+        labels.remove("sunny")
+    return labels
+
+
+def _fallback_weather_label(
+    time_labels: List[str],
+    season_labels: List[str],
+    env_labels: List[str],
+) -> str:
+    """Story never mentions weather -> invent one that still fits the
+    story's time, season and location clues. Never a contradiction."""
+    if "monsoon" in season_labels:
+        return "rain"
+    if "winter" in season_labels:
+        return "snow"
+    banned = set()
+    if "night" in time_labels:
+        banned.add("sunny")
+    if any(label in env_labels for label in ("coastal / beach", "desert")):
+        banned.add("snow")
+    if "summer" in season_labels:
+        banned.add("snow")
+    choices = [label for label in WEATHER_PHRASES if label not in banned]
+    if not choices:
+        choices = list(WEATHER_PHRASES)
+    return random.choice(choices)
+
+
+def _resolve_environment(
+    text: str,
+    env_labels: List[str],
+    weather_labels: List[str],
+    time_labels: List[str],
+) -> str:
+    """Environment must come from the story. We only randomise it when
+    the story does not specify any location, and even then the choice
+    stays compatible with the story's weather / time."""
+    if env_labels:
+        label = env_labels[0]
+        return (
+            f"{ENVIRONMENT_PHRASES[label]} (the story's exact location - "
+            "do not replace it with any other place)"
+        )
+    if "rain" in weather_labels:
+        pool = [
+            "rainy city street with soft reflections",
+            "empty countryside road after rain",
+            "forest trail with wet leaves",
+            "village street after monsoon rain",
+            "quiet bus stop after rainfall",
+        ]
+    elif "snow" in weather_labels:
+        pool = ["snow covered path through trees"]
+    elif "fog" in weather_labels:
+        pool = ["misty pine forest", "fog-bathed river bank"]
+    elif "night" in time_labels:
+        pool = ["moonlit lake with gentle ripples",
+                "lighthouse during blue hour",
+                "quiet street under a starry night sky"]
+    else:
+        pool = ENVIRONMENTS
+    return random.choice(pool)
+
+
+def _resolve_weather(weather_labels: List[str]) -> str:
+    return "; ".join(WEATHER_PHRASES[label] for label in weather_labels)
+
+
+def _resolve_time(time_labels: List[str], weather_labels: List[str]) -> str:
+    if time_labels:
+        return " and ".join(TIME_PHRASES[label] for label in time_labels)
+    # Story never fixes the clock -> randomise, but a bright sunny/clear
+    # sky can never land on "night".
+    if "sunny" in weather_labels or "cloudy" in weather_labels:
+        options = ["dawn", "morning", "afternoon", "sunset / dusk"]
+    else:
+        options = ["dawn", "morning", "afternoon", "sunset / dusk", "night"]
+    return TIME_PHRASES[random.choice(options)]
+
+
+def _resolve_season(season_labels: List[str],
+                    weather_labels: List[str]) -> str:
+    if season_labels:
+        return " and ".join(SEASON_PHRASES[label] for label in season_labels)
+    if "snow" in weather_labels:
+        return "winter"
+    if "rain" in weather_labels:
+        return "monsoon / rainy season"
+    if "sunny" in weather_labels or "cloudy" in weather_labels:
+        return random.choice(["summer", "spring", "autumn"])
+    return random.choice(["summer", "winter", "spring", "autumn"])
+
+
+def _resolve_lighting(weather_labels: List[str],
+                      time_labels: List[str]) -> str:
+    lights = []
+    if "night" in time_labels:
+        lights.append("moonlit / blue-hour ambient light")
+    if "dawn" in time_labels:
+        lights.append("soft purple-pink dawn glow")
+    if "morning" in time_labels:
+        lights.append("warm low-angled morning light")
+    if "afternoon" in time_labels:
+        lights.append("bright natural daylight")
+    if "sunset / dusk" in time_labels:
+        lights.append("golden-hour glow")
+    if "rain" in weather_labels:
+        lights.append("soft overcast rain light with wet sheen")
+    if "snow" in weather_labels:
+        lights.append("cold diffused snowy light")
+    if "fog" in weather_labels:
+        lights.append("soft hazy diffused light")
+    if "cloudy" in weather_labels:
+        lights.append("even, muted overcast light")
+    if "sunny" in weather_labels:
+        lights.append("bright sunlit light")
+    if not lights:
+        lights = [random.choice(LIGHTING)]
+    return ", ".join(dict.fromkeys(lights))
+
+MOOD_SIGNAL_WORDS = [
+    "peaceful", "nostalgic", "melancholic", "hopeful", "quiet",
+    "reflective", "comforting", "dreamlike", "calm", "lonely",
+    "sorrowful", "tender", "joyful", "sad", "eerie", "tense",
+    "yearning", "longing",
+]
+
+
+def _resolve_mood(text: str,
+                  weather_labels: List[str],
+                  time_labels: List[str]) -> str:
+    lowered = (text or "").lower()
+    matched = [word for word in MOOD_SIGNAL_WORDS if word in lowered]
+    if matched:
+        return ", ".join(matched[:2])
+    if "rain" in weather_labels:
+        return "quiet, introspective"
+    if "snow" in weather_labels:
+        return "still, peaceful"
+    if "fog" in weather_labels:
+        return "mysterious, muted"
+    if "night" in time_labels:
+        return "introspective, calm"
+    return random.choice(MOODS)
+
+
+# --- Story-relevant foreground objects -------------------------------------
+FOREGROUND_STORY_OBJECTS = [
+    "umbrella", "rain puddles", "puddles", "puddle", "book", "books",
+    "letter", "diary", "tea cup", "teacup", "coffee cup", "lantern",
+    "curtain", "photo frame", "bus ticket", "window", "notebook", "lamp",
+    "flowers", "shell", "shells", "bicycle", "old bicycle", "wildflowers",
+    "fallen leaves", "leaves", "grass", "balcony plants", "paper letter",
+]
+
+
+def _resolve_foreground(text: str,
+                        env_labels: List[str],
+                        weather_labels: List[str],
+                        time_labels: List[str]) -> str:
+    """Foreground objects must come from the story or be compatible with
+    its detected environment / weather. Never randomly adds cars,
+    bicycles, flowers, umbrellas, books, etc."""
+    lowered = (text or "").lower()
+    matched = [obj for obj in FOREGROUND_STORY_OBJECTS if obj in lowered]
+    if matched:
+        return (
+            ", ".join(matched)
+            + " - these objects are specifically from the story; render "
+            "them exactly as described and do NOT add random extras."
+        )
+    if "rain" in weather_labels:
+        return ("story-compatible foreground: rain puddles, wet reflective "
+                "surfaces and faint rain streaks")
+    if "snow" in weather_labels:
+        return ("story-compatible foreground: a fresh layer of snow on the "
+                "nearest surfaces")
+    if "fog" in weather_labels:
+        return "soft foreground fog gently blurring the nearest shapes"
+    if "night" in time_labels:
+        return ("quiet pool of warm lamplight in the foreground "
+                "(no unrelated objects)")
+    if "coastal / beach" in env_labels:
+        return "foreground: wet sand, rolling wave-foam and a few seashells"
+    if "train" in env_labels:
+        return "foreground: train window, seat back and handrail near the viewer"
+    if "bus" in env_labels:
+        return "foreground: bus window and handrail close to the viewer"
+    if "room / home / interior" in env_labels or "balcony" in env_labels:
+        return ("foreground: indoor objects only if the story mentions them "
+                "(e.g. window light, a mug) - nothing random")
+    if "forest" in env_labels:
+        return "foreground: moss-covered rocks, ferns and wet leaves underfoot"
+    if "mountain" in env_labels:
+        return "foreground: rocky terrain and dark evergreen silhouettes"
+    if "river / lake" in env_labels:
+        return "foreground: smooth water with a stone or leaf on the bank"
+    if "field / meadow" in env_labels:
+        return "foreground: tall grass and wildflowers bending in the wind"
+    if "city / street" in env_labels:
+        return "foreground: a clean lamp-lit street surface (no unrelated vehicles)"
+    return ("foreground details only if the story mentions them - no random "
+            "vehicles, bicycles, flowers, books, umbrellas or other unrelated "
+            "objects")
+
+
+# --- Story-aware negative prompt -------------------------------------------
+# Negative-prompt fragments that would fight the story when the story
+# explicitly requires the same element. Format: (fragment found inside
+# NEGATIVE_PROMPT, story keywords that make keeping the fragment harmful).
+NEGATIVE_STORY_CONFLICTS = [
+    ("cozy home interior", ["home", "house", "room", "apartment", "interior",
+                            "bedroom", "kitchen", "hall"]),
+    ("cozy family room", ["room", "home", "family"]),
+    ("small wooden cabin", ["cabin"]),
+    ("house exterior", ["house", "cabin", "home", "bungalow"]),
+    ("bungalow", ["bungalow", "house", "home"]),
+    ("balcony", ["balcony", "rooftop", "apartment"]),
+    ("window-view apartment", ["window", "apartment", "room"]),
+    ("tea stall", ["tea", "tea cup", "chai"]),
+    ("coffee shop", ["coffee", "cafe", "café"]),
+    ("old city lane", ["city", "street", "lane", "alley", "road", "market"]),
+    ("rainy street", ["rain", "rainy", "monsoon", "wet", "street",
+                      "puddle", "puddles"]),
+    ("apartment balcony", ["balcony", "apartment", "rooftop"]),
+]
+
+
+def build_normal_day_negative_prompt(scene_description: str) -> str:
+    """Base negative prompt minus any item that would contradict an
+    element the story explicitly requires to be SHOWN."""
+    desc = (scene_description or "").lower()
+    kept = []
+    for part in NEGATIVE_PROMPT.split(","):
+        item = part.strip()
+        if not item:
+            continue
+        should_drop = any(
+            fragment in item.lower()
+            and any(seed in desc for seed in story_seeds)
+            for fragment, story_seeds in NEGATIVE_STORY_CONFLICTS
+        )
+        if not should_drop:
+            kept.append(item)
+    return compact_prompt(", ".join(kept))
+
+
+# ============================================================
+# STORY-AWARE SCENE ANALYSIS
 # ============================================================
 
 def build_style_prompt(
     event_mode: bool = False,
     style_variation: Optional[str] = None,
 ) -> str:
-    """Return the base style, with event mode avoiding cozy generic default imagery."""
+    """Return a compact style directive.
+
+    For normal days this is the fixed 2D cel-shaded anime look plus a
+    strict SINGLE-FRAME rule. Keep it short: it is the first block of
+    every prompt and Cloudflare caps prompts at 2048 characters.
+    """
     if event_mode:
         return (
             f"{BASE_STYLE_PROMPT}\n\n"
             "Event-first artistic direction:\n"
             "Use iconic occasion symbols and clear visual identity. "
-            "Do not default to cozy home interiors, balcony scenes, cabin settings, or generic rainy-city imagery unless the occasion itself requires them. "
-            "The image must clearly communicate what the event is famous for. "
-            "Ghibli-style elements are integrated throughout—hand-painted backgrounds, whimsical nature, and gentle character design."
+            "Do not default to cozy home interiors, generic rainy-city "
+            "imagery, cabins or tea stalls unless the occasion itself "
+            "requires them. The image must clearly communicate what the "
+            "event is famous for."
         )
 
     variation = style_variation or STYLE_VARIATIONS[0]
-    return f"{BASE_STYLE_PROMPT}\n\nStyle variation:\n{variation}"
+    return (
+        f"{variation}. "
+        "2D cinematic anime frame, one full-bleed shot covering the entire "
+        "canvas - a single continuous scene. "
+        "No collage, no panels, no grid, no storyboard, no split screen."
+    )
 
 
-def build_prompt_for_normal_day(
+def build_prompt(
     scene_type: str,
     scene_description: str,
-    style_variation: Optional[str] = None,
 ) -> str:
-    """Build prompt for normal days with random environment, lighting, mood, and foreground variations."""
+    """Build the normal-day image prompt.
+
+    The scene description is the source of truth. Environment, weather,
+    season, time of day, lighting, mood and foreground are only
+    randomised when the story does NOT specify them, and even then the
+    random choices are constrained so they never contradict the story.
+    """
     scene_type = (scene_type or "environment").lower().strip()
-    scene_description = (scene_description or "").strip()
+    scene_description = (scene_description or "").strip()   
 
     if scene_type == "couple":
         subject = (
-            "Two people naturally interacting. "
-            "Walking together, sitting quietly, holding hands, sharing an umbrella, "
-            "or enjoying a peaceful moment. "
-            "No close-up faces. Natural body language."
+            "Two clearly visible people are central to the scene."
+            "Natural interaction and body language expressing the emotional story. "
+            "Walking together, sitting quietly, holding hands, sharing an umbrella or enjoying a peaceful moment."
+            "No close-up faces."
         )
 
     elif scene_type == "person":
         subject = (
-            "One person naturally inside the environment. "
-            "Walking, reading, drinking coffee, sitting by a window, "
-            "watching the rain, standing on a bridge, looking at the sky, "
-            "or enjoying nature. "
-            "Not a portrait. Never a selfie."
+            "One clearly visible person is the emotional focus. "
+            "Natural full-body or medium-distance pose, interacting with the environment. "
+            "Subtle body language expressing the story. Not a portrait, never a selfie."
         )
 
     elif scene_type == "object":
         subject = (
-            "An everyday object tells the story. "
+            "An important everyday object supports the story, with a person naturally interacting with it."
             "Books, tea, coffee, bicycle, lantern, flowers, window, "
             "umbrella, camera, diary, wooden chair, phone, bus ticket, keys, shoes, lamp, photo frame or similar. "
-            "No human characters."
         )
 
     elif scene_type == "architecture":
         subject = (
+            "Architecture is important, but include 1–3 people naturally within the environment."
             "Beautiful architecture or interior space. "
-            "Coffee shop, library, train station, bridge, tea stall, classroom, bus stop, quiet street or other public place. "
+            "Coffee shop, library, train station, old cabin, balcony, "
+            "wooden house, bridge, lighthouse, tea stall, classroom, bus stop or quiet street. "
             "The place itself carries the emotion."
         )
 
@@ -339,214 +816,102 @@ def build_prompt_for_normal_day(
         subject = (
             "A nostalgic room or memory-filled interior tells the story. "
             "Old desk, curtains, warm lamp, photo frame, empty chair, open notebook, window light, plants, childhood objects. "
-            "No human characters."
+            "A person is present in the room, naturally interacting with the objects and environment."
         )
 
     elif scene_type == "abstract_emotion":
         subject = (
-            "Emotion is shown through concrete environments, light, shadow, weather, doors, windows, roads, water, seasons, and empty spaces. "
-            "No human characters. Keep it poetic but clear."
+            "Emotion is shown through concrete environments, light, space, shadow, weather, doors, windows, roads, water, seasons, and empty spaces. "
+            "Represent the emotion through a visible person interacting with the environment."
         )
 
     else:
         subject = (
-            "Environment is the main subject. "
+            "Environment is the main subject."
+            "Include 1–2 human characters as the emotional focus of the scene."
             "Nature tells the story through forests, rivers, fields, sky, rain, wind, flowers, stones, clouds, moonlight, and soft natural movement. "
-            "No human characters unless explicitly required by the scene."
+            "Full-body or medium-distance composition, not a portrait."
         )
 
-    # For normal days: use random variations
-    environment = random.choice(ENVIRONMENTS)
-    lighting = random.choice(LIGHTING)
-    mood = random.choice(MOODS)
-    foreground = random.choice(FOREGROUND_DETAILS)
+    # ---- Story-aware scene breakdown ----
+    # The scene description is the SOURCE OF TRUTH. The resolvers below
+    # only randomise aspects the story does NOT specify, and their random
+    # picks are constrained so they can never contradict the story.
+    env_labels = _matched_labels(scene_description, ENVIRONMENT_GROUPS)
+    story_weather_labels = _matched_labels(scene_description, WEATHER_GROUPS)
+    time_labels = _matched_labels(scene_description, TIME_GROUPS)
+    season_labels = _matched_labels(scene_description, SEASON_GROUPS)
+
+    weather_labels = _normalize_weather_labels(
+        story_weather_labels,
+        time_labels,
+        season_labels,
+    )
+    if not weather_labels:
+        weather_labels = [
+            _fallback_weather_label(
+                time_labels,
+                season_labels,
+                env_labels,
+            )
+        ]
+
+    environment = _resolve_environment(
+        scene_description,
+        env_labels,
+        weather_labels,
+        time_labels,
+    )
+    weather = _resolve_weather(weather_labels)
+    time_phrase = _resolve_time(time_labels, weather_labels)
+    season_phrase = _resolve_season(season_labels, weather_labels)
+    lighting = _resolve_lighting(weather_labels, time_labels)
+    mood = _resolve_mood(scene_description, weather_labels, time_labels)
+    foreground = _resolve_foreground(
+        scene_description,
+        env_labels,
+        weather_labels,
+        time_labels,
+    )
 
     variation = cinematic_variation()
 
-    prompt = f"""
-        {build_style_prompt(event_mode=False, style_variation=style_variation)}
+    prompt = f"""STYLE:
+{build_style_prompt(event_mode=False)}
+This fixed style only controls HOW it is drawn; it never changes WHAT is shown.
 
-        Scene:
-        {scene_description}
+STORY / SCENE (SOURCE OF TRUTH):
+{scene_description}
 
-        Subject:
-        {subject}
+CHARACTER + ACTION:
+{subject}
 
-        Environment:
-        {environment}
+ENVIRONMENT:
+{environment}
 
-        Lighting:
-        {lighting}
+WEATHER / SEASON / TIME:
+Weather: {weather}; Season: {season_phrase}; Time: {time_phrase}.
+Lighting: {lighting}; Mood: {mood}.
 
-        Mood:
-        {mood}
+FOREGROUND DETAILS:
+{foreground}
 
-        Foreground:
-        {foreground}
+CINEMATIC COMPOSITION:
+Vertical 9:16, one continuous shot - {variation['camera']}, {variation['lens']}.
+Full-bleed single frame. Layered depth, natural proportions, clean
+subtitle space. Detailed, sharp, cinematic movie still.
 
-        Composition:
-        Vertical 9:16.
-        {variation["camera"]}.
-        {variation["lens"]}.
-        Professional cinematic framing.
-        Layered foreground, middle ground and background.
-        Natural depth.
-        Balanced composition.
-        Leave clean negative space for subtitles.
+STORY FIDELITY:
+The scene description is the source of truth. Do not contradict or replace
+its location, weather, season, time, activity, objects, relationships, or
+actions. Do not introduce unrelated vehicles, objects, animals, buildings,
+or environments.
 
-        Quality:
-        Highly detailed.
-        Painterly illustration.
-        Soft brush strokes.
-        Rich textures.
-        Natural colors.
-        Sharp focus.
-        Beautiful lighting appropriate to the scene, not always sunset.
-        Clean edges.
-        Emotional storytelling.
-        Movie still.
-        Award-winning artwork.
-
-        Avoid:
-        No text.
-        No logo.
-        No watermark.
-        No blurry image.
-        No low quality.
-        No cropped subject.
-        No duplicate people.
-        No deformed anatomy.
-        No extra fingers.
-        No extra limbs.
-        No CGI.
-        No 3D render.
-        No photorealistic photo.
-        """
+NO TEXT:
+No text, letters, captions, logos, watermarks, signatures, frames or borders.
+"""
 
     return compact_prompt(prompt)
-
-
-def build_prompt_for_event(
-    scene_type: str,
-    scene_description: str,
-    event_instruction: str,
-    event_data: Optional[Dict[str, Any]] = None,
-) -> str:
-    """Build prompt for event days with event-specific visual cues from calendar data."""
-    scene_type = (scene_type or "environment").lower().strip()
-    scene_description = (scene_description or "").strip()
-    event_instruction = (event_instruction or "").strip()
-
-    # Sanitize scene description for events: remove generic/conflicting elements
-    scene_description_clean = scene_description
-    
-    # Remove generic keywords that contradict event focus
-    generic_keywords_to_remove = {
-        "dog", "cat", "animal", "quiet", "resting", "sleeping",
-        "coffee shop", "tea stall", "library", "classroom", "bus stop",
-        "balcony", "cabin", "home", "house", "cozy", "interior",
-        "rainy", "monsoon", "puddle", "umbrella", "car", "lady", "woman",
-        "man", "person", "people",
-    }
-    
-    words = scene_description_clean.lower().split()
-    filtered_words = [
-        word for word in words 
-        if not any(generic in word.lower() for generic in generic_keywords_to_remove)
-    ]
-    
-    if filtered_words:
-        scene_description_clean = " ".join(filtered_words).strip()
-    
-    # If cleaning removed too much, use event instruction as base
-    if not scene_description_clean or len(scene_description_clean) < 15:
-        scene_description_clean = event_instruction
-
-    # Extract styling from event calendar data
-    camera_angle = "wide establishing shot"
-    lens_style = "35mm film lens"
-    weather_style = "golden light"
-    color_grade = "vibrant natural colors"
-    style_variation = "Bold cinematic visual storytelling with cultural pride and national symbolism."
-    
-    if event_data:
-        camera_angle = event_data.get("camera_angle", camera_angle)
-        lens_style = event_data.get("lens_style", lens_style)
-        weather_style = event_data.get("weather", weather_style)
-        color_grade = event_data.get("color_grade", color_grade)
-        style_variation = event_data.get("style_variation", style_variation)
-
-    # Build event prompt with event focus + scene FIRST (critical content
-    # at the front). The DO-NOT-GENERATE guidance is placed at the END
-    # because negatives are already passed separately via ``negative_prompt``
-    # in the API payload — they are the least critical part of the main prompt.
-    prompt = f"""
-EVENT: This scene MUST clearly represent the occasion.
-{event_instruction}
-
-SCENE TO RENDER:
-{scene_description_clean}
-
-STYLE DIRECTION:
-{style_variation}
-
-COMPOSITION:
-Vertical 9:16 reel format. {camera_angle}. {lens_style}. Professional cinematic framing with clear visual hierarchy.
-
-LIGHTING & ATMOSPHERE:
-{weather_style}. Natural, warm, celebratory mood matching the occasion.
-
-COLOR PALETTE:
-{color_grade}. Use culturally significant colors prominently.
-
-{build_style_prompt(event_mode=True)}
-
-QUALITY STANDARDS:
-Highly detailed, award-winning illustration. Soft painterly style. Sharp focus. Emotional depth matching the event significance.
-
-DO NOT GENERATE (already enforced via negative_prompt):
-- Random cars, vehicles, or transportation
-- Random people (men, women, children) unrelated to the event
-- Generic coffee shops, homes, offices
-- Rainy or mundane weather unless event-specific
-- Abstract vague imagery
-- Text, logos, watermarks, or signatures
-        """
-
-    return compact_prompt(prompt)
-
-
-def build_prompt(
-    scene_type: Optional[str] = None,
-    scene_description: Optional[str] = None,
-    event_instruction: Optional[str] = None,
-    event_data: Optional[Dict[str, Any]] = None,
-    style_variation: Optional[str] = None,
-) -> str:
-    """
-    Backward compatibility wrapper.
-    Routes to build_prompt_for_event() if event_instruction is provided,
-    otherwise to build_prompt_for_normal_day().
-    """
-    # Normalize optional parameters to strings
-    scene_type_str = (scene_type or "environment").lower().strip()
-    scene_description_str = (scene_description or "").strip()
-    event_instruction_str = (event_instruction or "").strip()
-    
-    if event_instruction_str:
-        return build_prompt_for_event(
-            scene_type=scene_type_str,
-            scene_description=scene_description_str,
-            event_instruction=event_instruction_str,
-            event_data=event_data,
-        )
-    else:
-        return build_prompt_for_normal_day(
-            scene_type=scene_type_str,
-            scene_description=scene_description_str,
-            style_variation=style_variation,
-        )
-
 
 # ============================================================
 # CLOUDFLARE IMAGE GENERATION
@@ -555,6 +920,7 @@ def build_prompt(
 def generate_image_with_cloudflare(
     prompt: str,
     event_mode: bool = False,
+    negative_prompt_override: Optional[str] = None,
 ) -> Optional[Image.Image]:
     prompt = compact_prompt(prompt)
     negative_prompt = compact_prompt(NEGATIVE_PROMPT)
@@ -571,17 +937,28 @@ def generate_image_with_cloudflare(
             + "random child, random stranger, random face, random portrait, low resolution, poorly rendered"
         )
     else:
-        steps = random.choice([5, 6, 7])
-        guidance = random.choice([3.5, 4.0, 4.5, 5.0])
+        steps = random.choice([15, 20])
+        guidance = random.choice([7.0, 7.5, 8.0, 8.5])
+        if negative_prompt_override:
+            # For normal days the negative prompt is built from the actual
+            # scene description so it never suppresses an element the story
+            # explicitly requires (rain, coffee shop, tea stall, balcony...).
+            negative_prompt = compact_prompt(negative_prompt_override)
 
+    # Cloudflare Workers AI stable-diffusion-xl-base-1.0 expects ``num_steps``
+    # (not ``steps``) and accepts an explicit canvas size. Rendering a real
+    # 9:16 portrait canvas up front stops the model from "tiling" the default
+    # square 1024x1024 output into collage-like stacked panels when asked for
+    # a vertical composition.
     payload = {
         "prompt": prompt,
         "negative_prompt": negative_prompt,
-        "steps": steps,
+        "num_steps": steps,
         "guidance": guidance,
+        "width": 768,
+        "height": 1344,
+        "seed": random.randint(0, 2**32 - 1),
     }
-
-    print(f"\nCloudflare prompt (event_mode={event_mode}):\n{prompt[:1200]}\n")
 
     for account in CLOUDFLARE_ACCOUNTS:
         print(f"\nUsing Cloudflare Account: {account['name']}")
@@ -613,6 +990,8 @@ def generate_image_with_cloudflare(
         #         print(response.json())
         #     except Exception:
         #         print(response.text)
+        #     continue
+
         # try:
         #     result = response.json()
 
@@ -639,6 +1018,7 @@ def generate_image_with_cloudflare(
         #     print("✓ Image generated successfully")
 
         #     return image
+
         # except Exception as exc:
         #     print(f"Image Decode Error: {exc}")
         #     continue
@@ -667,6 +1047,7 @@ def generate_image_with_cloudflare(
         except Exception as exc:
             print(f"Image Decode Error: {exc}")
             continue
+
     print("\nAll Cloudflare accounts failed.")
 
     return None
@@ -848,8 +1229,13 @@ ARCHITECTURE_KEYWORDS = {
     "coffee shop",
     "station",
     "bridge",
+    "house",
+    "home",
     "room",
+    "balcony",
     "street",
+    "cabin",
+    "lighthouse",
     "classroom",
     "bus stop",
     "tea stall",
@@ -1084,52 +1470,10 @@ def random_scene_description(
     return random.choice(ENVIRONMENT_VARIATIONS)
 
 
-GENERIC_EVENT_KW = {
-    "house",
-    "cabin",
-    "balcony",
-    "cozy",
-    "home",
-    "tea stall",
-    "coffee shop",
-    "rainy city",
-    "wet street",
-    "bus stop",
-    "room",
-    "classroom",
-    "library",
-    "bridge",
-    "street",
-    "forest trail",
-    "quiet road",
-    "old city lane",
-}
-
-
-def sanitize_event_scene_description(
-    description: str,
-    event_name: str,
-) -> str:
-    cleaned = str(description or "").strip()
-    if not cleaned:
-        return f"{event_name} celebration scene with iconic visual symbolism and strong cultural identity."
-
-    lowered = cleaned.lower()
-    if any(keyword in lowered for keyword in GENERIC_EVENT_KW):
-        cleaned = ""
-
-    if not cleaned:
-        return f"{event_name} celebration scene using iconic festival visuals, national symbolism, and emotionally rich storytelling."
-
-    return cleaned
-
-
 def enhance_scene_for_variety(
     scene: Dict[str, Any],
     index: int,
     visual_mode: str = "environment",
-    event: Optional[Dict[str, Any]] = None,
-    hint_offset: int = 0,
 ) -> Dict[str, Any]:
     scene_type = str(
         scene.get("type") or visual_mode or "environment"
@@ -1149,36 +1493,12 @@ def enhance_scene_for_variety(
             scene_type
         )
 
-    if event:
-        event_name = str(event.get("name", "special occasion")).strip() or "special occasion"
-        event_instruction = build_event_image_instruction(event, hint_offset=hint_offset)
-        description = sanitize_event_scene_description(description, event_name)
-        description = (
-            f"{event_instruction} "
-            f"{description}. "
-            "Cinematic composition. Painterly illustration. Highly detailed. Beautiful natural colors. Emotional storytelling. No text."
-        )
-        return {
-            "type": "event",
-            "description": description,
-        }
-
-    lighting = random.choice(LIGHTING)
-    mood = random.choice(MOODS)
-    foreground = random.choice(FOREGROUND_DETAILS)
-
-    description += (
-        f". Lighting: {lighting}."
-        f" Mood: {mood}."
-        f" Foreground: {foreground}."
-        " Cinematic composition."
-        " Painterly illustration."
-        " Highly detailed."
-        " Beautiful natural colors."
-        " Emotional storytelling."
-        " No text."
-        " Do not default to sunset unless the scene explicitly needs it."
-    )
+    # The event / special-date branch was removed when the pipeline became
+    # normal-day only. Scene type detection and the empty-description
+    # fallback above are enough here.
+    # (No random lighting/mood/foreground text is appended - that used to
+    # contradict the story. All variation is applied inside build_prompt(),
+    # which is story-aware.)
 
     return {
         "type": scene_type,
@@ -1242,9 +1562,6 @@ def create_placeholder_image(
 def generate_single_image(
     scene: Dict[str, Any],
     output_path: str,
-    event_instruction: Optional[str] = None,
-    event_data: Optional[Dict[str, Any]] = None,
-    style_variation: Optional[str] = None,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1258,14 +1575,14 @@ def generate_single_image(
     prompt = build_prompt(
         scene_type=scene_type,
         scene_description=scene_description,
-        event_instruction=event_instruction,
-        event_data=event_data,
-        style_variation=style_variation,
     )
+
+    normal_negative = build_normal_day_negative_prompt(scene_description)
 
     image = generate_image_with_cloudflare(
         prompt,
-        event_mode=bool(event_instruction),
+        event_mode=False,
+        negative_prompt_override=normal_negative,
     )
 
     if image is None:
@@ -1292,16 +1609,6 @@ def generate_images_for_reel(
     output_dir: str | Path | None = None,
     prefix: str = "scene",
 ) -> List[str]:
-    from event_detector import CONTENT_REEL, get_today_event
-
-    event = get_today_event(content_type=CONTENT_REEL)
-
-    # Select ONE style variation for the entire reel (used for non-event scenes)
-    selected_style_variation = None
-    if not event:
-        selected_style_variation = random.choice(STYLE_VARIATIONS)
-        print(f"🎨 Selected style variation for this reel: "
-              f"{selected_style_variation[:70]}...")
 
     if output_dir is None:
         output_dir = OUTPUT_DIR / "images"
@@ -1346,22 +1653,14 @@ def generate_images_for_reel(
 
     generated_images = []
 
-    # Randomize the base offset so each reel starts at a different rotation point
-    hint_offset_base = random.randint(0, 100) if event else 0
-
     for index, scene in enumerate(
         scenes,
         start=1,
     ):
-        # Each scene gets a unique but randomized offset
-        scene_hint_offset = hint_offset_base + index
-
         scene = enhance_scene_for_variety(
             scene,
             index,
             visual_mode,
-            event=event,
-            hint_offset=scene_hint_offset,
         )
 
         output_path = (
@@ -1373,17 +1672,9 @@ def generate_images_for_reel(
         print(f"Scene {index}/{len(scenes)}")
         print("-" * 70)
 
-        scene_event_instruction = (
-            build_event_image_instruction(event, hint_offset=scene_hint_offset)
-            if event else None
-        )
-
         image_path = generate_single_image(
             scene=scene,
             output_path=str(output_path),
-            event_instruction=scene_event_instruction,
-            event_data=event,
-            style_variation=selected_style_variation,
         )
 
         generated_images.append(image_path)
