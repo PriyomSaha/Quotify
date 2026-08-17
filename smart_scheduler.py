@@ -510,14 +510,42 @@ def get_active_window(content_type: ContentType) -> Optional[PostingWindow]:
     Returns None if no window is active or approaching.
     """
     if is_manual_dispatch_trigger():
+        print("\n⚡ Manual workflow_dispatch trigger: detecting current IST time-frame...")
+        ist_now = get_ist_now()
+
+        # 1) See which time-frame the current IST time falls under (real-time detection).
+        #    Publishing is unconditional on manual trigger — this only picks the slot/theme.
+        windows = get_current_windows(content_type)
+        for window in windows:
+            if window.should_start_generation(ist_now):
+                print(f"⚡ Manual dispatch: current time-frame detected — '{window.name}' ({content_type.value})")
+                return window
+            if window.is_current(ist_now):
+                print(f"⚡ Manual dispatch: current time-frame detected — '{window.name}' ({content_type.value})")
+                return window
+            if window.is_recently_passed(ist_now):
+                print(f"⚡ Manual dispatch: current time-frame (just closed, grace) — '{window.name}'")
+                return window
+            if content_type == ContentType.QUOTE and window.is_recently_missed(ist_now):
+                print(f"⚡ Manual dispatch: current time-frame (missed-recovery) — '{window.name}'")
+                return window
+            if content_type == ContentType.QUOTE and window.starts_within(ist_now, QUOTE_LOOKAHEAD_MINUTES):
+                minutes_until = window.start_minutes() - window.to_minutes(ist_now.hour, ist_now.minute)
+                print(f"⚡ Manual dispatch: current time-frame (starts in {minutes_until} min) — '{window.name}'")
+                return window
+
+        # 2) No window is currently active — fall back to the next pending slot so
+        #    the run still has a slot to record. There is NO publish/skip gate for
+        #    manual runs: it always creates and publishes, regardless of window state.
         pending = get_pending_windows(content_type)
         if pending:
-            print(f"⚡ Manual workflow_dispatch trigger: selecting pending {content_type.value} window '{pending[0].name}'")
+            print(f"⚡ Manual dispatch: no active time-frame right now; falling back to next-pending {content_type.value} slot '{pending[0].name}'")
             return pending[0]
         windows = get_current_windows(content_type)
         if windows:
-            print(f"⚡ Manual workflow_dispatch trigger: selecting fallback {content_type.value} window '{windows[0].name}'")
+            print(f"⚡ Manual dispatch: no active time-frame; falling back to first {content_type.value} slot '{windows[0].name}'")
             return windows[0]
+        print("⚡ Manual dispatch: no windows scheduled for today; proceeding without a scheduler slot.")
         return None
 
     ist_now = get_ist_now()

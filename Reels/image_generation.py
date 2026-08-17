@@ -743,33 +743,42 @@ def build_style_prompt(
 ) -> str:
     """Return a compact style directive.
 
-    For normal days this is the fixed 2D cel-shaded anime look plus a
-    strict SINGLE-FRAME rule. Keep it short: it is the first block of
-    every prompt and Cloudflare caps prompts at 2048 characters.
-    """
-    if event_mode:
-        return (
-            f"{BASE_STYLE_PROMPT}\n\n"
-            "Event-first artistic direction:\n"
-            "Use iconic occasion symbols and clear visual identity. "
-            "Do not default to cozy home interiors, generic rainy-city "
-            "imagery, cabins or tea stalls unless the occasion itself "
-            "requires them. The image must clearly communicate what the "
-            "event is famous for."
-        )
+    Normal days AND event-based days use the SAME artistic style variation
+    (the 2D cel-shaded anime look + a strict SINGLE-FRAME rule) so normal
+    reels and event-based reels stay visually consistent. The event-specific
+    look for event-based reels is driven entirely by the SCENE FOCUS
+    (EVENT IMAGE FOCUS) block added by ``build_prompt``, NOT by a different
+    artistic style.
 
+    Keep it short: it is the first block of every prompt and Cloudflare
+    caps prompts at 2048 characters.
+    """
     variation = style_variation or STYLE_VARIATIONS[0]
-    return (
+    base = (
         f"{variation}. "
         "2D cinematic anime frame, one full-bleed shot covering the entire "
         "canvas - a single continuous scene. "
         "No collage, no panels, no grid, no storyboard, no split screen."
     )
 
+    if event_mode:
+        # Same style variation as normal mode. Only add an event-first
+        # identity reminder so event scenes still clearly read as the
+        # occasion without introducing a different artistic style.
+        return (
+            base + " "
+            "Event-first visual identity: the scene must clearly read as the "
+            "named occasion through its iconic symbols and cultural elements, "
+            "while keeping the cel-shaded 2D anime style above."
+        )
+
+    return base
+
 
 def build_prompt(
     scene_type: str,
     scene_description: str,
+    event_instruction: Optional[str] = None,
 ) -> str:
     """Build the normal-day image prompt.
 
@@ -777,6 +786,12 @@ def build_prompt(
     season, time of day, lighting, mood and foreground are only
     randomised when the story does NOT specify them, and even then the
     random choices are constrained so they never contradict the story.
+
+    When ``event_instruction`` is provided (event-based reels), the SAME
+    style variation as normal mode is reused (see ``build_style_prompt``)
+    and an ``EVENT IMAGE FOCUS`` block is appended so the scene clearly
+    reads as the active occasion. The artistic style itself never diverges
+    from the normal-day cel-shaded look.
     """
     scene_type = (scene_type or "environment").lower().strip()
     scene_description = (scene_description or "").strip()   
@@ -897,13 +912,22 @@ def build_prompt(
 
     variation = cinematic_variation()
 
+    event_focus_block = (
+        ""
+        if not event_instruction
+        else (
+            "EVENT IMAGE FOCUS (event-based reels):\n"
+            f"{event_instruction}\n"
+        )
+    )
+
     prompt = f"""STYLE:
-{build_style_prompt(event_mode=False)}
+{build_style_prompt(event_mode=bool(event_instruction))}
 This fixed style only controls HOW it is drawn; it never changes WHAT is shown.
 
 STORY / SCENE (SOURCE OF TRUTH):
 {scene_description}
-
+{event_focus_block}
 CHARACTER + ACTION:
 {subject}
 
@@ -958,7 +982,7 @@ def generate_image_with_cloudflare(
 
     if event_mode:
         steps = 8
-        guidance = 12.0
+        guidance = 10
         negative_prompt = compact_prompt(
             NEGATIVE_PROMPT
             + ", random people, random cars, random vehicles, random objects, random animals, "
@@ -1593,6 +1617,7 @@ def create_placeholder_image(
 def generate_single_image(
     scene: Dict[str, Any],
     output_path: str,
+    event_instruction: Optional[str] = None,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1602,19 +1627,28 @@ def generate_single_image(
     print("=" * 60)
     print(f"Type : {scene_type}")
     print(f"Scene: {scene_description}")
+    if event_instruction:
+        print(f"Event focus: {event_instruction[:160]}")
 
     prompt = build_prompt(
         scene_type=scene_type,
         scene_description=scene_description,
+        event_instruction=event_instruction,
     )
 
-    normal_negative = build_normal_day_negative_prompt(scene_description)
-
-    image = generate_image_with_cloudflare(
-        prompt,
-        event_mode=False,
-        negative_prompt_override=normal_negative,
-    )
+    if event_instruction:
+        # Event-based images reuse the SAME style variation as normal mode
+        # (cel-shaded 2D anime — see build_prompt/build_style_prompt). Only the
+        # Cloudflare negative prompt / guidance tightens to avoid generic
+        # scenes — see generate_image_with_cloudflare(event_mode=True).
+        image = generate_image_with_cloudflare(prompt, event_mode=True)
+    else:
+        normal_negative = build_normal_day_negative_prompt(scene_description)
+        image = generate_image_with_cloudflare(
+            prompt,
+            event_mode=False,
+            negative_prompt_override=normal_negative,
+        )
 
     if image is None:
         print("Image generation failed. Using placeholder.")
@@ -1682,6 +1716,20 @@ def generate_images_for_reel(
     print(f"Scenes : {len(scenes)}")
     print(f"Output : {output_dir}")
 
+    # Event-aware image generation. When an event is active, each scene is
+    # given an EVENT IMAGE FOCUS instruction so it clearly reads as the
+    # occasion. The artistic STYLE is unchanged — event-based images use the
+    # SAME style variation (cel-shaded 2D anime) as normal mode; only the
+    # per-scene visual focus differs.
+    from event_detector import CONTENT_REEL, build_event_image_instruction, get_today_event
+
+    event = get_today_event(content_type=CONTENT_REEL)
+    if event:
+        print(
+            f"Event active: {event.get('name', 'special occasion')} — "
+            "event-based images use the SAME style variation as normal mode"
+        )
+
     generated_images = []
 
     for index, scene in enumerate(
@@ -1692,6 +1740,16 @@ def generate_images_for_reel(
             scene,
             index,
             visual_mode,
+        )
+
+        # Per-scene event visual identity (deterministic via hint_offset=index)
+        # so each reel scene spotlights a different aspect of the event.
+        # The artistic STYLE is unchanged: event-based images use the SAME
+        # cel-shaded STYLE_VARIATIONS style as normal mode.
+        event_instruction = (
+            build_event_image_instruction(event, hint_offset=index)
+            if event
+            else None
         )
 
         output_path = (
@@ -1706,6 +1764,7 @@ def generate_images_for_reel(
         image_path = generate_single_image(
             scene=scene,
             output_path=str(output_path),
+            event_instruction=event_instruction,
         )
 
         generated_images.append(image_path)

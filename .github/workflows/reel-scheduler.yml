@@ -58,7 +58,13 @@ jobs:
           restore-keys: |
             whisper-model-
       
+      # The publish/skip gate only applies to scheduled (cron) runs.
+      # On manual workflow_dispatch the gate is skipped entirely: the generate
+      # step runs unconditionally, detects the current IST time-frame via
+      # smart_scheduler.get_active_window (falls back to next-pending slot),
+      # and publishes regardless of whether a window is currently active.
       - name: Check if reel should be generated
+        if: github.event_name == 'schedule'
         id: check
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -108,8 +114,8 @@ jobs:
             echo "should_publish=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Generate and upload reel
-        if: steps.check.outputs.should_publish == 'true'
+            - name: Generate and upload reel
+        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.should_publish == 'true'
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
@@ -151,19 +157,23 @@ jobs:
           print('='*70 + '\n')
           
           from api import execute_reel_generation
-          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
+          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, is_manual_dispatch_trigger, ContentType
           import os
           
-          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
+          is_manual = is_manual_dispatch_trigger()
           active_window = get_active_window(ContentType.REEL)
 
           if active_window:
               if not acquire_run_lock(ContentType.REEL, active_window):
-                  raise RuntimeError('Could not acquire scheduler run lock')
-          elif not force_publish:
-              raise RuntimeError('No active reel window found before generation')
+                  if is_manual:
+                      print('⚠️ Could not acquire scheduler lock (slot already completed or another job running); proceeding with manual publish.')
+                  else:
+                      raise RuntimeError('Could not acquire scheduler run lock')
           else:
-              print('🧪 Manual test mode: no active reel window, skipping scheduler lock')
+              if is_manual:
+                  print('ℹ️ No reel time-frame window determined; proceeding without a scheduler slot (manual publish).')
+              else:
+                  raise RuntimeError('No active reel window found before generation')
           
           try:
               # This raises if upload is not fully successful.
@@ -177,7 +187,7 @@ jobs:
                   print(f'✅ Marking slot "{active_window.name}" as completed...')
                   mark_slot_completed(active_window)
               else:
-                  print('🧪 Manual test mode: no scheduler slot to mark completed')
+                  print('ℹ️ No scheduler slot to mark completed (manual publish without window).')
               sys.exit(0)
               
           except Exception as e:
@@ -190,6 +200,6 @@ jobs:
           "
       
       - name: Skip - not in posting window
-        if: steps.check.outputs.should_publish != 'true'
+        if: github.event_name == 'schedule' && steps.check.outputs.should_publish != 'true'
         run: |
           echo "⏭️ Skipping reel generation - not in posting window or already completed"

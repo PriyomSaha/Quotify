@@ -45,7 +45,13 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
       
+      # The publish/skip gate only applies to scheduled (cron) runs.
+      # On manual workflow_dispatch the gate is skipped entirely: the generate
+      # step runs unconditionally, detects the current IST time-frame via
+      # smart_scheduler.get_active_window (falls back to next-pending slot),
+      # and publishes regardless of whether a window is currently active.
       - name: Check if quote should be published
+        if: github.event_name == 'schedule'
         id: check
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -97,7 +103,7 @@ jobs:
           fi
       
       - name: Generate and post quote
-        if: steps.check.outputs.should_publish == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.check.outputs.should_publish == 'true'
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
@@ -120,22 +126,26 @@ jobs:
           from QuoteGeneration import generate_quote
           from ImageGeneration import create_neon_quote_image
           from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
-          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, ContentType
+          from smart_scheduler import acquire_run_lock, release_run_lock, mark_slot_completed, get_active_window, is_manual_dispatch_trigger, ContentType
           from gist_storage import add_to_history
           from event_detector import build_quote_caption, get_today_event
           import os
           import PromptSelector
           
-          force_publish = os.getenv('FORCE_PUBLISH', '').lower() == 'true'
+          is_manual = is_manual_dispatch_trigger()
           active_window = get_active_window(ContentType.QUOTE)
 
           if active_window:
               if not acquire_run_lock(ContentType.QUOTE, active_window):
-                  raise RuntimeError('Could not acquire scheduler run lock')
-          elif not force_publish:
-              raise RuntimeError('No active quote window found before posting')
+                  if is_manual:
+                      print('⚠️ Could not acquire scheduler lock (slot already completed or another job running); proceeding with manual publish.')
+                  else:
+                      raise RuntimeError('Could not acquire scheduler run lock')
           else:
-              print('🧪 Manual test mode: no active quote window, skipping scheduler lock')
+              if is_manual:
+                  print('ℹ️ No quote time-frame window determined; proceeding without a scheduler slot (manual publish).')
+              else:
+                  raise RuntimeError('No active quote window found before posting')
           
           try:
               # Generate quote without updating content history yet.
@@ -189,7 +199,7 @@ jobs:
                   print(f'✅ Marking slot "{active_window.name}" as completed...')
                   mark_slot_completed(active_window)
               else:
-                  print('🧪 Manual test mode: no scheduler slot to mark completed')
+                  print('ℹ️ No scheduler slot to mark completed (manual publish without window).')
               
               print('\n' + '='*70)
               print('🎉 QUOTE POSTED SUCCESSFULLY!')
@@ -204,6 +214,6 @@ jobs:
           "
       
       - name: Skip - not in posting window
-        if: steps.check.outputs.should_publish != 'true'
+        if: github.event_name == 'schedule' && steps.check.outputs.should_publish != 'true'
         run: |
           echo "⏭️ Skipping quote generation - not in posting window or already completed"
