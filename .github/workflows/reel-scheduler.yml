@@ -129,6 +129,18 @@ jobs:
           CF_TOKEN_1: ${{ secrets.CF_TOKEN_1 }}
           CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
           CF_TOKEN_2: ${{ secrets.CF_TOKEN_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_TOKEN_3: ${{ secrets.CF_TOKEN_3 }}
+          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
+          CF_TOKEN_4: ${{ secrets.CF_TOKEN_4 }}
+          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
+          CF_TOKEN_5: ${{ secrets.CF_TOKEN_5 }}
+          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
+          CF_TOKEN_6: ${{ secrets.CF_TOKEN_6 }}
+          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
+          CF_TOKEN_7: ${{ secrets.CF_TOKEN_7 }}
+          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
+          CF_TOKEN_8: ${{ secrets.CF_TOKEN_8 }}
           PAGE_ID: ${{ secrets.PAGE_ID }}
           PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}

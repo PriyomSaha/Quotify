@@ -585,8 +585,9 @@ Store partial Facebook post/video ID in scheduler_state.json and delete or reuse
 | `GEMINI_API_KEY` | Story generation |
 | `HF_TOKEN`, `HF_TOKEN2` | Image generation providers if used |
 | `ELEVENLABS_API_KEY` | Voice generation |
-| `CF_ACCOUNT_ID_1`, `CF_TOKEN_1` | Cloudflare image generation account/token |
+| `CF_ACCOUNT_ID_1`, `CF_TOKEN_1` | Primary Cloudflare image generation account/token |
 | `CF_ACCOUNT_ID_2`, `CF_TOKEN_2` | Secondary Cloudflare account/token |
+| `CF_ACCOUNT_ID_3`–`CF_ACCOUNT_ID_8`, `CF_TOKEN_3`–`CF_TOKEN_8` | Fallback Cloudflare accounts used for rate-limit load balancing |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary hosting |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |

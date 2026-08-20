@@ -25,9 +25,23 @@ CF_TOKEN = os.getenv("CF_TOKEN_1")
 CF_ACCOUNT_ID_2 = os.getenv("CF_ACCOUNT_ID_2")
 CF_TOKEN_2 = os.getenv("CF_TOKEN_2")
 
-
 CF_ACCOUNT_ID_3 = os.getenv("CF_ACCOUNT_ID_3")
 CF_TOKEN_3 = os.getenv("CF_TOKEN_3")
+
+CF_ACCOUNT_ID_4 = os.getenv("CF_ACCOUNT_ID_4")
+CF_TOKEN_4 = os.getenv("CF_TOKEN_4")
+
+CF_ACCOUNT_ID_5 = os.getenv("CF_ACCOUNT_ID_5")
+CF_TOKEN_5 = os.getenv("CF_TOKEN_5")
+
+CF_ACCOUNT_ID_6 = os.getenv("CF_ACCOUNT_ID_6")
+CF_TOKEN_6 = os.getenv("CF_TOKEN_6")
+
+CF_ACCOUNT_ID_7 = os.getenv("CF_ACCOUNT_ID_7")
+CF_TOKEN_7 = os.getenv("CF_TOKEN_7")
+
+CF_ACCOUNT_ID_8 = os.getenv("CF_ACCOUNT_ID_8")
+CF_TOKEN_8 = os.getenv("CF_TOKEN_8")
 
 # CF_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
 CF_MODEL = "@cf/leonardo/lucid-origin"
@@ -51,10 +65,35 @@ CLOUDFLARE_ACCOUNTS = [
         "account_id": CF_ACCOUNT_ID_2,
         "api_token": CF_TOKEN_2,
     },
-        {
+    {
         "name": "Secondary 1",
         "account_id": CF_ACCOUNT_ID_3,
         "api_token": CF_TOKEN_3,
+    },
+    {
+        "name": "Account 4",
+        "account_id": CF_ACCOUNT_ID_4,
+        "api_token": CF_TOKEN_4,
+    },
+    {
+        "name": "Account 5",
+        "account_id": CF_ACCOUNT_ID_5,
+        "api_token": CF_TOKEN_5,
+    },
+    {
+        "name": "Account 6",
+        "account_id": CF_ACCOUNT_ID_6,
+        "api_token": CF_TOKEN_6,
+    },
+    {
+        "name": "Account 7",
+        "account_id": CF_ACCOUNT_ID_7,
+        "api_token": CF_TOKEN_7,
+    },
+    {
+        "name": "Account 8",
+        "account_id": CF_ACCOUNT_ID_8,
+        "api_token": CF_TOKEN_8,
     },
 ]
 
