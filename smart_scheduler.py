@@ -41,6 +41,9 @@ WINDOW_GRACE_PERIOD = 30  # Minutes after window closes to still publish
 QUOTE_LOOKAHEAD_MINUTES = 5  # Small buffer before a quote window starts, not a random publish time
 MISSED_WINDOW_RECOVERY_MINUTES = 90  # Allow a late quote recovery after a recent missed window
 ACTIVE_JOB_TIMEOUT_MINUTES = 60  # Clear stale generation locks after this time
+# Hard backstop against odd-hour publishing (prevents posts landing at 1 AM IST, etc.)
+MIN_PUBLISH_HOUR = 6   # Earliest publish/generation start (06:00 IST)
+MAX_PUBLISH_HOUR = 23  # A publish/reel-generation must complete by 23:00 IST
 
 
 class ContentType(Enum):
@@ -504,6 +507,57 @@ def get_next_pending_window(content_type: ContentType, state: Optional[Scheduler
     return pending[0] if pending else None
 
 
+def is_within_safe_publishing_hours(content_type: ContentType, ist_now: datetime) -> bool:
+    """
+    Hard backstop: never begin a publish (or reel generation) outside safe IST
+    hours. For reels we reserve REEL_GENERATION_TIME so the *completion* never
+    lands past MAX_PUBLISH_HOUR (e.g. a reel starting at 23:40 finishes ~00:05).
+    Manual workflow_dispatch runs bypass should_publish_* entirely, so the
+    backstop only governs scheduled (cron) runs.
+    """
+    current_minutes = ist_now.hour * 60 + ist_now.minute
+    start_minutes = MIN_PUBLISH_HOUR * 60
+    end_minutes = MAX_PUBLISH_HOUR * 60
+    generation_buffer = REEL_GENERATION_TIME if content_type == ContentType.REEL else 0
+    if current_minutes < start_minutes:
+        return False
+    if current_minutes + generation_buffer > end_minutes:
+        return False
+    return True
+
+
+def _today_all_windows_sorted(ist_now: datetime) -> List[PostingWindow]:
+    """All of today's windows (quotes + reels) sorted by start time."""
+    weekday = ist_now.strftime('%A').lower()
+    return sorted(WEEKLY_SCHEDULE.get(weekday, []), key=lambda w: w.start_minutes())
+
+
+def _has_earlier_missed_post(ist_now: datetime, state, active_window: PostingWindow) -> bool:
+    """
+    True if any scheduled slot that should have run BEFORE `active_window` has
+    already started its window but was never completed today (i.e. it was
+    missed/delayed). `active_window` itself is excluded so the slot currently
+    being evaluated is never mistaken for an "earlier missed" post.
+    """
+    current_minutes = ist_now.hour * 60 + ist_now.minute
+    for w in _today_all_windows_sorted(ist_now):
+        if w.name == active_window.name:
+            break
+        if w.start_minutes() <= current_minutes and w.name not in state.completed_slots:
+            return True
+    return False
+
+
+def _is_final_pending_window(window: PostingWindow, ist_now: datetime, state) -> bool:
+    """
+    True if `window` is the last still-pending window of the day overall.
+    The smart-skip rule suppresses this final slot when a prior slot was missed,
+    so a delay never cascades into an odd-hour final post.
+    """
+    pending = [w for w in _today_all_windows_sorted(ist_now) if w.name not in state.completed_slots]
+    return bool(pending) and pending[-1].name == window.name
+
+
 def get_active_window(content_type: ContentType) -> Optional[PostingWindow]:
     """
     Get the currently active window for this content type.
@@ -618,6 +672,18 @@ def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
 
     print(f"✅ Selected window: {active_window.name} ({active_window.start_hour}:{active_window.start_minute:02d} - {active_window.end_hour}:{active_window.end_minute:02d})")
     
+    # Smart scheduling backstops - never post at odd hours, and if an earlier
+    # slot today was missed, suppress the final slot so a delay never cascades
+    # into an off-hours post.
+    if not is_within_safe_publishing_hours(ContentType.QUOTE, ist_now):
+        print('❌ Outside safe publishing hours (06:00-23:00 IST); skipping to avoid an odd-hour post.')
+        return False, f'Outside safe publishing hours (IST {ist_now.hour:02d}:{ist_now.minute:02d})'
+    if (not force_publish
+            and _has_earlier_missed_post(ist_now, state, active_window)
+            and _is_final_pending_window(active_window, ist_now, state)):
+        print(f'❌ An earlier post was missed today; suppressing final slot {active_window.name!r}.')
+        return False, 'Earlier post missed today; final-slot suppressed (smart-skip rule)'
+    
     # Step 2: Check if this slot is already completed
     
     if active_window.name in state.completed_slots:
@@ -689,6 +755,18 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     
     # Step 2: Check if this slot is already completed
     state = get_scheduler_state()
+    
+    # Smart scheduling backstops - never post at odd hours, and if an earlier
+    # slot today was missed, suppress the final slot so a delay never cascades
+    # into an off-hours post (e.g. a reel finishing at 1 AM IST).
+    if not is_within_safe_publishing_hours(ContentType.REEL, ist_now):
+        print('❌ Outside safe publishing hours (reel would finish past 23:00 IST); skipping to avoid an odd-hour post.')
+        return False, f'Outside safe publishing hours (IST {ist_now.hour:02d}:{ist_now.minute:02d})'
+    if (not force_publish
+            and _has_earlier_missed_post(ist_now, state, active_window)
+            and _is_final_pending_window(active_window, ist_now, state)):
+        print(f'❌ An earlier post was missed today; suppressing final reel slot {active_window.name!r}.')
+        return False, 'Earlier post missed today; final-slot suppressed (smart-skip rule)'
     
     if active_window.name in state.completed_slots:
         print(f"❌ Slot '{active_window.name}' already completed today")
