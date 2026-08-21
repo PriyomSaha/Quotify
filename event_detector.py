@@ -267,8 +267,8 @@ def get_active_events(now: Optional[datetime] = None) -> List[Dict[str, Any]]:
 def _content_run_index(content_type: Optional[str], now: Optional[datetime] = None) -> int:
     """Return the 0-based run offset of today for a given content type.
 
-    Quotes post twice a day (morning/evening) and reels three times
-    (afternoon/prime/late) in smart_scheduler.py's WEEKLY_SCHEDULE. Hours are
+    Quotes post twice a day (morning/afternoon-quote) and reels twice
+    (afternoon/prime) in smart_scheduler.py's WEEKLY_SCHEDULE. Hours are
     IST. Used only when fixed and dated events overlap on the same day, so the
     day's slots alternate between the two occasions instead of always favouring
     one.
@@ -279,9 +279,7 @@ def _content_run_index(content_type: Optional[str], now: Optional[datetime] = No
     if content_type == CONTENT_REEL:
         if minutes < 17 * 60:
             return 0  # afternoon_reel
-        if minutes < 22 * 60:
-            return 1  # prime_reel
-        return 2      # late_reel
+        return 1      # prime_reel
     if content_type == CONTENT_QUOTE:
         if minutes < 13 * 60:
             return 0  # morning_quote

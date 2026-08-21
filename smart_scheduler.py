@@ -37,13 +37,13 @@ API_VERSION = os.getenv("API_VERSION", "v21.0")
 # Timing constraints
 MIN_SPACING_MINUTES = 90  # Minimum time between any two posts
 REEL_GENERATION_TIME = 25  # Minutes needed to generate a reel
-WINDOW_GRACE_PERIOD = 30  # Minutes after window closes to still publish
+WINDOW_GRACE_PERIOD = 15  # Minutes after window closes to still publish (tightened to avoid odd-hour drift)
 QUOTE_LOOKAHEAD_MINUTES = 5  # Small buffer before a quote window starts, not a random publish time
-MISSED_WINDOW_RECOVERY_MINUTES = 90  # Allow a late quote recovery after a recent missed window
+MISSED_WINDOW_RECOVERY_MINUTES = 45  # Allow a late quote recovery after a recent missed window (tightened; 45 min keeps recovery within the same quarter-day block)
 ACTIVE_JOB_TIMEOUT_MINUTES = 60  # Clear stale generation locks after this time
 # Hard backstop against odd-hour publishing (prevents posts landing at 1 AM IST, etc.)
 MIN_PUBLISH_HOUR = 6   # Earliest publish/generation start (06:00 IST)
-MAX_PUBLISH_HOUR = 23  # A publish/reel-generation must complete by 23:00 IST
+MAX_PUBLISH_HOUR = 21  # A publish/reel-generation must complete by 21:00 IST — last slot is 20:00 reel
 
 
 class ContentType(Enum):
@@ -114,55 +114,60 @@ class PostingWindow:
 # WEEKLY SCHEDULE - IST TIMEZONE
 # ============================================================================
 
+# ---------------------------------------------------------------------------
+# Ideal Daily 4-Post Schedule (IST)
+#   8:00 AM  – Quote 1   (morning energy)
+#  12:00 PM  – Reel 1    (lunch-break video)
+#   4:00 PM  – Quote 2   (late-afternoon / end-of-work commute)
+#   8:00 PM  – Reel 2    (peak evening unwind window)
+#
+# The `late_reel` slot that previously published at 22:15–23:45 IST has been
+# REMOVED entirely so no content is ever scheduled in odd/late hours.
+# Reel generation windows start REEL_GENERATION_TIME (25 min) before the
+# published time so the finished video lands inside the window below.
+# ---------------------------------------------------------------------------
 WEEKLY_SCHEDULE: Dict[str, List[PostingWindow]] = {
     "monday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 9, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 12, 45, 14, 0, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 30, 19, 30, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 21, 0, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 15, 23, 15, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "tuesday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 9, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 13, 0, 14, 0, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 30, 19, 30, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 21, 0, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 15, 23, 15, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "wednesday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 9, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 13, 0, 14, 0, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 30, 19, 30, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 21, 15, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 15, 23, 15, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "thursday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 9, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 13, 0, 14, 0, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 30, 19, 30, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 21, 15, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 15, 23, 15, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "friday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 9, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 13, 0, 14, 15, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 15, 19, 15, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 15, 21, 30, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 30, 23, 30, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "saturday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 10, 0, 11, 0, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 15, 0, 16, 15, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 45, 19, 45, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 30, 21, 45, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 45, 23, 45, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
     "sunday": [
-        PostingWindow("morning_quote", ContentType.QUOTE, 9, 30, 10, 30, priority=3),
-        PostingWindow("afternoon_reel", ContentType.REEL, 15, 30, 16, 45, priority=4),
-        PostingWindow("evening_quote", ContentType.QUOTE, 18, 30, 19, 30, priority=3),
-        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 21, 15, priority=5),
-        PostingWindow("late_reel", ContentType.REEL, 22, 0, 23, 0, priority=4),
+        PostingWindow("morning_quote", ContentType.QUOTE, 8, 0, 8, 50, priority=3),
+        PostingWindow("afternoon_reel", ContentType.REEL, 12, 0, 12, 50, priority=4),
+        PostingWindow("evening_quote", ContentType.QUOTE, 16, 0, 16, 50, priority=3),
+        PostingWindow("prime_reel", ContentType.REEL, 20, 0, 20, 50, priority=5),
     ],
 }
 
@@ -676,7 +681,7 @@ def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
     # slot today was missed, suppress the final slot so a delay never cascades
     # into an off-hours post.
     if not is_within_safe_publishing_hours(ContentType.QUOTE, ist_now):
-        print('❌ Outside safe publishing hours (06:00-23:00 IST); skipping to avoid an odd-hour post.')
+        print('❌ Outside safe publishing hours (06:00-21:00 IST); skipping to avoid an odd-hour post.')
         return False, f'Outside safe publishing hours (IST {ist_now.hour:02d}:{ist_now.minute:02d})'
     if (not force_publish
             and _has_earlier_missed_post(ist_now, state, active_window)
@@ -760,7 +765,7 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     # slot today was missed, suppress the final slot so a delay never cascades
     # into an off-hours post (e.g. a reel finishing at 1 AM IST).
     if not is_within_safe_publishing_hours(ContentType.REEL, ist_now):
-        print('❌ Outside safe publishing hours (reel would finish past 23:00 IST); skipping to avoid an odd-hour post.')
+        print('❌ Outside safe publishing hours (reel would finish past 21:00 IST); skipping to avoid an odd-hour post.')
         return False, f'Outside safe publishing hours (IST {ist_now.hour:02d}:{ist_now.minute:02d})'
     if (not force_publish
             and _has_earlier_missed_post(ist_now, state, active_window)
@@ -793,11 +798,11 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
         print(f"✅ No recent posts found - OK to post")
     
     # Step 4: Check daily limits
-    if state.daily_reel_count >= 3:
-        print(f"❌ Daily reel limit reached ({state.daily_reel_count}/3)")
-        return False, "Daily reel limit (3) reached"
+    if state.daily_reel_count >= 2:
+        print(f"❌ Daily reel limit reached ({state.daily_reel_count}/2)")
+        return False, "Daily reel limit (2) reached"
     
-    print(f"✅ Daily reel count: {state.daily_reel_count}/3")
+    print(f"✅ Daily reel count: {state.daily_reel_count}/2")
     
     # All checks passed
     print("\n🎉 ALL CHECKS PASSED - START REEL GENERATION")

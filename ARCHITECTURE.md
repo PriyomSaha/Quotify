@@ -29,7 +29,7 @@ The repository has two automated content pipelines:
 Both pipelines are coordinated by `smart_scheduler.py` and GitHub Actions.
 
 ```text ARCHITECTURE.md
-GitHub Actions every 15 minutes
+GitHub Actions every 5 minutes
         |
         v
 smart_scheduler.py
@@ -151,7 +151,18 @@ The scheduler resets daily counters using IST date, not UTC date, because the po
 
 ## 4. Current Posting Schedule
 
-The workflows run every 15 minutes, but actual publishing only happens inside valid windows.
+The workflows run every 5 minutes, but actual publishing only happens inside valid windows.
+
+### Ideal Daily 4-Post Schedule
+
+The daily schedule follows this timeline (all times IST):
+
+| Time IST | Post | Type |
+|---:|---|---|
+| 8:00 AM | Quote 1 | Morning energy content |
+| 12:00 PM | Reel 1 | Lunch-break video entertainment |
+| 4:00 PM | Quote 2 | Late-afternoon / end-of-work commute |
+| 8:00 PM | Reel 2 | Peak evening unwind window |
 
 ### Quote schedule
 
@@ -170,21 +181,16 @@ Daily quote limit:
 
 ### Reel schedule
 
-Reels have three slots per day:
+Reels have two slots per day:
 
-| Slot | Purpose |
-|---|---|
-| `afternoon_reel` | Afternoon reel |
-| `prime_reel` | Prime evening reel |
-| `late_reel` | Late evening reel |
+| Slot | Typical time IST | Purpose |
+|---|---:|---|
+| `afternoon_reel` | ~12:00 PM | Lunch-break quick video entertainment |
+| `prime_reel` | ~8:00 PM | Peak evening unwind window |
 
-Daily reel limit:
+Daily reel limit: 2 reels/day
 
-```text ARCHITECTURE.md
-3 reels/day
-```
-
-Reels can start generation 25 minutes before the actual posting window so the final upload lands closer to the intended window.
+Reels can start generation 25 minutes before the actual posting window so the final upload lands closer to the intended time.
 
 ---
 
@@ -277,7 +283,7 @@ This prevents failed quote uploads from polluting content history.
 
 ### File: `.github/workflows/quote-scheduler.yml`
 
-The quote workflow runs every 15 minutes:
+The quote workflow runs every 5 minutes:
 
 ```yaml ARCHITECTURE.md
 schedule:
@@ -376,7 +382,7 @@ Reel workflow
 
 ### File: `.github/workflows/reel-scheduler.yml`
 
-The reel workflow also runs every 15 minutes:
+The reel workflow also runs every 5 minutes:
 
 ```yaml ARCHITECTURE.md
 schedule:
@@ -689,7 +695,10 @@ The current architecture guarantees:
 - content history updates only after successful quote publish,
 - scheduler slot completion happens only after confirmed upload success,
 - reel upload behavior is shared and consistent,
-- all 35 quote content types are reachable through morning/evening scheduled quote runs.
+- all 35 quote content types are reachable through morning/evening scheduled quote runs,
+- no content is published outside the safe IST window (06:00–21:00), and the `late_reel`
+  odd-hour slot has been removed,
+- exactly 4 posts per day: 8:00 AM quote, 12:00 PM reel, 4:00 PM quote, 8:00 PM reel.
 
 ---
 
