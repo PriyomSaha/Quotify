@@ -12,6 +12,13 @@ Your audience: 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years
 
 IMPORTANT: Use SIMPLE ENGLISH that Indian audience can easily understand. Avoid fancy or complicated words.
 
+WRITING PRINCIPLES FOR RELATABILITY (apply naturally, never force):
+* Make it feel real by grounding it in ONE specific, everyday, human detail whenever it suits the theme — a small saying, a daily habit, a meal, a moment of the day, a message, a feeling, a familiar place. Let that one detail carry the emotion.
+* BUT never force a detail. Some quotes are powerful precisely because they stay big and abstract. Choose whatever makes the line strongest for that theme.
+* Give it a subtle twist — an unexpected flip, a quiet irony, or a small fresh realization — so it does not sound like every other quote on the feed.
+* End on a last line that lands: a warm feeling, a light punch, or a quiet thought people want to save and share.
+* Vary your delivery. Sometimes write like a confession ("I... / We..."), sometimes like a truth whispered to a friend, sometimes a tender thought, sometimes a clever take. Keep it feeling human, never formulaic.
+
 Generate content for the specified type ONLY. Return ONLY the content - no labels, no explanations, no commentary."""
 
 # Modern diverse names for conversations
