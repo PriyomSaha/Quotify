@@ -2,10 +2,10 @@ import argparse
 import os
 import time
 from dotenv import load_dotenv
-from QuoteGeneration import generate_quote
+from QuoteGeneration import generate_quote, build_quote_post_caption
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
-from event_detector import CONTENT_QUOTE, build_quote_caption, get_today_event
+from event_detector import CONTENT_QUOTE, get_today_event
 
 load_dotenv()
 
@@ -76,7 +76,7 @@ def main(no_upload=None, output_path="image.jpg"):
         # Step 4: Upload to Facebook and get CDN URL
         # -------------------------------------------------
         print("\n📤 Step 4: Uploading image to Facebook...")
-        caption = build_quote_caption(event)
+        caption = build_quote_post_caption(quote_input, event)
         if caption:
             print(f"Caption preview: {caption[:200]}")
 

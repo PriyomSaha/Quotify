@@ -8,6 +8,7 @@ FIXED_HASHTAGS = [
     "#LifeQuotes",
     "#LifeLessons",
     "#Reels",
+    "#AestheticVibes"
 ]
 
 # Random pool

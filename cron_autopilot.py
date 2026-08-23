@@ -10,11 +10,11 @@ Use --force to bypass the time-of-day safety check for manual testing.
 import argparse
 from datetime import datetime, timedelta
 
-from QuoteGeneration import generate_quote
+from QuoteGeneration import generate_quote, build_quote_post_caption
 from ImageGeneration import create_neon_quote_image
 from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
 from check_last_post import should_publish_new_post
-from event_detector import CONTENT_QUOTE, build_quote_caption, get_today_event
+from event_detector import CONTENT_QUOTE, get_today_event
 
 
 # Safe publishing hours (IST) — mirrors smart_scheduler.py's MIN/MAX_PUBLISH_HOUR.
@@ -74,7 +74,7 @@ def main(no_upload=False, skip_recent_check=False, output_path="image.jpg", forc
             return
         
         # Upload to Facebook
-        caption = build_quote_caption(event)
+        caption = build_quote_post_caption(quote, event)
         if caption:
             print(f"Caption preview: {caption[:200]}")
 

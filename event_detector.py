@@ -468,6 +468,7 @@ Theme: {event.get('quote_theme', '')}.
 
 Generate content that feels timely, emotional, respectful, and highly shareable for this occasion.
 Keep the existing format and word-length rules from the selected content type, but make the emotion clearly connected to this occasion.
+Keep ALL words simple and everyday - even for this occasion. Say it like someone telling a feeling in a normal chat, never with heavy or fancy words.
 {event_identity}
 Do not include wishes like "{wish}" in the generated quote text. Event wishes are handled only in the social caption.
 
