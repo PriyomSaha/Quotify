@@ -90,7 +90,8 @@ if IS_RENDER:
     # Scale font size proportionally (540/1080 = 0.5x scale)
     FONT_SIZE = 32  # Half of 64 for half resolution
     LOGO_FONT_SIZE = 22  # Half of 45
-    BOTTOM_MARGIN = 225  # Half of 450
+    BOTTOM_MARGIN = 110  # Watermark gap from bottom (shifted down a few cm)
+    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE + 12  # Subtitles ~1 line below the middle
 else:
     # High quality settings for local/powerful servers
     # Perfect 9:16 ratio for Instagram Reels
@@ -102,7 +103,8 @@ else:
     IMAGE_ZOOM = 1.08
     FONT_SIZE = 64
     LOGO_FONT_SIZE = 45
-    BOTTOM_MARGIN = 450  # Text positioned higher from bottom
+    BOTTOM_MARGIN = 220  # Watermark gap from bottom (shifted down a few cm)
+    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE + 12  # Subtitles ~1 line below the middle
 
 IMAGE_FADE = 0.4
 DARK_OVERLAY_OPACITY = 45
@@ -120,7 +122,8 @@ MUSIC_VOLUME = 0.15
 # Subtitle
 # ----------------------------
 
-FONT = str((BASE_DIR.parent / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"))
+# FONT = str((BASE_DIR.parent / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"))
+FONT = str((BASE_DIR.parent / "Fonts" / "Caveat" / "static" / "Caveat-Regular.ttf"))
 # FONT_SIZE is set above based on IS_RENDER (32 for low-res, 64 for high-res)
 
 FONT_COLOR = "white"
@@ -129,7 +132,8 @@ STROKE_COLOR = "black"
 
 STROKE_WIDTH = 3
 
-# BOTTOM_MARGIN is set above based on IS_RENDER (225 for low-res, 450 for high-res)
+# BOTTOM_MARGIN is set above based on IS_RENDER (shifts watermark down from the bottom edge)
+# TOP_MARGIN places subtitles ~1 line below the video midpoint
 
 # ----------------------------
 # LOGO

@@ -57,6 +57,7 @@ from .config import (
     STROKE_COLOR,
     STROKE_WIDTH,
     BOTTOM_MARGIN,
+    TOP_MARGIN,
     LOGO_FONT,
     LOGO_FONT_COLOR,
     LOGO_TEXT,
@@ -68,7 +69,7 @@ from .config import (
 # CINEMATIC SETTINGS
 # ============================================================
 
-DARK_OVERLAY_OPACITY = 0.50
+DARK_OVERLAY_OPACITY = 0.40
 FILM_GRAIN_AMOUNT = 20
 ZOOM_MIN = 1.00
 ZOOM_MAX = 1.08  # Enable subtle zoom
@@ -334,7 +335,7 @@ class ReelComposer:
             .with_position(
                 (
                     "center",
-                    VIDEO_HEIGHT - BOTTOM_MARGIN,
+                    TOP_MARGIN,
                 )
             )
             .with_effects(
@@ -564,8 +565,8 @@ class ReelComposer:
         watermark_clip = watermark_clip.with_duration(duration)
         watermark_clip = watermark_clip.with_start(start_time)
         
-        # Position toward top (adjust offset to move higher/lower)
-        y_position = (VIDEO_HEIGHT - img_height) // 2 - 300  # -x moves it up
+        # Position toward bottom (mirrors the former top placement)
+        y_position = VIDEO_HEIGHT - img_height - BOTTOM_MARGIN
         watermark_clip = watermark_clip.with_position((0, y_position))
         
         watermark_clip = watermark_clip.with_opacity(0.50)
@@ -853,15 +854,10 @@ def create_reel(
 # STANDALONE TEST
 # ============================================================
 
-# ============================================================
-# STANDALONE TEST
-# ============================================================
-
-
 if __name__ == "__main__":
     from pathlib import Path
 
-    REEL_FOLDER = Path("Reels/output/20260816_130557")
+    REEL_FOLDER = Path("Reels/output/20260823_233418")
 
     image_folder = REEL_FOLDER / "images"
     voiceover = REEL_FOLDER / "voiceover.mp3"
