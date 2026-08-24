@@ -1,8 +1,3 @@
-# ============================================================
-# prompt_selector.py
-# AI Wisdom Reel Prompt Selector
-# ============================================================
-
 import random
 from datetime import datetime
 
@@ -138,6 +133,49 @@ Length:
 Tone:
 A calm person sharing wisdom after experiencing life.
 
+
+# ============================================================
+# VARIETY
+# ============================================================
+
+Keep the existing style, quality, and tone.
+
+Do not make every piece follow the same structure.
+
+Vary the opening and rhythm naturally:
+- observation
+- realization
+- question
+- direct thought
+- contradiction
+- poetic line
+- relatable feeling
+- unexpected comparison
+- quiet reflection
+
+Existing hooks are still allowed, including:
+"A painful truth is..."
+"Nobody talks about this..."
+"Remember this..."
+
+Use them occasionally rather than repeatedly.
+
+Some pieces may feel like a short modern free-verse poem.
+
+Poems should be:
+- simple
+- emotional
+- conversational
+- modern
+- easy to understand
+- free of forced rhymes
+
+Do not make every piece sound like a motivational speech.
+
+Let some thoughts build slowly and others be direct.
+
+Do not force every sentence to sound profound.
+
 """
 
 
@@ -216,7 +254,59 @@ HOOK_STYLES = [
 
 "Start with a question",
 
-"Start with a statement people relate to"
+"Start with a statement people relate to",
+
+# Additional variety — existing hooks above are intentionally kept
+
+"Start with a quiet realization",
+
+"Start with an unexpected observation",
+
+"Start with something people usually understand with age",
+
+"Start with a simple thought that becomes deeper as it continues",
+
+"Start with a thought about something we often take for granted",
+
+"Start with a relatable feeling",
+
+"Start with a contradiction",
+
+"Start with two things that seem opposite but are both true",
+
+"Start with a short poetic line",
+
+"Start with a metaphor about life",
+
+"Start with a thought that sounds like a journal entry",
+
+"Start with something the viewer may have felt but never said",
+
+"Start with a subtle observation about human nature",
+
+"Start with a question that makes the viewer look inward",
+
+"Start with a sentence that creates curiosity without explaining everything",
+
+"Start with a very short statement",
+
+"Start with a quiet thought rather than direct advice",
+
+"Start with an observation about time",
+
+"Start with an observation about growing older",
+
+"Start with an unexpected comparison",
+
+"Start with a realization that unfolds gradually",
+
+"Start with a thought about something we usually notice too late",
+
+"Start with a simple statement that carries a deeper meaning",
+
+"Start with a thought that feels like the beginning of a personal journal entry",
+
+"Start with a line that creates curiosity without sounding dramatic"
 
 ]
 
@@ -238,6 +328,87 @@ ENDING_STYLES = [
 "End with emotional reflection",
 
 "End with a peaceful realization"
+
+]
+
+
+# ============================================================
+# CONTENT FORMATS
+# ============================================================
+
+CONTENT_FORMATS = [
+
+# Normal style — intentionally dominant
+"wisdom voiceover",
+"wisdom voiceover",
+"wisdom voiceover",
+"wisdom voiceover",
+
+"life reflection",
+
+"life observation",
+
+"hard truth",
+
+"emotional reflection",
+
+"personal realization",
+
+"quiet realization",
+
+"philosophical reflection",
+
+# Occasional poetic styles
+"short free verse poem",
+
+"poetic reflection",
+
+"minimalist poem",
+
+"short modern poem"
+
+]
+
+
+# ============================================================
+# ADDITIONAL CONTENT DIRECTIONS
+# ============================================================
+
+# These are small directions rather than completely different formats.
+# They help prevent the generated pieces from following one repeated
+# structure while keeping the original style intact.
+
+CONTENT_DIRECTIONS = [
+
+"Build the thought gradually",
+
+"Keep it direct and conversational",
+
+"Let the meaning unfold naturally",
+
+"Use a quiet emotional tone",
+
+"Use a subtle contrast",
+
+"Focus on one clear realization",
+
+"Make the thought feel relatable",
+
+"Keep the language simple but meaningful",
+
+"Use a slightly poetic rhythm",
+
+"Make the ending feel earned rather than forced",
+
+"Use short lines for breathing pauses",
+
+"Let one sentence carry the central idea",
+
+"Keep the emotion controlled and mature",
+
+"Make it feel like a thought someone had after living through something",
+
+"Leave a little space for the viewer to interpret the meaning"
 
 ]
 
@@ -286,7 +457,7 @@ def get_content_type_for_time():
     for category, data in TIME_SCHEDULE.items():
         start = data["start"]
         end = data["end"]
-        
+
         # Handle wraparound for night (22-24 and 0-6)
         if start > end:  # Night wraps around midnight
             if hour >= start or hour < end:
@@ -317,14 +488,15 @@ def get_prompt_for_current_time():
 
     content = get_content_type_for_time()
 
-
     theme = random.choice(THEMES)
 
     hook = random.choice(HOOK_STYLES)
 
     ending = random.choice(ENDING_STYLES)
 
+    content_format = random.choice(CONTENT_FORMATS)
 
+    content_direction = random.choice(CONTENT_DIRECTIONS)
 
     final_prompt = f"""
 
@@ -349,8 +521,20 @@ Ending Style:
 {ending}
 
 
+Content Format:
+{content_format}
+
+
+Writing Direction:
+{content_direction}
+
+
 
 Generate ONE short wisdom reel voiceover.
+
+The selected content format and writing direction are guidelines, not rigid templates.
+
+If the format is a poem, write it as a short modern free-verse poem while keeping the same wisdom, simplicity, and emotional tone.
 
 Remember:
 

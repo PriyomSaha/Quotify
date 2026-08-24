@@ -91,7 +91,7 @@ if IS_RENDER:
     FONT_SIZE = 32  # Half of 64 for half resolution
     LOGO_FONT_SIZE = 22  # Half of 45
     BOTTOM_MARGIN = 110  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE + 12  # Subtitles ~1 line below the middle
+    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 50  # Subtitles ~1 line below the middle
 else:
     # High quality settings for local/powerful servers
     # Perfect 9:16 ratio for Instagram Reels
@@ -104,7 +104,7 @@ else:
     FONT_SIZE = 64
     LOGO_FONT_SIZE = 45
     BOTTOM_MARGIN = 220  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE + 12  # Subtitles ~1 line below the middle
+    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 50  # Subtitles ~1 line below the middle
 
 IMAGE_FADE = 0.4
 DARK_OVERLAY_OPACITY = 45
