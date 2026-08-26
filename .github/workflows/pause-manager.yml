@@ -1,0 +1,80 @@
+# Pause Manager - your toggle button.
+#
+# Purpose: skip ALL publishing (quotes + reels) on ONE chosen day.
+# - Open the Actions tab -> "Pause Manager" -> "Run workflow".
+# - Provide a DATE (YYYY-MM-DD). If you leave it blank, TODAY (IST) is used.
+# - Set RUN to "true"  -> all posts are skipped on that day.
+#   Set RUN to "false" -> that day is unpaused; normal publishing flow resumes.
+# The choice is stored in the shared Gist (scheduler_state.json) that
+# smart_scheduler.py reads, so the scheduled cron runs start respecting it
+# immediately.
+
+name: Pause Manager
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: 'true = skip all posts that day, false = resume normal flow'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      date:
+        description: 'Date to pause/unpause (YYYY-MM-DD). Leave blank for today (IST).'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  toggle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --upgrade pip && pip install requests
+
+      - name: Apply the day pause
+        env:
+          SCHEDULER_GIST_ID: ${{ secrets.SCHEDULER_GIST_ID }}
+          CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          RUN: ${{ github.event.inputs.run }}
+          DATE: ${{ github.event.inputs.date }}
+        run: |
+          python - <<'PY'
+          import os
+          import smart_scheduler as s
+
+          enabled = os.getenv('RUN', 'true').lower() in ('true', 'on', 'yes')
+          date_str = os.getenv('DATE', '').strip()
+
+          print('=' * 60)
+          if enabled:
+              print('PAUSE MANAGER - pausing ALL posts for a day')
+          else:
+              print('PAUSE MANAGER - resuming normal publishing for a day')
+          print('=' * 60)
+
+          ok, msg = s.set_pause_day(date_str, enabled)
+          print(msg)
+
+          cfg = s.get_pause_config()
+          print('-' * 60)
+          print('Current configuration:')
+          print(f"  Today ({cfg['today']})  : {'PAUSED - all posts skipped' if cfg['paused_today'] else 'ACTIVE - normal flow'}")
+          print(f"  Paused dates   : {', '.join(cfg['paused_dates']) or 'none'}")
+          print('=' * 60)
+          if not ok:
+              raise SystemExit(1)

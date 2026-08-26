@@ -15,7 +15,7 @@ import json
 import requests
 import os
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 
 # ============================================================================
@@ -187,6 +187,8 @@ class SchedulerState:
     daily_quote_count: int
     daily_reel_count: int
     active_job: Optional[Dict[str, str]] = None  # currently running quote/reel job lock
+    # --- Date pause (toggled via the "Pause Manager" workflow; skip ALL posts that day) ---
+    paused_dates: List[str] = field(default_factory=list)  # one-off "YYYY-MM-DD" paused days
 
 
 def _today_key() -> str:
@@ -207,6 +209,7 @@ def _default_scheduler_state(previous: Optional[dict] = None) -> SchedulerState:
         daily_quote_count=0,
         daily_reel_count=0,
         active_job=None,
+        paused_dates=[],
     )
 
 
@@ -228,6 +231,7 @@ def _state_from_dict(state_dict: dict) -> SchedulerState:
         daily_quote_count=state_dict.get("daily_quote_count", 0),
         daily_reel_count=state_dict.get("daily_reel_count", 0),
         active_job=state_dict.get("active_job"),
+        paused_dates=list(state_dict.get("paused_dates", []) or []),
     )
 
 
@@ -531,6 +535,62 @@ def is_within_safe_publishing_hours(content_type: ContentType, ist_now: datetime
     return True
 
 
+# ============================================================================
+# DATE PAUSE - skip ALL posts on one chosen day
+# ============================================================================
+
+def _paused_reason(state: Optional[SchedulerState] = None) -> Tuple[bool, str]:
+    """
+    Return (is_paused, reason). Publishing is skipped when today (in IST) is a
+    toggled pause date. There is no recurring/weekly concept - each day is set
+    individually via the Pause Manager (defaults to today when no date is given).
+    """
+    state = state or get_scheduler_state()
+    today = _today_key()  # "YYYY-MM-DD" in IST
+    if today in state.paused_dates:
+        return True, f"Today ({today}) is set as a paused day - all posts skipped"
+    return False, ""
+
+
+def get_pause_config() -> dict:
+    """Return the current pause settings and whether today is paused."""
+    state = get_scheduler_state()
+    today = _today_key()
+    return {
+        "paused_dates": sorted(state.paused_dates),
+        "today": today,
+        "paused_today": today in state.paused_dates,
+    }
+
+
+def set_pause_day(date_str: str = "", enabled: bool = True) -> Tuple[bool, str]:
+    """
+    Pause (enabled=True) or resume (enabled=False) ALL posts for ONE day.
+    date_str is 'YYYY-MM-DD'; when empty it defaults to today (IST).
+    """
+    date_str = (date_str or "").strip()
+    if not date_str:
+        date_str = _today_key()
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return False, f"Invalid date '{date_str}'. Use YYYY-MM-DD, e.g. {_today_key()}"
+
+    state = get_scheduler_state()
+    paused = set(state.paused_dates)
+    if enabled:
+        paused.add(date_str)
+        action = f"✅ {date_str} is now a PAUSED day - all posts skipped that day"
+    else:
+        paused.discard(date_str)
+        action = f"✅ {date_str} is now active - normal publishing flow resumed"
+
+    state.paused_dates = sorted(paused)
+    if not save_scheduler_state(state):
+        return False, "📤 Could not persist state to gist (check SCHEDULER_GIST_ID / GH_TOKEN)"
+    return True, action
+
+
 def _today_all_windows_sorted(ist_now: datetime) -> List[PostingWindow]:
     """All of today's windows (quotes + reels) sorted by start time."""
     weekday = ist_now.strftime('%A').lower()
@@ -645,6 +705,16 @@ def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
     Determine if a quote should be published now
     Returns: (should_publish, reason)
     """
+    # Off-day / pause toggle check. A paused day blocks quotes unless an
+    # explicit force_publish is requested. This is checked before the manual
+    # dispatch override so a toggled off-day also guards manual scheduler runs.
+    if not force_publish:
+        paused, pause_reason = _paused_reason()
+        if paused:
+            print("⏸️ QUOTE publishing is paused today:")
+            print(f"   ↳ {pause_reason}")
+            return False, f"Paused: {pause_reason}"
+
     if is_manual_dispatch_trigger():
         print("\n" + "="*70)
         print("⚡ MANUAL DISPATCH OVERRIDE - QUOTE")
@@ -733,6 +803,15 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     Determine if a reel should be published now
     Returns: (should_publish, reason)
     """
+    # Off-day / pause toggle check. A paused day blocks reels unless an explicit
+    # force_publish is requested. Checked before the manual dispatch override.
+    if not force_publish:
+        paused, pause_reason = _paused_reason()
+        if paused:
+            print("⏸️ REEL publishing is paused today:")
+            print(f"   ↳ {pause_reason}")
+            return False, f"Paused: {pause_reason}"
+
     if is_manual_dispatch_trigger():
         print("\n" + "="*70)
         print("⚡ MANUAL DISPATCH OVERRIDE - REEL")
@@ -902,14 +981,68 @@ def create_scheduler_gist():
 
 
 # ============================================================================
-# MAIN - FOR TESTING
+# MAIN - CLI (off-day toggle) / TEST
 # ============================================================================
 
+def _print_pause_config():
+    cfg = get_pause_config()
+    print("\n" + "="*50)
+    print("⏸️  DATE-PAUSE CONFIG")
+    print("="*50)
+    paused = cfg['paused_dates'] or []
+    print(f"  Today ({cfg['today']})  : {'PAUSED - all posts skipped' if cfg['paused_today'] else 'ACTIVE - normal flow'}")
+    print(f"  Paused dates   : {', '.join(paused) or 'none'}")
+    print("="*50 + "\n")
+
+
+def _run_pause_cli(args) -> int:
+    """Handle the date-pause toggle CLI and return a process exit code."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="smart_scheduler",
+        description="Pause/resume ALL publishing for one day via the Pause Manager logic.",
+    )
+    parser.add_argument("--to", choices=["on", "off"],
+                        help="'on' = skip all posts that day, 'off' = resume normal flow")
+    parser.add_argument("--date", default="",
+                        help="Optional date YYYY-MM-DD. If omitted, today (IST) is used.")
+    parser.add_argument("--status", action="store_true",
+                        help="Show the current pause configuration")
+
+    parsed = parser.parse_args(args)
+
+    if not parsed.to and not parsed.status:
+        _print_pause_config()
+        return 0
+
+    if parsed.status:
+        _print_pause_config()
+        return 0
+
+    ok, msg = set_pause_day(parsed.date, parsed.to == "on")
+    print(("✅ " if ok else "❌ ") + msg)
+    if not ok:
+        return 1
+
+    _print_pause_config()
+    return 0
+
+
 if __name__ == "__main__":
+    import sys
+
+    # If the user passed toggle arguments, run the CLI mode instead of the test.
+    if len(sys.argv) > 1:
+        sys.exit(_run_pause_cli(sys.argv[1:]))
+
     print("\n🧪 SMART SCHEDULER TEST\n")
     
     # Show today's schedule
     get_schedule_summary()
+    
+    # Show off-day / pause status up front so a paused day is obvious in logs.
+    _print_pause_config()
     
     # Test quote decision
     should_post, reason = should_publish_quote()

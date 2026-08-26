@@ -528,7 +528,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "The moon changes its shape every night, but it never stops being the moon.\nYou do not have to be full and bright every day to still be complete."
+    quote_input = "From Childhood to Adulthood\n\nWe fought over little things,\nlaughed at silly things,\nand annoyed each other every day.\n\nBut somehow,\nthose became the memories\nwe miss the most.\n\nWe grew up,\nbut no matter how old we get,\na part of us will always be\nthose kids growing up together.\n\nHappy Raksha Bandhan !!!"
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,
