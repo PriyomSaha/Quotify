@@ -1011,6 +1011,49 @@ No text, letters, captions, logos, watermarks, signatures, frames or borders.
 # CLOUDFLARE IMAGE GENERATION
 # ============================================================
 
+def _is_nsfw_rejection(response) -> bool:
+    """True when Cloudflare rejects a prompt as NSFW / moderated content.
+
+    Cloudflare's SDXL model (error code 3030, message "Input prompt contains
+    NSFW content") rejects otherwise-innocent everyday phrasings (e.g.
+    "taking a deep breath", "looking out", "subtle smile") when a person is
+    in frame. This is a heuristic false positive. The classifier keys on the
+    FULL assembled prompt, so rotating Cloudflare accounts cannot help — every
+    account is sent the identical prompt and gets rejected the same way. Only
+    the quota case (HTTP 429) can be fixed by changing accounts.
+    """
+    if getattr(response, "status_code", None) != 400:
+        return False
+    try:
+        data = response.json()
+    except Exception:
+        return False
+    text = json.dumps(data).lower()
+    return "nsfw" in text or "moderation" in text or "moderated content" in text
+
+
+# (regex pattern, replacement) applied to the prompt, in order, only when a
+# Cloudflare NSFW/moderation rejection is observed. These reword the benign
+# everyday phrasing the classifier tends to false-positive on without changing
+# the scene the story requires.
+NSFW_REWRITE_PAIRS = [
+    (r"\btaking a deep breath\b", "feeling calm and settled"),
+    (r"\blooking out\b", "standing near the opening"),
+    (r"\b(subtle,? )?peaceful smile\b", "serene, relaxed look"),
+    (r"\breflective and calm expression\b", "quiet, thoughtful mood"),
+    (r"\bquietly watching\b|\bold watching\b", "viewing the scene"),
+    (r"\bstanding\s+quietly\b", "standing calmly"),
+]
+
+
+def _sanitize_nsfw_prompt(text: str) -> str:
+    """Reword prompt to dodge Cloudflare's NSFW content-filter false positive."""
+    sanitized = text
+    for pattern, replacement in NSFW_REWRITE_PAIRS:
+        sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+    return sanitized
+
+
 def generate_image_with_cloudflare(
     prompt: str,
     event_mode: bool = False,
@@ -1044,103 +1087,114 @@ def generate_image_with_cloudflare(
     # 9:16 portrait canvas up front stops the model from "tiling" the default
     # square 1024x1024 output into collage-like stacked panels when asked for
     # a vertical composition.
-    payload = {
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "num_steps": steps,
-        "guidance": guidance,
-        "width": 768,
-        "height": 1344,
-        "seed": random.randint(0, 2**32 - 1),
-    }
+    current_prompt = prompt
+    retried_after_nsfw = False
 
-    for account in CLOUDFLARE_ACCOUNTS:
-        print(f"\nUsing Cloudflare Account: {account['name']}")
+    while True:
+        payload = {
+            "prompt": current_prompt,
+            "negative_prompt": negative_prompt,
+            "num_steps": steps,
+            "guidance": guidance,
+            "width": 768,
+            "height": 1344,
+            "seed": random.randint(0, 2**32 - 1),
+        }
 
-        try:
-            response = requests.post(
-                CLOUDFLARE_URL_TEMPLATE.format(
-                    account_id=account["account_id"]
-                ),
-                headers={
-                    "Authorization": f"Bearer {account['api_token']}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-                timeout=180,
-            )
+        moderator_blocked_all = False
 
-        except requests.RequestException as exc:
-            print(f"Network Error: {exc}")
-            continue
+        for account in CLOUDFLARE_ACCOUNTS:
+            print(f"\nUsing Cloudflare Account: {account['name']}")
 
-        if response.status_code == QUOTA_STATUS_CODE:
-            print("Quota exceeded. Trying next account...")
-            continue
-
-        if response.status_code != 200:
-            print(f"HTTP {response.status_code}")
             try:
-                print(response.json())
-            except Exception:
-                print(response.text)
-            continue
-
-        try:
-            result = response.json()
-
-            if not result.get("success", True):
-                print(result)
-                continue
-
-            image_b64 = (
-                result
-                .get("result", {})
-                .get("image")
-            )
-
-            if not image_b64:
-                print("No image returned.")
-                continue
-
-            image = Image.open(
-                io.BytesIO(
-                    base64.b64decode(image_b64)
+                response = requests.post(
+                    CLOUDFLARE_URL_TEMPLATE.format(
+                        account_id=account["account_id"]
+                    ),
+                    headers={
+                        "Authorization": f"Bearer {account['api_token']}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=180,
                 )
-            ).convert("RGB")
 
-            print("✓ Image generated successfully")
+            except requests.RequestException as exc:
+                print(f"Network Error: {exc}")
+                continue
 
-            return image
+            if response.status_code == QUOTA_STATUS_CODE:
+                print("Quota exceeded. Trying next account...")
+                continue
 
-        except Exception as exc:
-            print(f"Image Decode Error: {exc}")
-            continue
+            if response.status_code != 200:
+                if _is_nsfw_rejection(response):
+                    # Content-filter rejection. Every account is sent the SAME
+                    # prompt, so this will repeat on every account — the rest
+                    # of the loop just confirms the flag so we can sanitize
+                    # the prompt once and retry after the account pass.
+                    moderator_blocked_all = True
+                    try:
+                        print(response.json())
+                    except Exception:
+                        print(response.text)
+                else:
+                    print(f"HTTP {response.status_code}. Trying next account...")
+                    try:
+                        print(response.json())
+                    except Exception:
+                        print(response.text)
+                continue
 
-        # if response.status_code != 200:
-        #     print(f"HTTP {response.status_code}")
+            try:
+                result = response.json()
 
-        #     try:
-        #         print(response.json())
-        #     except Exception:
-        #         print(response.text)
+                if not result.get("success", True):
+                    print(result)
+                    continue
 
-        #     continue
+                image_b64 = (
+                    result
+                    .get("result", {})
+                    .get("image")
+                )
 
-        # try:
-        #     # New Cloudflare model returns the actual PNG binary,
-        #     # not JSON containing a Base64 image.
-        #     image = Image.open(
-        #         io.BytesIO(response.content)
-        #     ).convert("RGB")
+                if not image_b64:
+                    print("No image returned.")
+                    continue
 
-        #     print("✓ Image generated successfully")
+                image = Image.open(
+                    io.BytesIO(
+                        base64.b64decode(image_b64)
+                    )
+                ).convert("RGB")
 
-        #     return image
+                print("✓ Image generated successfully")
 
-        # except Exception as exc:
-        #     print(f"Image Decode Error: {exc}")
-        #     continue
+                return image
+
+            except Exception as exc:
+                print(f"Image Decode Error: {exc}")
+                continue
+
+        # Every account rejected the prompt as NSFW. Because this comes from
+        # Cloudflare's content filter (not a quota/429), hopping accounts will
+        # never help — reword the benign phrasing once and retry. A single
+        # sanitization pass runs to avoid an infinite retry loop.
+        if moderator_blocked_all and not retried_after_nsfw:
+            sanitized = compact_prompt(
+                _sanitize_nsfw_prompt(current_prompt)
+            )
+            if sanitized and sanitized != current_prompt:
+                print(
+                    "\n⚠️ Prompt flagged as NSFW on all accounts. "
+                    "Sanitizing phrases and retrying..."
+                )
+                current_prompt = sanitized
+                retried_after_nsfw = True
+                continue
+
+        break
 
     print("\nAll Cloudflare accounts failed.")
 
