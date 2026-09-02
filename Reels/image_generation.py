@@ -1059,9 +1059,15 @@ def generate_image_with_cloudflare(
     event_mode: bool = False,
     negative_prompt_override: Optional[str] = None,
 ) -> Optional[Image.Image]:
+    
     prompt = compact_prompt(prompt)
     negative_prompt = compact_prompt(NEGATIVE_PROMPT)
 
+    print("\n" + "=" * 80)
+    print("🖼️ IMAGE GENERATION STARTED")
+    print(f"📝 PROMPT: {prompt} \n\n\n")
+    print(f"🚫 NEGATIVE PROMPT: {negative_prompt}")
+    print("=" * 80)
     if event_mode:
         steps = 8
         guidance = 10

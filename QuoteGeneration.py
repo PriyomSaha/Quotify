@@ -23,13 +23,22 @@ def generate_quote(record_history=True):
     event = get_today_event(content_type=CONTENT_QUOTE)
     if event:
         prompt += build_quote_event_instruction(event)
-    
+
+    import time
+
+    start = time.time()
+
+    print("🚀 Sending request to Gemini...")
+
     # Generate content using Gemini
     interaction = client.interactions.create(
         model="gemini-3.6-flash",
         input=prompt
     )
+    
+    elapsed = time.time() - start
 
+    print(f"✅ Gemini responded in {elapsed:.2f} seconds")
     return interaction.output_text or ""
 
 

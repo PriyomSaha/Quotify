@@ -528,7 +528,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "From Childhood to Adulthood\n\nWe fought over little things,\nlaughed at silly things,\nand annoyed each other every day.\n\nBut somehow,\nthose became the memories\nwe miss the most.\n\nWe grew up,\nbut no matter how old we get,\na part of us will always be\nthose kids growing up together.\n\nHappy Raksha Bandhan !!!"
+    quote_input = "We post pictures to show everyone how happy we are.\n\nThen spend the rest of the night checking our phones to see if we really felt it."
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,
