@@ -4,30 +4,51 @@ Saves Gemini API tokens by sending only relevant content type
 """
 
 from content_schedule import get_content_type_for_time
+import random
+
+
+# Compact angle bank: Python selects ONE angle so we don't send a large
+# topic list to Gemini on every request.
+HUMAN_TRUTH_ANGLES = [
+    "people slowly growing apart",
+    "missing who someone used to be",
+    "friendships fading without a fight",
+    "outgrowing an old version of yourself",
+    "ordinary moments becoming memories",
+    "being close to someone but feeling distant",
+    "remembering a time rather than a person",
+    "relationships becoming one-sided",
+    "childhood friendships changing with adulthood",
+    "things ending without a clear goodbye",
+    "having many contacts but few real connections",
+    "realizing you cannot return to how things were",
+    "caring about someone who no longer feels familiar",
+    "noticing someone has changed without knowing when",
+    "wanting to say something but choosing silence",
+]
 
 # Base instruction for all types
 BASE_INSTRUCTION = """You are a content creator for "Aesthetic Vibes" - a page for lost souls finding their way home through words.
 
 Your audience: 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years old, mostly women, who need variety in content.
 
-IMPORTANT - SIMPLE WORDS ONLY, ALWAYS:
-* Write every quote like you are telling it to a friend over chai. Use the simplest, most everyday words possible.
-* Prefer short, common words: "get", "stay", "home", "heart", "day", "hope", "feel", "begin". Avoid long or uncommon words.
-* Use words a school student or a busy mom could read in one go and instantly understand.
-* If a word sounds too big, fancy, or heavy, swap it for a plain everyday word.
-* Never use jargon, deep dictionary words, poetic-sounding rare words, or complicated phrases.
-* Every reader - of any age or education level - should feel it was written for them.
+IMPORTANT - SIMPLE WORDS ONLY:
+* Write every quote like you are telling it to a friend over chai. Use simple, everyday words.
+* Avoid long, fancy, heavy, rare, or complicated words.
+* Every reader should understand the feeling in one read.
 
-WRITING PRINCIPLES FOR RELATABILITY (apply naturally, never force):
-* Make it feel real by grounding it in ONE specific, everyday, human detail whenever it suits the theme — a small saying, a daily habit, a meal, a moment of the day, a message, a feeling, a familiar place. Let that one detail carry the emotion.
-* BUT never force a detail. Some quotes are powerful precisely because they stay big and abstract. Choose whatever makes the line strongest for that theme.
-* Give it a subtle twist — an unexpected flip, a quiet irony, or a small fresh realization — so it does not sound like every other quote on the feed.
-* End on a last line that lands: a warm feeling, a light punch, or a quiet thought people want to save and share.
-* Vary your delivery. Sometimes write like a confession ("I... / We..."), sometimes like a truth whispered to a friend, sometimes a tender thought, sometimes a clever take. Keep it feeling human, never formulaic.
+RELATABILITY:
+* Prefer real human behavior and ordinary observations over abstract poetry.
+* When it suits the theme, use one small everyday detail naturally; never force it.
+* Add a subtle twist, quiet irony, or fresh realization.
+* End with something that lands emotionally and feels worth saving or sharing.
+* Vary the delivery so the feed does not feel formulaic.
+* The goal is "that's exactly how I feel," not "that sounds deep."
+* Do not use generic statements when a more specific human truth is possible.
 
-Before returning, read your quote back out loud. If any word sounds heavy, uncommon, or hard to understand, replace it with a simpler everyday word.
+Before returning, read the content back. Replace any heavy word with a simpler everyday word.
 
-Generate content for the specified type ONLY. Return ONLY the content - no labels, no explanations, no commentary."""
+Generate content for the specified type ONLY. Return ONLY the content - no labels, explanations, or commentary."""
 
 # Modern diverse names for conversations
 CONVERSATION_NAMES = """Use diverse, modern names (randomly select any 2):
@@ -46,6 +67,28 @@ Mix names randomly - any name can talk to any name."""
 
 # ALL PROMPT TEMPLATES
 ALL_PROMPTS = {
+
+    "HUMAN_TRUTH": """
+Write ONE original quote about a quiet truth people commonly experience.
+
+Start with an ordinary human observation.
+Reveal what that behavior really means emotionally.
+End with a subtle, memorable realization.
+
+Make it feel personally experienced but universally relatable.
+
+Use simple everyday English.
+Deep but natural.
+Emotional but controlled.
+Sound like a private realization, not a motivational quote.
+
+Avoid clichés, advice, therapy language, dramatic poetry,
+forced metaphors, and generic statements.
+
+12–32 words.
+No quotation marks, hashtags, or emojis.
+Return ONLY the quote.
+""",
     
     "MOTIVATIONAL_INSPIRING": """
 Generate an ENERGETIC, uplifting motivational message that inspires action and positivity.
@@ -190,41 +233,6 @@ Examples (do NOT copy):
 - "Typing a whole paragraph, staring at it for five minutes, deleting it all, and just sending 'lol yeah.'"
 
 Return only the moment.
-""",
-
-    "SHORT_CONVERSATION": f"""
-Create a relatable conversation between two people.
-
-{CONVERSATION_NAMES}
-
-Themes: Modern relationships, situationships, friendship dynamics, family misunderstandings, late-night thoughts, miscommunication, realizations, bittersweet moments, growing up, emotional honesty, vulnerability, comfort, understanding.
-
-Requirements:
-* 4-7 exchanges MAXIMUM (keep it short)
-* Each dialogue line must be VERY SHORT - maximum 5-6 words
-* SIMPLE ENGLISH (easy words, how people actually talk)
-* Natural, modern dialogue
-* Must feel authentic, not scripted
-* Emotional punch or quiet revelation
-* Final line should hit differently
-* NO religious, cultural, or gender stereotypes
-
-CRITICAL FORMAT RULES:
-* Each line MUST start with "Name: " followed by dialogue
-* Each exchange on a NEW LINE
-* Maximum 28 characters per line INCLUDING "Name: " prefix
-* Keep dialogue EXTREMELY brief (5-6 words max)
-* Simple responses like: "Yeah.", "Me too.", "I know.", "Why?", "When?"
-
-Correct Format Example:
-Mila: Are you awake?
-Kai: Yeah. Can't sleep.
-Mila: Me neither.
-Kai: Thinking about what?
-Mila: How everything changed.
-Kai: I know what you mean.
-
-Return only the conversation (no intro, strict line-by-line format).
 """,
 
     "HE_SHE_RELATIONSHIP": """
@@ -880,6 +888,11 @@ def get_prompt_for_current_time(record_history=True):
     content_info = get_content_type_for_time(record_history=record_history)
     LAST_SELECTED_CONTENT_INFO = content_info
     content_type = content_info['type']
+
+    # Select one angle in Python so the full angle bank is never sent to Gemini.
+    human_truth_angle = None
+    if content_type == "HUMAN_TRUTH":
+        human_truth_angle = random.choice(HUMAN_TRUTH_ANGLES)
     
     print(f"\n📝 Generating: {content_info['name']}")
     print(f"💡 Context: {content_info['reason']}")
@@ -887,6 +900,9 @@ def get_prompt_for_current_time(record_history=True):
     # Get the specific prompt
     if content_type in ALL_PROMPTS:
         prompt = f"{BASE_INSTRUCTION}\n\n{ALL_PROMPTS[content_type]}"
+
+        if human_truth_angle:
+            prompt += f"\nFocus on this human experience: {human_truth_angle}"
     else:
         # Fallback
         print(f"⚠️ Type '{content_type}' not found, using motivational fallback")
