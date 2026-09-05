@@ -442,8 +442,34 @@ def build_event_image_instruction(
         selected = rng.sample(visuals, num_hints)
         visual_text = ", ".join(selected)
 
+    # Build enhanced visual direction from new JSON fields
+    visual_mood_parts = []
+
+    # Add atmosphere if available
+    atmosphere = event.get("atmosphere", [])
+    if atmosphere:
+        atmosphere_text = ", ".join(atmosphere) if isinstance(atmosphere, list) else str(atmosphere)
+        visual_mood_parts.append(f"ATMOSPHERE: {atmosphere_text}")
+
+    # Add color palette if available
+    color_palette = event.get("color_palette", [])
+    if color_palette:
+        palette_text = ", ".join(color_palette) if isinstance(color_palette, list) else str(color_palette)
+        visual_mood_parts.append(f"COLOR PALETTE: {palette_text}")
+
+    # Add composition style if available
+    composition_style = event.get("composition_style", [])
+    if composition_style:
+        comp_text = ", ".join(composition_style) if isinstance(composition_style, list) else str(composition_style)
+        visual_mood_parts.append(f"COMPOSITION: {comp_text}")
+
+    # Build the visual mood section
+    visual_mood_section = ""
+    if visual_mood_parts:
+        visual_mood_section = "\n" + "\n".join(visual_mood_parts) + "\n"
+
     return (
-        f"EVENT IMAGE FOCUS: The scene must clearly read as {event_name}. "
+        f"EVENT IMAGE FOCUS: The scene must clearly read as {event_name}.{visual_mood_section}"
         f"Prioritize iconic visual elements: {visual_text}. "
         "Do not use generic abstract nature or random rainy-city imagery unless it supports the occasion. "
         "The composition should clearly communicate what this event is famous for."
@@ -456,6 +482,25 @@ def build_quote_event_instruction(event: Dict[str, Any]) -> str:
     wish = get_event_wish(event)
     event_identity = build_event_identity_instruction(event)
 
+    # Build enhanced emotional direction from new JSON fields
+    emotional_mood = event.get("emotional_mood", [])
+    emotional_mood_text = ", ".join(emotional_mood) if isinstance(emotional_mood, list) else str(emotional_mood) if emotional_mood else ""
+
+    # Build avoid clichés section
+    avoid_cliches = event.get("avoid_clichés", [])
+    avoid_cliches_text = ", ".join(f'"{c}"' for c in avoid_cliches) if isinstance(avoid_cliches, list) else str(avoid_cliches) if avoid_cliches else ""
+    avoid_cliches_section = f"\n- AVOID CLICHÉS: {avoid_cliches_text}\n" if avoid_cliches_text else ""
+
+    # Build engagement hook section
+    engagement_hook = event.get("engagement_hook", [])
+    engagement_hook_text = "\n".join(f"- {hook}" for hook in engagement_hook) if isinstance(engagement_hook, list) else str(engagement_hook) if engagement_hook else ""
+    engagement_section = f"""
+ENGAGEMENT HOOKS (use one in caption for reach):
+{engagement_hook_text}
+""" if engagement_hook_text else ""
+
+    emotional_mood_section = f"\nEMOTIONAL MOOD: {emotional_mood_text}\n" if emotional_mood_text else ""
+
     return f"""
 
 ==================================================
@@ -465,13 +510,13 @@ Today is related to: {event.get('name', 'a special occasion')}.
 Region/Audience: {event.get('region', 'South Asian audience')}.
 Language style: {event.get('language_style', 'simple emotional English')}.
 Theme: {event.get('quote_theme', '')}.
-
+{emotional_mood_section}
 Generate content that feels timely, emotional, respectful, and highly shareable for this occasion.
 Keep the existing format and word-length rules from the selected content type, but make the emotion clearly connected to this occasion.
 Keep ALL words simple and everyday - even for this occasion. Say it like someone telling a feeling in a normal chat, never with heavy or fancy words.
 {event_identity}
 Do not include wishes like "{wish}" in the generated quote text. Event wishes are handled only in the social caption.
-
+{avoid_cliches_section}
 Safety rules:
 - Keep it inclusive and respectful.
 - Make event content gender-neutral. Do not use he, she, him, her, boyfriend, girlfriend, husband, wife, or gendered relationship framing.
@@ -482,7 +527,7 @@ Safety rules:
 - Avoid hate, controversy, or aggressive slogans.
 - Do not copy copyrighted poems, songs, speeches, or famous quotes.
 - Make it original and natural.
-
+{engagement_section}
 Helpful hashtags/context, do not include hashtags in the quote unless the original format asks for them:
 {hashtags}
 ==================================================
@@ -502,6 +547,67 @@ def build_reel_event_instruction(event: Dict[str, Any]) -> str:
     event_identity = build_event_identity_instruction(event)
     name = str(event.get("name", "a special occasion")).strip() or "a special occasion"
 
+    # Build enhanced emotional direction from new JSON fields
+    emotional_mood = event.get("emotional_mood", [])
+    emotional_mood_text = ", ".join(emotional_mood) if isinstance(emotional_mood, list) else str(emotional_mood) if emotional_mood else ""
+
+    # Build memory triggers section
+    memory_triggers = event.get("memory_triggers", [])
+    memory_triggers_text = "\n".join(f"- {trigger}" for trigger in memory_triggers) if isinstance(memory_triggers, list) else str(memory_triggers) if memory_triggers else ""
+
+    # Build avoid clichés section
+    avoid_cliches = event.get("avoid_clichés", [])
+    avoid_cliches_text = ", ".join(f'"{c}"' for c in avoid_cliches) if isinstance(avoid_cliches, list) else str(avoid_cliches) if avoid_cliches else ""
+
+    # Build engagement hook section
+    engagement_hook = event.get("engagement_hook", [])
+    engagement_hook_text = "\n".join(f"- {hook}" for hook in engagement_hook) if isinstance(engagement_hook, list) else str(engagement_hook) if engagement_hook else ""
+
+    # Build visual mood section for image generation
+    visual_mood_parts = []
+    atmosphere = event.get("atmosphere", [])
+    if atmosphere:
+        atmosphere_text = ", ".join(atmosphere) if isinstance(atmosphere, list) else str(atmosphere)
+        visual_mood_parts.append(f"- ATMOSPHERE: {atmosphere_text}")
+    color_palette = event.get("color_palette", [])
+    if color_palette:
+        palette_text = ", ".join(color_palette) if isinstance(color_palette, list) else str(color_palette)
+        visual_mood_parts.append(f"- COLOR PALETTE: {palette_text}")
+    composition_style = event.get("composition_style", [])
+    if composition_style:
+        comp_text = ", ".join(composition_style) if isinstance(composition_style, list) else str(composition_style)
+        visual_mood_parts.append(f"- COMPOSITION: {comp_text}")
+    visual_mood_text = "\n".join(visual_mood_parts)
+
+    # Build the optional sections
+    emotional_mood_section = f"""
+EMOTIONAL MOOD: {emotional_mood_text}
+""" if emotional_mood_text else ""
+
+    memory_triggers_section = f"""
+MEMORY TRIGGERS (weave in at least one for depth):
+{memory_triggers_text}
+""" if memory_triggers_text else ""
+
+    avoid_cliches_section = f"""
+AVOID CLICHÉS: {avoid_cliches_text}
+""" if avoid_cliches_text else ""
+
+    visual_mood_section = f"""
+VISUAL MOOD FOR SCENES:
+{visual_mood_text}
+""" if visual_mood_text else ""
+
+    engagement_section = f"""
+ENGAGEMENT HOOKS (use one in caption for reach):
+{engagement_hook_text}
+""" if engagement_hook_text else """
+
+ENGAGEMENT HOOKS (use one in caption for reach):
+- Share your favorite memory of this occasion in the comments
+- Tag someone who made this day special for you
+"""
+
     return f"""
 
 ==================================================
@@ -517,7 +623,7 @@ Occasion story to follow (this is the heart of the narration):
 
 Emotional/quote themes to borrow nostalgia from:
 {event.get('quote_theme', '')}
-
+{emotional_mood_section}{memory_triggers_section}
 RULE 1 — WRITE THE OCCASION'S STORY, NOT A GENERIC POST
 The narration MUST be an 80-110 word first-person nostalgic story clearly about {name}.
 Earlier instructions saying "content is not a story", "no events", "no places",
@@ -545,9 +651,8 @@ RULE 3 — SCENES ARE FRAMES OF THE MEMORY
 Each of the 6 scenes must look like a frame from that memory (not a postcard
 of the event): old familiar places, afternoon or monsoon/dawn light, common
 objects, small gestures, quiet colour. Weave in these visuals where suitable:
-{visual_hint_text}
-{event_identity}
-
+{visual_hint_text}{visual_mood_section}{event_identity}
+{avoid_cliches_section}
 RULE 4 — VOICE
 Keep the {event.get('language_style', 'simple emotional English')} tone.
 Gender-neutral when people appear. Simple, warm, believable — no forced poetry.
@@ -560,7 +665,7 @@ Safety rules:
 - Avoid hate, controversy, violence, or aggressive slogans.
 - Do not copy copyrighted poems, songs, speeches, or famous quotes.
 - Keep it original, cinematic, and nostalgic without being sad or hopeless.
-
+{engagement_section}
 Caption context/hashtags for later:
 {hashtags}
 ===================================================
