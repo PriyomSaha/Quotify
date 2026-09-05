@@ -18,6 +18,9 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 from enum import Enum
 
+# Import event detector for event-based daily limits
+from event_detector import get_today_event, CONTENT_QUOTE, CONTENT_REEL
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -49,6 +52,48 @@ MAX_PUBLISH_HOUR = 21  # A publish/reel-generation must complete by 21:00 IST �
 class ContentType(Enum):
     QUOTE = "quote"
     REEL = "reel"
+
+
+# ============================================================================
+# EVENT-BASED DAILY LIMITS
+# ============================================================================
+
+# Standard daily limits (no event)
+DEFAULT_QUOTE_LIMIT = 2
+DEFAULT_REEL_LIMIT = 2
+
+# Event-based daily limits (when an event is active)
+EVENT_QUOTE_LIMIT = 1
+EVENT_REEL_LIMIT = 1
+
+
+def _get_event_daily_limit(content_type: ContentType) -> int:
+    """
+    Return the daily publishing limit based on whether an event is active.
+
+    When an event is detected for today, publishing is limited to:
+    - 1 quote per day
+    - 1 reel per day
+
+    When no event is active, the default limits apply:
+    - 2 quotes per day
+    - 2 reels per day
+    """
+    if content_type == ContentType.QUOTE:
+        event = get_today_event(content_type=CONTENT_QUOTE)
+        if event:
+            print(f"🎪 Event active: {event.get('name')} - Quote limit is {EVENT_QUOTE_LIMIT}/day")
+            return EVENT_QUOTE_LIMIT
+        return DEFAULT_QUOTE_LIMIT
+
+    if content_type == ContentType.REEL:
+        event = get_today_event(content_type=CONTENT_REEL)
+        if event:
+            print(f"🎪 Event active: {event.get('name')} - Reel limit is {EVENT_REEL_LIMIT}/day")
+            return EVENT_REEL_LIMIT
+        return DEFAULT_REEL_LIMIT
+
+    return DEFAULT_QUOTE_LIMIT
 
 
 @dataclass
@@ -784,14 +829,15 @@ def should_publish_quote(force_publish: bool = False) -> Tuple[bool, str]:
         print(f"✅ Sufficient spacing: {minutes_since} minutes since last post")
     else:
         print(f"✅ No recent posts found - OK to post")
-    
-    # Step 4: Check daily limits
-    if state.daily_quote_count >= 2:
-        print(f"❌ Daily quote limit reached ({state.daily_quote_count}/2)")
-        return False, "Daily quote limit (2) reached"
-    
-    print(f"✅ Daily quote count: {state.daily_quote_count}/2")
-    
+
+    # Step 4: Check daily limits (event-aware)
+    daily_limit = _get_event_daily_limit(ContentType.QUOTE)
+    if state.daily_quote_count >= daily_limit:
+        print(f"❌ Daily quote limit reached ({state.daily_quote_count}/{daily_limit})")
+        return False, f"Daily quote limit ({daily_limit}) reached"
+
+    print(f"✅ Daily quote count: {state.daily_quote_count}/{daily_limit}")
+
     # All checks passed
     print("\n🎉 ALL CHECKS PASSED - PUBLISH QUOTE")
     print("="*70 + "\n")
@@ -876,12 +922,13 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
     else:
         print(f"✅ No recent posts found - OK to post")
     
-    # Step 4: Check daily limits
-    if state.daily_reel_count >= 2:
-        print(f"❌ Daily reel limit reached ({state.daily_reel_count}/2)")
-        return False, "Daily reel limit (2) reached"
+    # Step 4: Check daily limits (event-aware)
+    daily_limit = _get_event_daily_limit(ContentType.REEL)
+    if state.daily_reel_count >= daily_limit:
+        print(f"❌ Daily reel limit reached ({state.daily_reel_count}/{daily_limit})")
+        return False, f"Daily reel limit ({daily_limit}) reached"
     
-    print(f"✅ Daily reel count: {state.daily_reel_count}/2")
+    print(f"✅ Daily reel count: {state.daily_reel_count}/{daily_limit}")
     
     # All checks passed
     print("\n🎉 ALL CHECKS PASSED - START REEL GENERATION")
@@ -900,6 +947,10 @@ def get_schedule_summary():
     windows = WEEKLY_SCHEDULE.get(weekday, [])
     state = get_scheduler_state()
     
+    # Get event-aware daily limits
+    quote_limit = _get_event_daily_limit(ContentType.QUOTE)
+    reel_limit = _get_event_daily_limit(ContentType.REEL)
+    
     print("\n" + "="*70)
     print(f"📅 TODAY'S SCHEDULE ({weekday.title()})")
     print("="*70)
@@ -907,12 +958,12 @@ def get_schedule_summary():
     quote_windows = [w for w in windows if w.content_type == ContentType.QUOTE]
     reel_windows = [w for w in windows if w.content_type == ContentType.REEL]
     
-    print(f"\n📝 QUOTES ({len(quote_windows)} windows, {state.daily_quote_count} completed):")
+    print(f"\n📝 QUOTES ({len(quote_windows)} windows, {state.daily_quote_count}/{quote_limit} completed):")
     for w in quote_windows:
         status = "✅ DONE" if w.name in state.completed_slots else "⏳ PENDING"
         print(f"  {status} {w.name}: {w.start_hour}:{w.start_minute:02d} - {w.end_hour}:{w.end_minute:02d}")
     
-    print(f"\n🎬 REELS ({len(reel_windows)} windows, {state.daily_reel_count} completed):")
+    print(f"\n🎬 REELS ({len(reel_windows)} windows, {state.daily_reel_count}/{reel_limit} completed):")
     for w in reel_windows:
         status = "✅ DONE" if w.name in state.completed_slots else "⏳ PENDING"
         gen_start_min = w.start_minutes() - REEL_GENERATION_TIME
