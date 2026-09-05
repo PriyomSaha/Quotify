@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import requests
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 from enum import Enum
 
@@ -234,6 +234,8 @@ class SchedulerState:
     active_job: Optional[Dict[str, str]] = None  # currently running quote/reel job lock
     # --- Date pause (toggled via the "Pause Manager" workflow; skip ALL posts that day) ---
     paused_dates: List[str] = field(default_factory=list)  # one-off "YYYY-MM-DD" paused days
+    # --- Event content tracking (ensures unique content across event days) ---
+    event_content_tracker: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 def _today_key() -> str:
@@ -255,6 +257,7 @@ def _default_scheduler_state(previous: Optional[dict] = None) -> SchedulerState:
         daily_reel_count=0,
         active_job=None,
         paused_dates=[],
+        event_content_tracker=previous.get("event_content_tracker", {}),
     )
 
 
@@ -277,6 +280,7 @@ def _state_from_dict(state_dict: dict) -> SchedulerState:
         daily_reel_count=state_dict.get("daily_reel_count", 0),
         active_job=state_dict.get("active_job"),
         paused_dates=list(state_dict.get("paused_dates", []) or []),
+        event_content_tracker=state_dict.get("event_content_tracker", {}),
     )
 
 
@@ -455,8 +459,198 @@ def mark_slot_completed(window: PostingWindow):
 
 
 # ============================================================================
-# FACEBOOK API - CHECK RECENT POSTS
+# EVENT CONTENT TRACKING - Ensures unique content across event days
 # ============================================================================
+
+def _get_event_tracker(state: SchedulerState, event_name: str) -> Dict[str, Any]:
+    """Get or initialize the tracker for a specific event."""
+    if event_name not in state.event_content_tracker:
+        state.event_content_tracker[event_name] = {
+            "active_window": None,
+            "used_angles": [],
+            "used_moods": [],
+            "used_triggers": [],
+            "daily_posts": {},
+        }
+    return state.event_content_tracker[event_name]
+
+
+def _split_theme_to_angles(theme_string: str) -> List[str]:
+    """Split a theme string into unique content angles."""
+    if not theme_string:
+        return []
+    angles = [angle.strip() for angle in theme_string.split(",") if angle.strip()]
+    return angles
+
+
+def _get_unique_angle(state: SchedulerState, event: Dict[str, Any], content_type: str) -> str:
+    """Get a unique content angle for today's event content."""
+    event_name = event.get("name", "unknown")
+    tracker = _get_event_tracker(state, event_name)
+
+    if content_type == "quote":
+        all_angles = _split_theme_to_angles(event.get("quote_theme", ""))
+    else:
+        all_angles = _split_theme_to_angles(event.get("reel_theme", ""))
+        memory_triggers = event.get("memory_triggers", [])
+        if memory_triggers:
+            all_angles.extend([f"memory of {t}" for t in memory_triggers[:3]])
+
+    used_angles = tracker.get("used_angles", [])
+    unused_angles = [a for a in all_angles if a not in used_angles]
+
+    if unused_angles:
+        return unused_angles[0]
+    else:
+        return "different perspective"
+
+
+def _get_unique_mood(state: SchedulerState, event: Dict[str, Any]) -> str:
+    """Get a unique emotional mood for today's event content."""
+    event_name = event.get("name", "unknown")
+    tracker = _get_event_tracker(state, event_name)
+
+    all_moods = event.get("emotional_mood", [])
+    used_moods = tracker.get("used_moods", [])
+
+    for mood in all_moods:
+        if mood not in used_moods:
+            return mood
+
+    return all_moods[0] if all_moods else "nostalgic"
+
+
+def _get_unique_trigger(state: SchedulerState, event: Dict[str, Any]) -> str:
+    """Get a unique memory trigger for today's event content."""
+    event_name = event.get("name", "unknown")
+    tracker = _get_event_tracker(state, event_name)
+
+    all_triggers = event.get("memory_triggers", [])
+    used_triggers = tracker.get("used_triggers", [])
+
+    for trigger in all_triggers:
+        if trigger not in used_triggers:
+            return trigger
+
+    return all_triggers[0] if all_triggers else ""
+
+
+def _initialize_event_window(state: SchedulerState, event: Dict[str, Any], event_name: str):
+    """Initialize the event window when event first becomes active."""
+    tracker = _get_event_tracker(state, event_name)
+
+    if tracker.get("active_window") is None:
+        active_before = int(event.get("active_before_days", 0) or 0)
+        active_after = int(event.get("active_after_days", 0) or 0)
+
+        ist_offset = timedelta(hours=5, minutes=30)
+        today = (datetime.now(timezone.utc) + ist_offset).date()
+
+        start_date = today - timedelta(days=active_before)
+        end_date = today + timedelta(days=active_after)
+
+        tracker["active_window"] = {
+            "start": start_date.strftime("%Y-%m-%d"),
+            "end": end_date.strftime("%Y-%m-%d"),
+        }
+
+        print(f"🎪 Event window initialized for {event_name}: {start_date} to {end_date}")
+
+
+def _track_event_post(state: SchedulerState, event_name: str, event: Dict[str, Any], content_type: str):
+    """Track that an event post was generated."""
+    tracker = _get_event_tracker(state, event_name)
+    today = _today_key()
+
+    if today not in tracker.get("daily_posts", {}):
+        tracker.setdefault("daily_posts", {})[today] = {"event_reel": False, "event_quote": False}
+
+    if content_type == "quote":
+        tracker["daily_posts"][today]["event_quote"] = True
+    else:
+        tracker["daily_posts"][today]["event_reel"] = True
+
+    angle = _get_unique_angle(state, event, content_type)
+    mood = _get_unique_mood(state, event)
+    trigger = _get_unique_trigger(state, event)
+
+    if angle not in tracker.get("used_angles", []):
+        tracker.setdefault("used_angles", []).append(angle)
+    if mood not in tracker.get("used_moods", []):
+        tracker.setdefault("used_moods", []).append(mood)
+    if trigger not in tracker.get("used_triggers", []):
+        tracker.setdefault("used_triggers", []).append(trigger)
+
+    print(f"📝 Tracked {content_type} for {event_name}: angle='{angle}', mood='{mood}'")
+
+
+def _get_event_content_prompt_addition(state: SchedulerState, event: Dict[str, Any], content_type: str) -> str:
+    """Generate additional prompt text to ensure unique content."""
+    event_name = event.get("name", "unknown")
+    tracker = _get_event_tracker(state, event_name)
+
+    angle = _get_unique_angle(state, event, content_type)
+    mood = _get_unique_mood(state, event)
+    trigger = _get_unique_trigger(state, event)
+
+    used_angles = tracker.get("used_angles", [])
+    used_moods = tracker.get("used_moods", [])
+
+    addition = "\n\nUNIQUENESS DIRECTIVE (IMPORTANT):\n"
+    addition += f"- TODAY'S FOCUS: {angle}\n"
+    addition += f"- TODAY'S MOOD: {mood}\n"
+    if trigger:
+        addition += f"- TODAY'S SENSORY ANCHOR: {trigger}\n"
+
+    if used_angles and len(used_angles) > 1:
+        addition += f"- AVOID THESE USED ANGLES: {', '.join(used_angles[:-1])}\n"
+    if used_moods and len(used_moods) > 1:
+        addition += f"- AVOID THESE USED MOODS: {', '.join(used_moods[:-1])}\n"
+
+    addition += "- Make this content DISTINCT from previous posts. Different story, different angle, different feeling.\n"
+
+    return addition
+
+
+def _has_event_quota_available(state: SchedulerState, event_name: str) -> bool:
+    """Check if the event has quota for more posts today."""
+    tracker = _get_event_tracker(state, event_name)
+    today = _today_key()
+
+    daily_posts = tracker.get("daily_posts", {}).get(today, {"event_reel": False, "event_quote": False})
+
+    if daily_posts.get("event_reel") and daily_posts.get("event_quote"):
+        return False
+    return True
+
+
+def _get_event_post_type_available(state: SchedulerState, event_name: str, content_type: str) -> bool:
+    """Check if the specific event post type is available today."""
+    tracker = _get_event_tracker(state, event_name)
+    today = _today_key()
+
+    daily_posts = tracker.get("daily_posts", {}).get(today, {"event_reel": False, "event_quote": False})
+
+    if content_type == "quote":
+        return not daily_posts.get("event_quote", False)
+    else:
+        return not daily_posts.get("event_reel", False)
+
+
+def _is_event_window_active(state: SchedulerState, event_name: str) -> bool:
+    """Check if today is within the event's active window."""
+    tracker = _get_event_tracker(state, event_name)
+    active_window = tracker.get("active_window")
+
+    if not active_window:
+        return True
+
+    today = _today_key()
+    start = active_window.get("start", "")
+    end = active_window.get("end", "")
+
+    return start <= today <= end
+
 
 def get_last_facebook_post_time() -> Optional[datetime]:
     """Get timestamp of most recent Facebook post"""
@@ -642,7 +836,7 @@ def _today_all_windows_sorted(ist_now: datetime) -> List[PostingWindow]:
     return sorted(WEEKLY_SCHEDULE.get(weekday, []), key=lambda w: w.start_minutes())
 
 
-def _has_earlier_missed_post(ist_now: datetime, state, active_window: PostingWindow) -> bool:
+def _has_earlier_missed_post(ist_now: datetime, state: SchedulerState, active_window: PostingWindow) -> bool:
     """
     True if any scheduled slot that should have run BEFORE `active_window` has
     already started its window but was never completed today (i.e. it was
@@ -658,7 +852,7 @@ def _has_earlier_missed_post(ist_now: datetime, state, active_window: PostingWin
     return False
 
 
-def _is_final_pending_window(window: PostingWindow, ist_now: datetime, state) -> bool:
+def _is_final_pending_window(window: PostingWindow, ist_now: datetime, state: SchedulerState) -> bool:
     """
     True if `window` is the last still-pending window of the day overall.
     The smart-skip rule suppresses this final slot when a prior slot was missed,
