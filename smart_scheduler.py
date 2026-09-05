@@ -10,6 +10,8 @@ Handles both quotes and reels with:
 - Synchronized state via GitHub Gist
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 import json
 import requests
@@ -106,7 +108,7 @@ class PostingWindow:
     end_hour: int  # IST hour (0-23)
     end_minute: int
     priority: int  # Higher = more important (for engagement)
-    
+
     def to_minutes(self, hour: int, minute: int) -> int:
         """Convert hour:minute to minutes since midnight"""
         return hour * 60 + minute
@@ -244,7 +246,7 @@ def _today_key() -> str:
     return (datetime.now(timezone.utc) + ist_offset).strftime("%Y-%m-%d")
 
 
-def _default_scheduler_state(previous: Optional[dict] = None) -> SchedulerState:
+def _default_scheduler_state(previous: Optional[Dict[str, Any]] = None) -> SchedulerState:
     """Create a safe default scheduler state without recursive calls."""
     previous = previous or {}
     return SchedulerState(
@@ -261,7 +263,7 @@ def _default_scheduler_state(previous: Optional[dict] = None) -> SchedulerState:
     )
 
 
-def _state_from_dict(state_dict: dict) -> SchedulerState:
+def _state_from_dict(state_dict: Dict[str, Any]) -> SchedulerState:
     """Load state with backward-compatible defaults for newly added fields."""
     state_dict = dict(state_dict)
     today = _today_key()
@@ -434,7 +436,7 @@ def release_run_lock(content_type: Optional[ContentType] = None, window: Optiona
     return save_scheduler_state(state)
 
 
-def mark_slot_completed(window: PostingWindow):
+def mark_slot_completed(window: PostingWindow) -> None:
     """Mark a posting window as completed after confirmed upload success."""
     state = get_scheduler_state()
     now = datetime.now(timezone.utc).isoformat()
@@ -535,7 +537,7 @@ def _get_unique_trigger(state: SchedulerState, event: Dict[str, Any]) -> str:
     return all_triggers[0] if all_triggers else ""
 
 
-def _initialize_event_window(state: SchedulerState, event: Dict[str, Any], event_name: str):
+def _initialize_event_window(state: SchedulerState, event: Dict[str, Any], event_name: str) -> None:
     """Initialize the event window when event first becomes active."""
     tracker = _get_event_tracker(state, event_name)
 
@@ -557,7 +559,7 @@ def _initialize_event_window(state: SchedulerState, event: Dict[str, Any], event
         print(f"🎪 Event window initialized for {event_name}: {start_date} to {end_date}")
 
 
-def _track_event_post(state: SchedulerState, event_name: str, event: Dict[str, Any], content_type: str):
+def _track_event_post(state: SchedulerState, event_name: str, event: Dict[str, Any], content_type: str) -> None:
     """Track that an event post was generated."""
     tracker = _get_event_tracker(state, event_name)
     today = _today_key()
@@ -791,7 +793,7 @@ def _paused_reason(state: Optional[SchedulerState] = None) -> Tuple[bool, str]:
     return False, ""
 
 
-def get_pause_config() -> dict:
+def get_pause_config() -> Dict[str, Any]:
     """Return the current pause settings and whether today is paused."""
     state = get_scheduler_state()
     today = _today_key()
@@ -1135,7 +1137,7 @@ def should_publish_reel(force_publish: bool = False) -> Tuple[bool, str]:
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def get_schedule_summary():
+def get_schedule_summary() -> None:
     """Print a summary of today's schedule"""
     weekday = get_current_weekday()
     windows = WEEKLY_SCHEDULE.get(weekday, [])
@@ -1175,7 +1177,7 @@ def get_schedule_summary():
     print("\n" + "="*70 + "\n")
 
 
-def create_scheduler_gist():
+def create_scheduler_gist() -> Optional[str]:
     """Helper to create a new gist for scheduler state"""
     if not GITHUB_TOKEN:
         print("❌ GITHUB_TOKEN not set")
@@ -1229,7 +1231,7 @@ def create_scheduler_gist():
 # MAIN - CLI (off-day toggle) / TEST
 # ============================================================================
 
-def _print_pause_config():
+def _print_pause_config() -> None:
     cfg = get_pause_config()
     print("\n" + "="*50)
     print("⏸️  DATE-PAUSE CONFIG")
@@ -1240,7 +1242,7 @@ def _print_pause_config():
     print("="*50 + "\n")
 
 
-def _run_pause_cli(args) -> int:
+def _run_pause_cli(args: List[str]) -> int:
     """Handle the date-pause toggle CLI and return a process exit code."""
     import argparse
 
