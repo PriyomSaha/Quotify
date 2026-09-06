@@ -21,6 +21,7 @@ from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
 from .gender_tracker import get_next_gender, get_gender_instruction
 from event_detector import CONTENT_REEL, build_reel_event_instruction, get_today_event
 import json
+import random
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 

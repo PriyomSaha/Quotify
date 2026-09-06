@@ -14,7 +14,7 @@ from Reels.video_generation import create_reel
 
 
 if __name__ == "__main__":
-    REEL_FOLDER = Path("Reels/output/20260823_233418")
+    REEL_FOLDER = Path("Reels/output/20260906_151441")
 
     image_folder = REEL_FOLDER / "images"
     voiceover = REEL_FOLDER / "voiceover.mp3"

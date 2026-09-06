@@ -89,9 +89,9 @@ if IS_RENDER:
     IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU/memory intensive)
     # Scale font size proportionally (540/1080 = 0.5x scale)
     FONT_SIZE = 32  # Half of 64 for half resolution
-    LOGO_FONT_SIZE = 22  # Half of 45
-    BOTTOM_MARGIN = 110  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 50  # Subtitles ~1 line below the middle
+    LOGO_FONT_SIZE = 18  # Half of 45
+    BOTTOM_MARGIN = 80  # Watermark gap from bottom (shifted down a few cm)
+    TOP_MARGIN = 100
 else:
     # High quality settings for local/powerful servers
     # Perfect 9:16 ratio for Instagram Reels
@@ -101,13 +101,13 @@ else:
     BITRATE = "8000k"
     FILM_GRAIN_INTENSITY = 18
     IMAGE_ZOOM = 1.08
-    FONT_SIZE = 64
-    LOGO_FONT_SIZE = 45
-    BOTTOM_MARGIN = 220  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 50  # Subtitles ~1 line below the middle
+    FONT_SIZE = 70
+    LOGO_FONT_SIZE = 18
+    BOTTOM_MARGIN = 60  # Watermark gap from bottom (shifted down a few cm)
+    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 500  # Subtitles ~1 line below the middle
 
 IMAGE_FADE = 0.4
-DARK_OVERLAY_OPACITY = 45
+DARK_OVERLAY_OPACITY = 32
 ZOOM_DIRECTION = "in"
 
 # ----------------------------

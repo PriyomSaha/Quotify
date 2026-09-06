@@ -848,31 +848,3 @@ def create_reel(
         import traceback
         logger.error(traceback.format_exc())
         raise
-
-
-# ============================================================
-# STANDALONE TEST
-# ============================================================
-
-if __name__ == "__main__":
-    from pathlib import Path
-
-    REEL_FOLDER = Path("Reels/output/20260823_233418")
-
-    image_folder = REEL_FOLDER / "images"
-    voiceover = REEL_FOLDER / "voiceover.mp3"
-    output_file = REEL_FOLDER / "reel.mp4"
-
-    images = sorted(str(p) for p in image_folder.glob("*.png"))
-
-    if not images:
-        raise ValueError(f"No images found in {image_folder}")
-
-    if not voiceover.exists():
-        raise FileNotFoundError(f"Voiceover not found: {voiceover}")
-
-    create_reel(
-        images=images,
-        narration_audio=str(voiceover),
-        output_file=str(output_file),
-    )

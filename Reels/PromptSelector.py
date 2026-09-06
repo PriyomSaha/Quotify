@@ -37,8 +37,11 @@ STYLE:
 FORMAT:
 
 Every sentence must be on a separate line.
-
+Keep most sentences short.
+Prefer 4-12 words per sentence.
+Use pauses naturally and frequently.
 Use line breaks as breathing pauses.
+Do not fill the Reel just to reach the word limit.
 
 Example:
 
@@ -84,27 +87,47 @@ Use different styles:
 
 "You miss who they used to be..."
 
+The first line must stop scrolling.
+The first line is the HOOK.
 
 HOOK RULES:
+- The hook must be 4-9 words.
+- It must create curiosity, recognition, tension, or emotion immediately.
+- Do not waste the first line introducing the topic.
+- Do not begin with generic setup.
+- Avoid repeatedly using "Sometimes", "People", or "Life".
+- The viewer should understand the emotional direction within the first 2 seconds.
 
-The first line must stop scrolling.
+Use varied hook styles:
+- A surprising truth
+- A relatable question
+- A painful realization
+- A direct statement
+- A quiet observation
+- A contradiction
+- A "you probably..." style thought
+- A short POV-style thought
 
-Use different opening styles:
-
-- Truth is...
-- Remember this...
-- Nobody talks about this...
-- One day you will understand...
-- Learn this early...
-- The hardest lesson in life...
-- Stop doing this...
-- Accept this...
-- A painful truth is...
+Examples of structure only:
+"Maybe you don't miss them anymore."
+"You knew it before they said it."
+"Nobody warns you about this part."
+"Have you noticed how people change?"
+"Some goodbyes happen without leaving."
 
 
 ENDING RULES:
 
-The last 2-3 lines must contain the strongest thought.
+The last 1-2 lines must contain the strongest thought.
+
+The ending should feel like the line the viewer wants to:
+- remember
+- screenshot
+- share
+- send to someone
+
+Do not explain the message after the strongest line.
+End shortly after the emotional payoff.
 
 Rotate endings:
 
@@ -128,7 +151,7 @@ Do not use:
 Avoid clichés.
 
 Length:
-40-90 words.
+40-65 words.
 
 Tone:
 A calm person sharing wisdom after experiencing life.
