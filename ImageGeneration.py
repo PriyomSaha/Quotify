@@ -2,7 +2,6 @@ import re
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
-from QuoteGeneration import generate_quote
 
 
 # ---------------------------------------------------------------------------
