@@ -179,37 +179,27 @@ def format_quote_lines(text, max_chars=28):
 
         return formatted_lines, True
     
-    # Regular quote format - sentence-aware wrapping.
-    # Split into sentences and wrap each sentence on its own block, with a
-    # blank line between sentences so one sentence never shares a line with
-    # the next one.
+    # Regular quote format - respects explicit line breaks.
+    # \n\n = paragraph break (blank line between), \n = simple newline (no blank line).
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     formatted_lines = []
 
     for p_idx, paragraph in enumerate(paragraphs):
-        sentences = split_into_sentences(paragraph)
+        # Split paragraph on single \n to preserve explicit line breaks
+        explicit_lines = [l.strip() for l in paragraph.split("\n") if l.strip()]
         para_lines = []
 
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
+        for line in explicit_lines:
+            # Wrap this line's words into character-limited lines
+            line_wrap = _wrap_lines(line.split(), max_chars)
+            # Anti-orphan: never let the last line hold a single word
+            line_wrap = _rebalance_final_line(line_wrap, max_chars)
 
-            # Wrap this sentence's words into character-limited lines
-            sentence_lines = _wrap_lines(sentence.split(), max_chars)
-            # Anti-orphan: never let the last line of a sentence hold a single word
-            sentence_lines = _rebalance_final_line(sentence_lines, max_chars)
-
-            # Start every new sentence on a fresh line, separated from the
-            # previous sentence by a blank line.
-            if para_lines:
-                para_lines.append("")
-
-            para_lines.extend(sentence_lines)
+            para_lines.extend(line_wrap)
 
         formatted_lines.extend(para_lines)
 
-        # Add empty line spacing between double-spaced paragraphs
+        # Add blank line between paragraphs (\n\n)
         if p_idx < len(paragraphs) - 1 and formatted_lines:
             formatted_lines.append("")
 
@@ -528,7 +518,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "It's strange how someone can mean everything to you once.\n\nAnd later become someone you wouldn't even know how to talk to."
+    quote_input = "Sometimes the smallest steps, they lead\nTo the biggest changes, you’ll surely heed.\n\nDon’t wait for the grand, the bold, the bright,\nJust take a small step, and find your light."
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,

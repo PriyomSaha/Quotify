@@ -48,7 +48,7 @@ jobs:
 
           quote_input = os.environ['QUOTE_INPUT']
           # Convert escaped newlines to real newlines
-          quote_input = quote_input.replace('\\\\n', '\n')
+          quote_input = quote_input.replace('\\n', '\n')
 
           print('='*70)
           print('⚡ MANUAL QUOTE POST — ALL SCHEDULER CHECKS BYPASSED')
