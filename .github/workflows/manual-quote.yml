@@ -1,0 +1,101 @@
+name: Manual Quote Post
+
+on:
+  workflow_dispatch:
+    inputs:
+      quote:
+        description: 'Quote text to post (use \\n for line breaks)'
+        required: true
+        type: string
+
+concurrency:
+  group: aesthetic-vibes-publisher
+  cancel-in-progress: false
+
+jobs:
+  post-quote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Post quote (manual — scheduler bypassed)
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PAGE_ID: ${{ secrets.PAGE_ID }}
+          PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
+          API_VERSION: ${{ secrets.API_VERSION }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          QUOTE_INPUT: ${{ github.event.inputs.quote }}
+        run: |
+          python -c "
+          import os
+          from ImageGeneration import create_neon_quote_image
+          from FBUpload import schedule_photo_after, post_to_instagram_from_fb_url
+
+          quote_input = os.environ['QUOTE_INPUT']
+          # Convert escaped newlines to real newlines
+          quote_input = quote_input.replace('\\\\n', '\n')
+
+          print('='*70)
+          print('⚡ MANUAL QUOTE POST — ALL SCHEDULER CHECKS BYPASSED')
+          print('='*70)
+          print(f'\nQuote:\n{quote_input}\n')
+
+          # Create image
+          print('🎨 Step 1/3: Creating neon image...')
+          create_neon_quote_image(
+              raw_text=quote_input,
+              template_path='template.jpg',
+              output_path='image.jpg'
+          )
+          print('✅ Image created\n')
+
+          # Upload to Facebook
+          print('📤 Step 2/3: Uploading to Facebook...')
+          fb_cdn_url = schedule_photo_after(
+              image_path='image.jpg',
+              caption=quote_input,
+              hours=0,
+              minutes=0
+          )
+          if not fb_cdn_url:
+              raise RuntimeError('Facebook upload did not return CDN URL')
+          print('✅ Facebook upload complete\n')
+
+          # Upload to Instagram
+          print('📱 Step 3/3: Publishing to Instagram...')
+          ig_result = post_to_instagram_from_fb_url(
+              fb_image_url=fb_cdn_url,
+              caption=quote_input
+          )
+          ig_post_id = ig_result.get('id', '')
+          if not ig_post_id:
+              raise RuntimeError(f'Instagram publish failed: {ig_result}')
+          print(f'✅ Instagram post complete: {ig_post_id}\n')
+
+          print('='*70)
+          print('🎉 QUOTE POSTED SUCCESSFULLY!')
+          print('='*70)
+          "
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f image.jpg ]; then
+            rm image.jpg
+            echo "🧹 Cleaned up image.jpg"
+          fi
