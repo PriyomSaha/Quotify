@@ -305,7 +305,7 @@ def create_neon_quote_image(
     # ============================================================
     # FONT SIZE
     # ============================================================
-    font_size = 25
+    font_size = 30
     font = load_font(font_size)
 
     line_spacing = round(font_size * 1.8)
