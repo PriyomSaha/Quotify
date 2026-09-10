@@ -305,7 +305,7 @@ def create_neon_quote_image(
     # ============================================================
     # FONT SIZE
     # ============================================================
-    font_size = 32
+    font_size = 25
     font = load_font(font_size)
 
     line_spacing = round(font_size * 1.8)
@@ -517,7 +517,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "Sometimes the smallest steps, they lead\nTo the biggest changes, you’ll surely heed.\n\nDon’t wait for the grand, the bold, the bright,\nJust take a small step, and find your light."
+    quote_input = "Sometimes you don't want advice.\n\nYou just want someone\nwho will say,\n\n' I know you're tired.\nYou don't have to explain.\nI can feel your silence '"
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,

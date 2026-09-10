@@ -962,7 +962,6 @@ def build_prompt(
 
     prompt = f"""STYLE:
 {build_style_prompt(event_mode=bool(event_instruction))}
-This fixed style only controls HOW it is drawn; it never changes WHAT is shown.
 
 STORY / SCENE (SOURCE OF TRUTH):
 {scene_description}
@@ -981,18 +980,15 @@ FOREGROUND DETAILS:
 {foreground}
 
 CINEMATIC COMPOSITION:
-Vertical 9:16, one continuous full-bleed shot.
+Vertical 9:16 full-bleed.
 {variation['camera']}, {variation['lens']}.
-Environment-dominant composition.
-The camera is physically far from the subject.
-Show the entire surrounding environment clearly.
-If a person is present, show the complete body at a small-to-medium scale,
-never a face close-up or portrait.
-The environment must occupy most of the frame.
-Use strong foreground, middle-ground and background depth.
-Do not crop the person or important environmental objects.
-No close-up, no medium close-up, no portrait framing.
-Full scene visible from a natural cinematic distance.
+Environment-dominant. Camera far from subject.
+Show entire environment. Person at small-to-medium scale,
+never close-up or portrait. Environment fills the frame.
+Strong foreground, middle-ground, background depth.
+Do not crop person or important objects.
+No close-up, medium close-up, or portrait.
+Full scene from natural cinematic distance.
 Detailed, sharp, cinematic movie still.
 
 STORY FIDELITY:
@@ -1002,7 +998,7 @@ actions. Do not introduce unrelated vehicles, objects, animals, buildings,
 or environments.
 
 NO TEXT:
-No text, letters, captions, logos, watermarks, signatures, frames or borders.
+No text, letters, captions, logos, watermarks, signatures, frames, borders.
 """
 
     return compact_prompt(prompt)
@@ -1043,6 +1039,8 @@ NSFW_REWRITE_PAIRS = [
     (r"\breflective and calm expression\b", "quiet, thoughtful mood"),
     (r"\bquietly watching\b|\bold watching\b", "viewing the scene"),
     (r"\bstanding\s+quietly\b", "standing calmly"),
+    (r"\bunbothered\b", "at ease"),
+    (r"\bcompletely relaxed\b", "peaceful and calm"),
 ]
 
 

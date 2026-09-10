@@ -15,7 +15,6 @@ BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
 
 OUTPUT_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ----------------------------
 # Gemini
@@ -26,89 +25,58 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-3.6-flash"
 
 # ----------------------------
-# Hugging Face
-# ----------------------------
-
-HF_TOKEN = os.getenv("HF_TOKEN")
-HF_TOKEN_2 = os.getenv("HF_TOKEN2")  # Optional backup token
-# HF_TOKEN_3 = os.getenv("HF_TOKEN_3")  # Optional backup token
-
-HF_MODEL = "black-forest-labs/FLUX.1-schnell"
-
-HF_PROVIDER = "fal-ai"
-
-# ----------------------------
-# Cloudflare (Fallback)
-# ----------------------------
-
-# CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID_1")
-# CF_TOKEN = os.getenv("CF_TOKEN_1")
-
-# CF_ACCOUNT_ID_2 = os.getenv("CF_ACCOUNT_ID_2")
-# CF_TOKEN_2 = os.getenv("CF_TOKEN_2")
-
-# CF_ACCOUNT_ID_3 = os.getenv("CF_ACCOUNT_ID_3")
-# CF_TOKEN_3 = os.getenv("CF_TOKEN_3")
-
-# CF_ACCOUNT_ID_4 = os.getenv("CF_ACCOUNT_ID_4")
-# CF_TOKEN_4 = os.getenv("CF_TOKEN_4")
-
-# CF_ACCOUNT_ID_5 = os.getenv("CF_ACCOUNT_ID_5")
-# CF_TOKEN_5 = os.getenv("CF_TOKEN_5")
-
-# CF_ACCOUNT_ID_6 = os.getenv("CF_ACCOUNT_ID_6")
-# CF_TOKEN_6 = os.getenv("CF_TOKEN_6")
-
-# CF_MODEL = "@cf/black-forest-labs/flux-1-schnell"
-
-# ----------------------------
-# ElevenLabs
-# ----------------------------
-
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-
-ELEVEN_MODEL = "eleven_multilingual_v2"
-
-VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
-
-# ----------------------------
 # Video
 # ----------------------------
 
-# Check if running on Render (low-resource environment)
-IS_RENDER = os.getenv("RENDER") is not None
+# Perfect 9:16 ratio for Instagram Reels
+VIDEO_WIDTH = 1080
+VIDEO_HEIGHT = 1920  # 1080x1920 is 9:16
+FPS = 30
+BITRATE = "8000k"
+FILM_GRAIN_INTENSITY = 18
+FONT_SIZE = 70
+LOGO_FONT_SIZE = 18
+BOTTOM_MARGIN = 60  # Watermark gap from bottom (shifted down a few cm)
+TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 500  # Subtitles ~1 line below the middle
 
-if IS_RENDER:
-    # Ultra-optimized settings for Render's 512MB RAM limit
-    # Maintaining 9:16 aspect ratio for Instagram Reels
-    VIDEO_WIDTH = 540  # Much lower resolution to fit in 512MB RAM
-    VIDEO_HEIGHT = 960  # 540x960 maintains 9:16 ratio
-    FPS = 20  # Lower FPS for memory efficiency
-    BITRATE = "2000k"  # Lower bitrate
-    FILM_GRAIN_INTENSITY = 0  # Disable grain (memory intensive)
-    IMAGE_ZOOM = 1.0  # Disable Ken Burns zoom (CPU/memory intensive)
-    # Scale font size proportionally (540/1080 = 0.5x scale)
-    FONT_SIZE = 32  # Half of 64 for half resolution
-    LOGO_FONT_SIZE = 18  # Half of 45
-    BOTTOM_MARGIN = 80  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = 100
-else:
-    # High quality settings for local/powerful servers
-    # Perfect 9:16 ratio for Instagram Reels
-    VIDEO_WIDTH = 1080
-    VIDEO_HEIGHT = 1920  # 1080x1920 is 9:16
-    FPS = 30
-    BITRATE = "8000k"
-    FILM_GRAIN_INTENSITY = 18
-    IMAGE_ZOOM = 1.08
-    FONT_SIZE = 70
-    LOGO_FONT_SIZE = 18
-    BOTTOM_MARGIN = 60  # Watermark gap from bottom (shifted down a few cm)
-    TOP_MARGIN = VIDEO_HEIGHT // 2 + FONT_SIZE - 500  # Subtitles ~1 line below the middle
+DARK_OVERLAY_OPACITY = 0.20
 
-IMAGE_FADE = 0.4
-DARK_OVERLAY_OPACITY = 32
-ZOOM_DIRECTION = "in"
+# ----------------------------
+# Cinematic Effects (tweakable)
+# ----------------------------
+
+# Ken Burns zoom range (1.0 = no zoom)
+ZOOM_MIN = 1.00
+ZOOM_MAX = 1.08
+
+# Film grain added to every frame
+FILM_GRAIN_AMOUNT = 20
+
+# Crossfade duration in seconds between scene images
+CROSSFADE_DURATION = 0.5
+
+# End card (profile) duration in seconds after narration finishes
+END_CARD_DURATION = 3.0
+
+# Subtitle readability / timing
+SUBTITLE_MIN_DURATION = 1.5   # Minimum seconds a subtitle stays visible
+SUBTITLE_HOLD_TIME = 0.8       # Extra seconds kept on screen after speech ends
+SUBTITLE_FADE = 0.2            # Subtitle fade in/out duration (seconds)
+SUBTITLE_MAX_WIDTH_OFFSET = 120  # Pixels subtracted from video width (text area)
+SUBTITLE_PADDING = 30          # Padding around subtitle text
+SUBTITLE_LINE_SPACING = 12     # Vertical gap between subtitle lines
+
+# End card colors/layout
+END_CARD_BG_COLOR = (20, 20, 30)  # Dark blue-grey
+PROFILE_PIC_SIZE = 400            # End card profile image size (px)
+PROFILE_FADE_IN = 0.3             # Profile photo fade-in duration (seconds)
+
+# Watermark (logo) appearance
+WATERMARK_IMG_HEIGHT = 300        # Watermark strip height (px)
+WATERMARK_OPACITY = 0.50          # Watermark opacity (0.0 - 1.0)
+WATERMARK_GLOW_ALPHA = 200        # Glow layer alpha (0 - 255)
+WATERMARK_TEXT_ALPHA = 230        # Main text alpha (0 - 255)
+WATERMARK_GLOW_BLUR_RADIUS = 10   # Glow blur radius (px)
 
 # ----------------------------
 # Music
@@ -122,9 +90,7 @@ MUSIC_VOLUME = 0.15
 # Subtitle
 # ----------------------------
 
-# FONT = str((BASE_DIR.parent / "Fonts" / "Montserrat" / "static" / "Montserrat-Light.ttf"))
 FONT = str((BASE_DIR.parent / "Fonts" / "Caveat" / "static" / "Caveat-Regular.ttf"))
-# FONT_SIZE is set above based on IS_RENDER (32 for low-res, 64 for high-res)
 
 FONT_COLOR = "white"
 
@@ -132,36 +98,12 @@ STROKE_COLOR = "black"
 
 STROKE_WIDTH = 3
 
-# BOTTOM_MARGIN is set above based on IS_RENDER (shifts watermark down from the bottom edge)
-# TOP_MARGIN places subtitles ~1 line below the video midpoint
-
 # ----------------------------
 # LOGO
 # ----------------------------
 LOGO_TEXT = "FB : Aesthetic Vibes \nIG: @aesthetic_o_vibes"
 LOGO_FONT = str((BASE_DIR.parent / "Fonts" / "Kaushan_Script" / "KaushanScript-Regular.ttf"))
-# LOGO_FONT_SIZE is set above based on IS_RENDER (22 for low-res, 45 for high-res)
 LOGO_FONT_COLOR = (255, 32, 117)  # #FF2075 - bright pink
-
-# ----------------------------
-# Generation
-# ----------------------------
-
-SCENE_COUNT = 6
-
-MIN_WORDS = 80
-
-MAX_WORDS = 120
-
-# ----------------------------
-# Retry
-# ----------------------------
-
-MAX_RETRIES = 3
-
-RETRY_DELAY = 5
-
-REQUEST_TIMEOUT = 120
 
 # ----------------------------
 # Upload to Social Media

@@ -11,6 +11,19 @@ import random
 # topic list to Gemini on every request.
 HUMAN_TRUTH_ANGLES = [
     "people slowly growing apart",
+    "being the person everyone comes to but nobody checks on",
+    "saying I'm fine because explaining feels exhausting",
+    "realizing your parents are getting older",
+    "missing childhood without realizing it was your last simple time",
+    "having friends you love but no longer talk to",
+    "feeling alone even when surrounded by people",
+    "being tired of always understanding everyone else",
+    "realizing you became an adult without noticing",
+    "missing a version of your family that no longer exists",
+    "being proud of how far you came but still missing your old life",
+    "watching everyone get busy and slowly becoming strangers",
+    "being everyone's safe place but having nowhere to put your own feelings",
+    "realizing some conversations only survive because you keep starting them",
     "missing who someone used to be",
     "friendships fading without a fight",
     "outgrowing an old version of yourself",
@@ -21,6 +34,13 @@ HUMAN_TRUTH_ANGLES = [
     "childhood friendships changing with adulthood",
     "things ending without a clear goodbye",
     "having many contacts but few real connections",
+    "wanting to call someone but knowing the conversation has changed",
+    "checking your phone hoping for one particular message",
+    "realizing someone knows everything about you but no longer knows you",
+    "outgrowing a friendship without anyone doing anything wrong",
+    "going home after laughing with everyone and suddenly feeling empty",
+    "pretending not to care because caring feels embarrassing",
+    "having things you want to tell someone but never finding the right time",
     "realizing you cannot return to how things were",
     "caring about someone who no longer feels familiar",
     "noticing someone has changed without knowing when",
@@ -61,28 +81,97 @@ Generate content for the specified type ONLY. Return ONLY the content - no label
 # ALL PROMPT TEMPLATES
 ALL_PROMPTS = {
 
-    "HUMAN_TRUTH": """
-Write ONE original quote about a quiet truth people commonly experience.
+"HUMAN_TRUTH": """
+Write ONE original, highly relatable quote about a feeling or situation
+people experience in everyday life but rarely know how to put into words.
 
-Start with an ordinary human observation.
-Reveal what that behavior really means emotionally.
-End with a subtle, memorable realization.
+The goal is:
+"I have felt this, but I never knew how to say it."
 
-Make it feel personally experienced but universally relatable.
+STRUCTURE:
+- Start with something ordinary and recognizable.
+- Then reveal the feeling hidden underneath it.
+- End with a simple realization that makes the reader pause.
+- The emotional payoff should feel natural, not forced.
 
-Use simple everyday English.
-Deep but natural.
-Emotional but controlled.
-Sound like a private realization, not a motivational quote.
+BEST TOPICS:
+friendships slowly changing,
+parents getting older,
+growing apart,
+feeling alone around people,
+being the strong one,
+missing old versions of people,
+childhood memories,
+family expectations,
+being tired but saying "I'm fine",
+outgrowing friendships,
+one-sided relationships,
+silently losing interest,
+checking on people who never check on you,
+wanting to talk but staying quiet,
+realizing life is changing,
+missing a time rather than a person,
+feeling like everyone is moving ahead,
+being surrounded by people but feeling alone,
+things ending without a proper goodbye.
 
-Avoid clichés, advice, therapy language, dramatic poetry,
-forced metaphors, and generic statements.
+WRITING STYLE:
+- VERY SIMPLE everyday English.
+- Write like a real person talking to a close friend.
+- Short sentences.
+- No fancy vocabulary.
+- No complicated philosophy.
+- No therapy language.
+- No motivational-speaker language.
+- No dramatic poetry.
+- No forced sadness.
+- No clichés.
+- No common Instagram quote phrases.
 
-12–32 words.
-No quotation marks, hashtags, or emojis.
+IMPORTANT:
+Do not simply name an emotion.
+SHOW the feeling through a small, recognizable situation.
+
+BAD:
+"Sometimes people change and you have to let them go."
+
+BETTER:
+"Sometimes you don't miss the person.
+You miss how easy it used to be to talk to them."
+
+The quote should feel like a private thought that someone accidentally
+said out loud.
+
+SHAREABILITY:
+Make the reader think:
+"That's exactly how I feel."
+"I need to send this to someone."
+"I couldn't explain this before."
+"This is literally my life."
+
+Do NOT use words like:
+journey, healing, broken, soul, universe, scars, storm, chapter,
+energy, toxic, closure, peace, strength, destiny unless absolutely necessary.
+
+Do not give advice.
+Do not tell the reader what they should do.
+Do not force a positive ending.
+
+20-35 words.
+2-4 short lines/paragraphs.
+No quotation marks.
+No hashtags.
+No emojis.
+
+Before returning:
+1. Ask whether a normal person would immediately understand it.
+2. Ask whether someone could relate it to their own life.
+3. Remove anything that sounds like a quote-page cliché.
+4. Make the last line the strongest line.
+
 Return ONLY the quote.
 """,
-    
+        
     "MOTIVATIONAL_INSPIRING": """
 Generate an ENERGETIC, uplifting motivational message that inspires action and positivity.
 

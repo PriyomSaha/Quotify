@@ -47,7 +47,7 @@ from .config import (
     VIDEO_WIDTH,
     VIDEO_HEIGHT,
     FPS,
-    IMAGE_FADE,
+    DARK_OVERLAY_OPACITY,
     BITRATE,
     BACKGROUND_MUSIC,
     MUSIC_VOLUME,
@@ -61,20 +61,32 @@ from .config import (
     LOGO_FONT,
     LOGO_FONT_COLOR,
     LOGO_TEXT,
-    LOGO_FONT_SIZE
+    LOGO_FONT_SIZE,
+    # Cinematic effects
+    ZOOM_MIN,
+    ZOOM_MAX,
+    FILM_GRAIN_AMOUNT,
+    CROSSFADE_DURATION,
+    END_CARD_DURATION,
+    SUBTITLE_MIN_DURATION,
+    SUBTITLE_HOLD_TIME,
+    SUBTITLE_FADE,
+    SUBTITLE_MAX_WIDTH_OFFSET,
+    SUBTITLE_PADDING,
+    SUBTITLE_LINE_SPACING,
+    END_CARD_BG_COLOR,
+    PROFILE_PIC_SIZE,
+    PROFILE_FADE_IN,
+    WATERMARK_IMG_HEIGHT,
+    WATERMARK_OPACITY,
+    WATERMARK_GLOW_ALPHA,
+    WATERMARK_TEXT_ALPHA,
+    WATERMARK_GLOW_BLUR_RADIUS,
 )
-
 
 # ============================================================
 # CINEMATIC SETTINGS
 # ============================================================
-
-DARK_OVERLAY_OPACITY = 0.40
-FILM_GRAIN_AMOUNT = 20
-ZOOM_MIN = 1.00
-ZOOM_MAX = 1.08  # Enable subtle zoom
-CROSSFADE_DURATION = 0.5  # Crossfade duration in seconds
-END_CARD_DURATION = 3.0  # Profile template shown after narration finishes
 
 
 # ============================================================
@@ -295,11 +307,11 @@ class ReelComposer:
             # Calculate extended duration for better readability
             base_duration = end_time - start_time
             
-            # Minimum visible time should be 1.5 seconds (comfortable reading speed)
-            min_duration = 1.5
+            # Minimum visible time (comfortable reading speed)
+            min_duration = SUBTITLE_MIN_DURATION
             
-            # Add hold time: keep subtitle visible 0.8s after speech ends
-            hold_time = 0.8
+            # Add hold time: keep subtitle visible after speech ends
+            hold_time = SUBTITLE_HOLD_TIME
             
             # Calculate extended duration
             extended_duration = max(min_duration, base_duration + hold_time)
@@ -340,8 +352,8 @@ class ReelComposer:
             )
             .with_effects(
                 [
-                    vfx.CrossFadeIn(0.2),
-                    vfx.CrossFadeOut(0.2),
+                    vfx.CrossFadeIn(SUBTITLE_FADE),
+                    vfx.CrossFadeOut(SUBTITLE_FADE),
                 ]
             )
         )
@@ -353,9 +365,9 @@ class ReelComposer:
         Renders subtitle using Pillow and returns the path to a temporary PNG.
         """
 
-        max_width = VIDEO_WIDTH - 120
-        padding = 30
-        line_spacing = 12
+        max_width = VIDEO_WIDTH - SUBTITLE_MAX_WIDTH_OFFSET
+        padding = SUBTITLE_PADDING
+        line_spacing = SUBTITLE_LINE_SPACING
 
         font = ImageFont.truetype(FONT, FONT_SIZE)
 
@@ -452,7 +464,7 @@ class ReelComposer:
         return temp.name
 
 
-    def create_end_card(self, duration=2.0):
+    def create_end_card(self, duration=END_CARD_DURATION):
         """
         Creates an end card with profile picture.
         Shows for the black screen duration at the end.
@@ -478,7 +490,7 @@ class ReelComposer:
         profile_clip = ImageClip(str(profile_pic_path))
         
         # Resize to fit nicely (e.g., 400x400 circle in center)
-        profile_size = 400
+        profile_size = PROFILE_PIC_SIZE
         profile_clip = profile_clip.with_effects([
             Resize(new_size=(profile_size, profile_size))
         ])
@@ -486,7 +498,7 @@ class ReelComposer:
         # Create dark background
         background = ColorClip(
             size=(VIDEO_WIDTH, VIDEO_HEIGHT),
-            color=(20, 20, 30)  # Dark blue-grey
+            color=END_CARD_BG_COLOR  # Dark blue-grey
         ).with_duration(duration)
         
         # Position profile pic in center
@@ -494,7 +506,7 @@ class ReelComposer:
         profile_clip = profile_clip.with_position("center")
         
         # Add fade in effect
-        profile_clip = profile_clip.with_effects([vfx.CrossFadeIn(0.3)])
+        profile_clip = profile_clip.with_effects([vfx.CrossFadeIn(PROFILE_FADE_IN)])
         
         # Composite background + profile pic
         end_card = CompositeVideoClip(
@@ -517,7 +529,7 @@ class ReelComposer:
         
         # Create larger image for glow effect
         img_width = VIDEO_WIDTH
-        img_height = 300
+        img_height = WATERMARK_IMG_HEIGHT
         
         # Create transparent image
         img = Image.new('RGBA', (img_width, img_height), (0, 0, 0, 0))
@@ -543,14 +555,14 @@ class ReelComposer:
         glow_draw = ImageDraw.Draw(glow_img)
         
         # Draw glow (will be blurred)
-        glow_color_alpha = (*LOGO_FONT_COLOR, 200)
+        glow_color_alpha = (*LOGO_FONT_COLOR, WATERMARK_GLOW_ALPHA)
         glow_draw.text((text_x, text_y), LOGO_TEXT, font=font, fill=glow_color_alpha)
         
         # Apply Gaussian blur for glow effect
-        glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=10))
+        glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=WATERMARK_GLOW_BLUR_RADIUS))
         
         # Draw main text on original image
-        text_color_alpha = (*LOGO_FONT_COLOR, 230)
+        text_color_alpha = (*LOGO_FONT_COLOR, WATERMARK_TEXT_ALPHA)
         draw.text((text_x, text_y), LOGO_TEXT, font=font, fill=text_color_alpha)
         
         # Composite glow and text
@@ -569,7 +581,7 @@ class ReelComposer:
         y_position = VIDEO_HEIGHT - img_height - BOTTOM_MARGIN
         watermark_clip = watermark_clip.with_position((0, y_position))
         
-        watermark_clip = watermark_clip.with_opacity(0.50)
+        watermark_clip = watermark_clip.with_opacity(WATERMARK_OPACITY)
         
         # Add fade out effect if needed (syncs with image fade)
         if add_fade_out:
@@ -738,18 +750,8 @@ class ReelComposer:
 
         )
         
-        # Detect if running on Render (low resources)
-        import os
-        is_render = os.getenv("RENDER") is not None
-        
-        # Use memory-efficient settings on Render
-        if is_render:
-            logger.info("🔧 Using Render-optimized settings (lower memory usage)")
-            threads = 2
-            preset = "ultrafast"  # Faster, less memory
-        else:
-            threads = 4
-            preset = "medium"
+        threads = 4
+        preset = "medium"
         
         logger.info(f"Video settings: {VIDEO_WIDTH}x{VIDEO_HEIGHT} @ {FPS}fps, bitrate={BITRATE}")
         logger.info(f"Render preset: {preset}, threads: {threads}")
