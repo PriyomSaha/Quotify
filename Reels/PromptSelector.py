@@ -16,6 +16,7 @@ Changes:
 import json
 import os
 import random
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,8 @@ from pathlib import Path
 # Local no-repeat memory (like gender_tracker uses)
 # ---------------------------------------------------------------------------
 
+HOOK_CACHE_FILE = Path.home() / ".cache" / "reel_hook_tracker.json"
+HOOK_HISTORY_LIMIT = 30
 CACHE_FILE = Path.home() / ".cache" / "reel_prompt_tracker.json"
 
 
@@ -41,6 +44,143 @@ def _save_cache(cache: dict) -> None:
         CACHE_FILE.write_text(json.dumps(cache), encoding="utf-8")
     except OSError:
         pass
+
+
+def _load_hook_history() -> list:
+    try:
+        if HOOK_CACHE_FILE.exists():
+            cached = json.loads(HOOK_CACHE_FILE.read_text(encoding="utf-8"))
+            if isinstance(cached, list):
+                hooks = [
+                    " ".join(str(item).split()).lower()
+                    for item in cached
+                    if " ".join(str(item).split())
+                ]
+                return hooks[-HOOK_HISTORY_LIMIT:]
+    except (OSError, ValueError):
+        pass
+    return []
+
+
+def _prune_recent_hook_lines(hook_lines: list, hook_history: list) -> list:
+    """
+    Keep only hook lines that are meaningfully different from recent reels.
+    A line is rejected when it duplicates a recent hook, starts/ends like one,
+    or shares most of its substance with one.
+    """
+    fresh_lines = []
+
+    for hook in hook_lines:
+        candidate = " ".join(str(hook).split()).lower()
+        if not candidate:
+            continue
+
+        dominated = False
+        candidate_words = set(re.findall(r"[a-z']+", candidate))
+        for old in hook_history[-HOOK_HISTORY_LIMIT:]:
+            old_words = set(re.findall(r"[a-z']+", old))
+            if (
+                candidate == old
+                or candidate.startswith(old[:25])
+                or old.startswith(candidate[:25])
+            ):
+                dominated = True
+                break
+            if candidate_words and old_words:
+                shared = candidate_words & old_words
+                shorter = min(len(candidate_words), len(old_words))
+                if shorter >= 3 and len(shared) / shorter >= 0.7:
+                    dominated = True
+                    break
+
+        if not dominated:
+            fresh_lines.append(" ".join(str(hook).split()))
+
+    return fresh_lines
+
+
+def _save_hook_history(hook_history: list) -> None:
+    try:
+        HOOK_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        HOOK_CACHE_FILE.write_text(
+            json.dumps(hook_history[-HOOK_HISTORY_LIMIT:], ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def _format_recent_hooks(hook_history: list, pinned_block=None) -> str:
+    """
+    Human-readable block of recent hook lines shown to Gemini as the
+    do-not-repeat list.
+
+    pinned_block: when a retry reuses a pinned selection, pass the block
+    text stored in LAST_PROMPT_SELECTION so the retry prompt is byte-for-
+    byte identical (no new formatting drift).
+    """
+    if pinned_block:
+        return str(pinned_block)
+
+    recent = [
+        " ".join(str(h).split())
+        for h in (hook_history or [])
+        if str(h).strip()
+    ][-12:]
+
+    if not recent:
+        return (
+            "(no recent hooks recorded - this is the first reel, so write "
+            "anything fresh)"
+        )
+
+    numbered = "\n".join(f"- {h}" for h in recent)
+    return (
+        "RECENT HOOKS (never reuse, paraphrase, or echo any of these):\n"
+        f"{numbered}"
+    )
+
+
+def _remember_hook_line(hook_line: str) -> None:
+    hook = " ".join(str(hook_line or "").split())
+    if not hook:
+        return
+    hook_history = _load_hook_history()
+    hook_history.append(hook.lower())
+    _save_hook_history(hook_history)
+
+
+def remember_generated_story(story_payload=None, hook_line: str = ""):
+    """Persist a generated hook so future hooks remain different."""
+    story = _parse_story_payload(story_payload)
+    hook = " ".join(str(story.get("hook_line") or hook_line or "").split())
+    if hook:
+        _remember_hook_line(hook)
+
+
+def _hooks_have_substance(lines: list) -> bool:
+    """Ensure hook beats are not generic fragments such as 'breath'."""
+    for line in lines:
+        words = [word for word in re.findall(r"[a-zA-Z']+", line) if len(word) > 2]
+        if len(words) < 3:
+            return False
+    return True
+
+
+def _split_hook_lines(hook_line: str) -> list:
+    raw = (hook_line or "").replace("\\n", "\n")
+    lines = [part.strip() for part in raw.splitlines() if part.strip()]
+    cleaned = [re.sub(r"^\W+|\W+$", "", part) for part in lines]
+    return [part for part in cleaned if part]
+
+
+def _parse_story_payload(raw_story) -> dict:
+    if isinstance(raw_story, dict):
+        return raw_story
+    try:
+        return json.loads(str(raw_story or ""))
+    except (ValueError, TypeError):
+        return {}
 
 
 def _pick_no_repeat(pool, history_key, cache, history_len=2):
@@ -72,7 +212,7 @@ EMOTIONAL ARC - every piece must travel three beats:
 2. RECOGNITION - one specific everyday detail that makes the viewer think "that's exactly me."
 3. PAYOFF - the last 1-2 lines are the strongest thought: worth saving, screen captioning, or sending to someone.
 
-ALWAYS include at least ONE sensory or desi detail somewhere: rain on glass, chai steam, a ringing phone, a metro bus, a mother's voice, a home-cooked smell, a train window, an exam hall, a hostel night. Make it feel lived, not invented.
+ALWAYS include at least ONE sensory or desi detail somewhere, and ROTATE which one - do not use rain in every reel: chai steam rising, a phone ringing at the wrong hour, the smell of home-cooked food, morning light through a window, a bus window in motion, a mother's voice, a street dog at the gate, dust dancing in sunlight, the whistle of a pressure cooker, a train pulling in, the hum of a ceiling fan, a cold breeze off a river, an auto-rickshaw ride, the first bite of something familiar, footsteps on a quiet staircase. Make it feel lived, not invented.
 
 HOOK RULES (the first line must stop the scroll):
 - 4-9 words, curiosity or emotion in under 2 seconds.
@@ -141,7 +281,7 @@ ARCHETYPES = [
             "a friend's voice after years of silence",
             "a small habit that quietly saved a hard month",
         ],
-        "visual_modes": ["nostalgic_room", "rainy_city", "object", "female", "male", "architecture"],
+        "visual_modes": ["bridge", "nostalgic_room", "female", "male", "landscape", "friends_or_couple"],
         "voice": "deep_male",
     },
     {
@@ -167,7 +307,7 @@ ARCHETYPES = [
             "the small habits that actually built you",
             "the roads you did not take also shaped you",
         ],
-        "visual_modes": ["nature", "object", "abstract_emotion", "architecture", "nostalgic_room"],
+        "visual_modes": ["landscape", "bridge", "object", "abstract_emotion", "nostalgic_room", "architecture"],
         "voice": "calm_male",
     },
     {
@@ -193,7 +333,7 @@ ARCHETYPES = [
             "being everyone's listener has a cost only you notice",
             "wanting peace is not the same as giving up",
         ],
-        "visual_modes": ["abstract_emotion", "rainy_city", "object", "architecture", "nature"],
+        "visual_modes": ["abstract_emotion", "bridge", "architecture", "landscape", "female", "male"],
         "voice": "calm_male",
     },
     {
@@ -219,7 +359,7 @@ ARCHETYPES = [
             "letting go made room for the right thing",
             "peace is not absence of pain but growth around it",
         ],
-        "visual_modes": ["nature", "animal_life", "rainy_city", "object", "female"],
+        "visual_modes": ["landscape", "bridge", "female", "friends_or_couple", "nature", "object"],
         "voice": "warm_female",
     },
     {
@@ -245,7 +385,7 @@ ARCHETYPES = [
             "a letter to yourself before you healed",
             "a letter to the love that taught you how to leave",
         ],
-        "visual_modes": ["nostalgic_room", "object", "rainy_city", "male", "female", "architecture"],
+        "visual_modes": ["nostalgic_room", "landscape", "bridge", "female", "male", "object"],
         "voice": "soft_female",
     },
     {
@@ -271,7 +411,7 @@ ARCHETYPES = [
             "hostel food and the nights it held",
             "the Diwali smell of oil lamps anda window seat",
         ],
-        "visual_modes": ["rainy_city", "nature", "architecture", "nostalgic_room", "animal_life"],
+        "visual_modes": ["bridge", "rainy_city", "landscape", "nostalgic_room", "friends_or_couple", "animal_life"],
         "voice": "soft_female",
     },
     {
@@ -297,7 +437,7 @@ ARCHETYPES = [
             "a Sunday with no plans at all",
             "small wins that happiness is made of",
         ],
-        "visual_modes": ["nature", "animal_life", "rainy_city", "object", "nostalgic_room"],
+        "visual_modes": ["landscape", "bridge", "nature", "friends_or_couple", "animal_life", "object"],
         "voice": "warm_female",
     },
     {
@@ -330,7 +470,7 @@ ARCHETYPES = [
             "the last quiet morning of a love that had already ended",
             "the way you talk to yourself when no one is listening",
         ],
-        "visual_modes": ["nostalgic_room", "rainy_city", "abstract_emotion", "object", "architecture", "female"],
+        "visual_modes": ["nostalgic_room", "bridge", "landscape", "female", "abstract_emotion", "friends_or_couple"],
         "voice": "soft_female",
     },
     {
@@ -360,7 +500,7 @@ ARCHETYPES = [
             "forgiving yourself for surviving wrong",
             "the first morning you woke up and did not check the old messages",
         ],
-        "visual_modes": ["nature", "rainy_city", "abstract_emotion", "object", "animal_life"],
+        "visual_modes": ["landscape", "bridge", "nature", "abstract_emotion", "friends_or_couple", "object"],
         "voice": "warm_female",
     },
 ]
@@ -488,7 +628,7 @@ def _pick_archetype(cache, forced_format=None):
     return key
 
 
-def get_prompt_for_current_time(pinned=None):
+def get_prompt_for_current_time(pinned=None, story_payload=None):
     """
     Build the full Gemini prompt for today's reel.
 
@@ -502,11 +642,15 @@ def get_prompt_for_current_time(pinned=None):
     path), the EXACT same archetype/theme/hook/ending is reused and the
     no-repeat tracker is left untouched, so a retry never burns a slot or
     breaks the poem/prose alternation.
+
+    story_payload: optional returned story used to store the chosen hook line
+    so future reels stay unique.
     """
     global LAST_ARCHETYPE_INFO, LAST_PROMPT_SELECTION
 
     content = get_content_type_for_time()
     weekday_label, weekday_direction = get_weekday_direction()
+    hook_history = _load_hook_history()
 
     cache = _load_cache()
 
@@ -516,6 +660,8 @@ def get_prompt_for_current_time(pinned=None):
         theme = pinned["theme"]
         hook = pinned["hook"]
         ending = pinned["ending"]
+        hook_instruction = pinned.get("hook_instruction", hook)
+        recent_hooks_block = _format_recent_hooks(hook_history, pinned.get("hook_block"))
     else:
         forced = os.getenv("FORCE_REEL_FORMAT", "").strip().lower()
         forced = forced if forced in ("poem", "prose") else None
@@ -526,6 +672,11 @@ def get_prompt_for_current_time(pinned=None):
         theme = _pick_no_repeat(selected["themes"], "themes", cache, history_len=5)
         hook = random.choice(selected["hook_styles"])
         ending = random.choice(selected["ending_styles"])
+        hook_instruction = hook
+
+        # Build the do-not-repeat block ONCE and store it, so the retry
+        # path reuses the exact same text (identical prompt).
+        recent_hooks_block = _format_recent_hooks(hook_history)
 
         # Update local memory
         cache.setdefault("archetypes", []).append(selected_key)
@@ -539,7 +690,9 @@ def get_prompt_for_current_time(pinned=None):
             "key": selected_key,
             "theme": theme,
             "hook": hook,
+            "hook_instruction": hook_instruction,
             "ending": ending,
+            "hook_block": recent_hooks_block,
         }
 
     LAST_ARCHETYPE_INFO = {
@@ -574,7 +727,22 @@ THEME / MOMENT TO WRITE ABOUT:
 
 
 HOOK STYLE (first line must follow this):
-{hook}
+{hook_instruction}
+
+HOOK UNIQUENESS – READ CAREFULLY:
+The hook must be short, fresh, unique, and relatable – never a line that has
+appeared before. Do NOT reuse phrases from these recent hooks or write close
+paraphrases of them:
+{recent_hooks_block}
+
+RULES FOR THIS HOOK:
+- 1-2 short lines maximum; each line UNDER 45 characters including spaces.
+- Original, concrete, emotional, and in three or fewer short beats.
+- DO NOT use the same opening line as the narration below.
+- DO NOT quote the narration's first spoken line.
+- A fresh visual metaphor is welcome, but avoid overused reels language.
+- If a draft matches any of the recent hooks above in words, rhythm, or idea,
+  discard it and write a stronger, completely different one.
 
 
 ENDING STYLE:

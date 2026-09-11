@@ -62,6 +62,7 @@ END_CARD_DURATION = 3.0
 SUBTITLE_MIN_DURATION = 1.5   # Minimum seconds a subtitle stays visible
 SUBTITLE_HOLD_TIME = 0.8       # Extra seconds kept on screen after speech ends
 SUBTITLE_FADE = 0.2            # Subtitle fade in/out duration (seconds)
+SUBTITLE_AUDIO_DELAY = 3.0     # Delay (seconds) before narration/subtitles start (hook plays alone first)
 SUBTITLE_MAX_WIDTH_OFFSET = 120  # Pixels subtracted from video width (text area)
 SUBTITLE_PADDING = 30          # Padding around subtitle text
 SUBTITLE_LINE_SPACING = 12     # Vertical gap between subtitle lines

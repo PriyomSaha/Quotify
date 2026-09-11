@@ -36,59 +36,28 @@ from .video_generation import create_reel
 # VOLUME = "+10%"
 
 # ============================================================================
-# VOICE PROFILES - rotate by reel archetype so the voice never goes stale
+# VOICE CONFIGURATION - Microsoft Edge-TTS (single fixed voice)
 # ============================================================================
-# Keyed by the "voice" value the PromptSelector archetypes emit:
-#   calm_male     - default brand voice (the original Ryan)
-#   deep_male     - deeper, older stories / real talk
-#   warm_female   - hope, letters, quiet joy
-#   soft_female   - Indian-accented warmth, desi slice-of-life
-VOICE_PROFILES = {
-    "calm_male": {
-        "name": "Ryan (en-GB calm)",
-        "voice": "en-GB-RyanNeural",
-        "rate": "-15%",
-        "pitch": "-5Hz",
-        "volume": "+10%",
-    },
-    "deep_male": {
-        "name": "Guy (en-US deep)",
-        "voice": "en-US-GuyNeural",
-        "rate": "-12%",
-        "pitch": "-4Hz",
-        "volume": "+10%",
-    },
-    "warm_female": {
-        "name": "Sonia (en-GB warm)",
-        "voice": "en-GB-SoniaNeural",
-        "rate": "-10%",
-        "pitch": "+0Hz",
-        "volume": "+10%",
-    },
-    "soft_female": {
-        "name": "Neerja (en-IN warm)",
-        "voice": "en-IN-NeerjaNeural",
-        "rate": "-12%",
-        "pitch": "+0Hz",
-        "volume": "+10%",
-    },
-}
+# 'en-GB-RyanNeural' - Natural, calm British male voice
+FIXED_VOICE_NAME = "RyanNeural"
+EDGE_VOICE = "en-GB-RyanNeural"
+VOICE_RATE = "-15%"   # Slower for thoughtful delivery
+VOICE_PITCH = "-5Hz"  # Slightly lower for depth
+VOLUME = "+10%"
+
+# Kept for backwards compatibility with callers that pass an archetype
+# voice key (e.g. story.get("voice")). IGNORED - only Ryan is used.
+def get_voice_profile(voice_key: Optional[str] = None) -> dict:
+    """Return the single fixed Ryan voice profile (archetype keys are ignored)."""
+    return {
+        "name": FIXED_VOICE_NAME,
+        "voice": EDGE_VOICE,
+        "rate": VOICE_RATE,
+        "pitch": VOICE_PITCH,
+        "volume": VOLUME,
+    }
 
 DEFAULT_VOICE_KEY = "calm_male"
-
-def get_voice_profile(voice_key: Optional[str] = None) -> dict:
-    """Return the voice profile for an archetype, falling back to the default."""
-    if voice_key and voice_key in VOICE_PROFILES:
-        return VOICE_PROFILES[voice_key]
-    return VOICE_PROFILES[DEFAULT_VOICE_KEY]
-
-
-# Backwards-compatible aliases (the original default voice):
-FIXED_VOICE_NAME = VOICE_PROFILES[DEFAULT_VOICE_KEY]["name"]
-EDGE_VOICE = VOICE_PROFILES[DEFAULT_VOICE_KEY]["voice"]
-VOICE_RATE = VOICE_PROFILES[DEFAULT_VOICE_KEY]["rate"]
-VOICE_PITCH = VOICE_PROFILES[DEFAULT_VOICE_KEY]["pitch"]
-VOLUME = VOICE_PROFILES[DEFAULT_VOICE_KEY]["volume"]
 
 # FIXED_VOICE_NAME = "ChristopherNeural"
 # EDGE_VOICE = "en-US-ChristopherNeural"
@@ -123,18 +92,20 @@ def generate_voice(text: str, output_file="output.mp3", voice: Optional[str] = N
     Synchronous wrapper matching your pipeline layout exactly.
     Safe for low-spec cloud deployments like Render & GitHub Actions.
 
+    Always uses the single fixed Ryan voice. The ``voice`` argument is
+    accepted for signature compatibility and IGNORED.
+
     Args:
-        voice: optional archetype voice key ("deep_male", "warm_female", ...).
-              None = the classic Ryan calm default.
+        voice: ignored (kept so existing callers don't break).
     """
-    profile = get_voice_profile(voice)
+    profile = get_voice_profile()
     try:
         asyncio.run(generate_voice_edge(text, output_file, profile))
         print("=" * 50)
         print("Voice Generated Successfully (Edge-TTS Cloud)")
         print("=" * 50)
         print(f"Voice profile : {profile['name']}")
-        print(f"Voice key     : {voice or DEFAULT_VOICE_KEY}")
+        print(f"Voice         : {profile['voice']}")
         print(f"Saved To      : {output_file}\n")
         return output_file
     except Exception as e:
@@ -144,7 +115,7 @@ def generate_voice(text: str, output_file="output.mp3", voice: Optional[str] = N
 # MAIN EXECUTION PIPELINE
 # ==========================================================
 if __name__ == "__main__":
-    timestamp = "20260802_135618"
+    timestamp = "20260911_134942"
     OUTPUT_DIR = Path("output")
     story_file = Path(f"/Users/priyom_saha/Documents/QuotesGenerator/Reels/output/{timestamp}/story.json")
     audio_path = Path(f"/Users/priyom_saha/Documents/QuotesGenerator/Reels/output/{timestamp}/voiceover_{EDGE_VOICE}.mp3")

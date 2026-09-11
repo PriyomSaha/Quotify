@@ -62,6 +62,7 @@ from .config import (
     LOGO_FONT_COLOR,
     LOGO_TEXT,
     LOGO_FONT_SIZE,
+    SUBTITLE_AUDIO_DELAY,
     # Cinematic effects
     ZOOM_MIN,
     ZOOM_MAX,
@@ -105,6 +106,7 @@ class ReelComposer:
             self.audio_path = narration_audio
             self.output = output_file
             self.hook_line = (hook_line or "").strip()
+            self.audio_delay = float(SUBTITLE_AUDIO_DELAY or 0.0)
             
             logger.info(f"Loading audio file: {narration_audio}")
             self.audio = AudioFileClip(narration_audio)
@@ -130,63 +132,67 @@ class ReelComposer:
             raise
 
 
-    def create_image_clip(self, image_path: str, add_fade_in: bool = True, add_fade_out: bool = False):
+    def create_image_clip(self, image_path: str, add_fade_in: bool = True, add_fade_out: bool = False, duration=None):
         """
         Creates:
         - Image fitting
         - Slow zoom
         - Dark cinematic layer
         - Fade transitions
+
+        duration: optional override (first clip holds longer for the
+        hook-only cold open before narration begins).
         """
         from moviepy.video.fx.Resize import Resize
         from moviepy.video.fx.CrossFadeIn import CrossFadeIn
         from moviepy.video.fx.CrossFadeOut import CrossFadeOut
-        
+
         image = ImageClip(image_path)
-        
+
         # Get original dimensions
         img_width = image.size[0]
         img_height = image.size[1]
-        
+
         # Calculate scale to fit video dimensions
         scale_height = VIDEO_HEIGHT / img_height
         scale_width = VIDEO_WIDTH / img_width
         scale = max(scale_height, scale_width)  # Ensure image covers entire frame
-        
+
         # Resize image to cover frame
         new_width = int(img_width * scale)
         new_height = int(img_height * scale)
         image = image.with_effects([Resize(new_size=(new_width, new_height))])
-        
-        image = image.with_duration(self.image_duration)
+
+        clip_duration = float(duration) if duration else self.image_duration
+        image = image.with_duration(clip_duration)
         image = image.with_fps(FPS)
-        
+
         # KEN BURNS EFFECT (Slow Zoom)
         if ZOOM_MAX > 1.0:
             zoom_amount = random.uniform(ZOOM_MIN, ZOOM_MAX)
             zoom_direction = random.choice(["in", "out"])
-            
+
             def resize_function(t):
-                progress = t / self.image_duration
+                progress = t / clip_duration
                 if zoom_direction == "in":
                     scale_factor = 1.0 + (zoom_amount - 1.0) * progress
                 else:
                     scale_factor = zoom_amount - (zoom_amount - 1.0) * progress
-                
+
                 scaled_w = int(new_width * scale_factor)
                 scaled_h = int(new_height * scale_factor)
                 return (scaled_w, scaled_h)
-            
+
             image = image.with_effects([Resize(resize_function)])
-        
+
         image = image.with_position("center")
-        
+
         # DARK CINEMATIC OVERLAY
         dark_layer = ColorClip(
             size=(VIDEO_WIDTH, VIDEO_HEIGHT),
             color=(0, 0, 0)
         )
-        dark_layer = dark_layer.with_duration(self.image_duration)
+        dark_layer = dark_layer.with_duration(clip_duration)
         dark_layer = dark_layer.with_opacity(DARK_OVERLAY_OPACITY)
         
         # COMBINE IMAGE + SHADE
@@ -222,24 +228,32 @@ class ReelComposer:
         clips = []
         watermark_clips = []  # Store watermarks separately
 
+        # Cold open: the hook shows alone for the first `audio_delay` seconds
+        # (no narration, no subtitles). The first image holds through the hook,
+        # every later scene shifts by the same delay so narration, subtitles
+        # and visuals all start together at t = audio_delay.
+        delay = self.audio_delay
+
         for idx, image in enumerate(self.images):
             is_first = (idx == 0)
             is_last = (idx == len(self.images) - 1)
-            
+
             # First clip: NO fade in (starts immediately), fade out
             # Middle clips: fade out only (overlaps with next clip's fade in)
             # Last clip: no fade out
             clip = self.create_image_clip(
                 image,
                 add_fade_in=False,  # No fade-in for first image
-                add_fade_out=not is_last
+                add_fade_out=not is_last,
+                # First image holds longer so the hook plays over it silently
+                duration=(self.image_duration + delay) if is_first else None
             )
             
             # Set start time with overlap for crossfade
             if idx == 0:
                 start_time = 0
             else:
-                start_time = idx * self.image_duration - CROSSFADE_DURATION
+                start_time = idx * self.image_duration - CROSSFADE_DURATION + delay
             
             clip = clip.with_start(start_time)
             clips.append(clip)
@@ -247,13 +261,13 @@ class ReelComposer:
             # Create watermark for this image (syncs with image fades)
             watermark = self.create_watermark_for_image(
                 start_time=start_time,
-                duration=self.image_duration,
+                duration=self.image_duration + (delay if is_first else 0),
                 add_fade_out=not is_last  # Fade out when image fades out
             )
             watermark_clips.append(watermark)
         
-        # Calculate total duration
-        total_duration = len(self.images) * self.image_duration - (len(self.images) - 1) * CROSSFADE_DURATION
+        # Calculate total duration (visuals cover the hook hold + narration)
+        total_duration = delay + len(self.images) * self.image_duration - (len(self.images) - 1) * CROSSFADE_DURATION
         
         # Composite all clips together
         final_clip = CompositeVideoClip(
@@ -316,8 +330,8 @@ class ReelComposer:
             if _same_as_hook(text):
                 continue
 
-            start_time = subtitle["start"]
-            end_time = subtitle["end"]
+            start_time = subtitle["start"] + self.audio_delay
+            end_time = subtitle["end"] + self.audio_delay
             
             # Calculate extended duration for better readability
             base_duration = end_time - start_time
@@ -333,7 +347,7 @@ class ReelComposer:
             
             # Check if next subtitle exists to avoid overlap
             if i + 1 < len(self.subtitles):
-                next_start = self.subtitles[i + 1]["start"]
+                next_start = self.subtitles[i + 1]["start"] + self.audio_delay
                 # Don't overlap into next subtitle's start time
                 max_duration = next_start - start_time
                 duration = min(extended_duration, max_duration)
@@ -552,8 +566,11 @@ class ReelComposer:
 
     def create_hook_overlay(self):
         """
-        Returns an ImageClip with the pinned hook line for the first ~1.8s,
-        positioned in the top third. Returns None when no hook_line exists.
+        Returns an ImageClip with the pinned hook line shown ALONE at the
+        start (cold open): first `audio_delay` seconds (default 3.0s) with
+        no narration and no subtitles, positioned in the exact vertical
+        middle of the frame. It fades out right as narration begins.
+        Returns None when no hook_line exists.
         """
         hook = getattr(self, "hook_line", "") or ""
         hook = hook.strip()
@@ -562,11 +579,22 @@ class ReelComposer:
 
         image_path = self._render_hook_image(hook)
 
+        # Center the hook vertically using the real rendered size. The
+        # narration text sits at TOP_MARGIN (upper area); the middle of the
+        # frame is well below it, so the two can't overlap.
+        with Image.open(image_path) as _img:
+            _hook_w, _hook_h = _img.size
+        hook_y = max(int((VIDEO_HEIGHT - _hook_h) // 2), 0)
+
+        # Hook owns the whole cold open; it fades out exactly when the
+        # narration voice + subtitles begin.
+        hook_duration = float(self.audio_delay) if self.audio_delay > 0 else 1.8
+
         clip = (
             ImageClip(image_path)
             .with_start(0)
-            .with_duration(1.8)
-            .with_position(("center", int(VIDEO_HEIGHT * 0.16)))
+            .with_duration(hook_duration)
+            .with_position(("center", hook_y))
             .with_effects([
                 vfx.CrossFadeIn(0.15),
                 vfx.CrossFadeOut(0.4),
@@ -713,6 +741,10 @@ class ReelComposer:
         beyond narration for the end-card/profile-template section.
         """
         narration = self.audio
+        # Cold open: narration stays silent for the first `audio_delay`
+        # seconds (the hook plays alone), then the voice starts.
+        if self.audio_delay > 0:
+            narration = narration.with_start(self.audio_delay)
         audio_tracks = [narration]
         target_duration = total_duration or self.duration
         
@@ -799,13 +831,14 @@ class ReelComposer:
         print("Creating subtitles...")
         subtitle_track = self.create_subtitle_track()
 
-        # Pinned hook overlay (first ~1.8s) keeps the first 2 seconds strong
+        # Cold-open hook overlay (audio_delay seconds) keeps the first 3s strong
         hook_clip = self.create_hook_overlay()
 
-        # Make sure the story visuals run until narration is complete.
+        # Make sure the story visuals run through the hook hold + narration.
         # The profile template/end card should appear only after this point.
-        if abs(image_track.duration - self.duration) > 0.05:
-            image_track = image_track.with_duration(self.duration)
+        expected_visual_end = self.audio_delay + self.duration
+        if abs(image_track.duration - expected_visual_end) > 0.05:
+            image_track = image_track.with_duration(expected_visual_end)
 
         print(f"Adding profile end card after narration ({END_CARD_DURATION:.1f}s)...")
         end_card = self.create_end_card(duration=END_CARD_DURATION)
@@ -813,7 +846,7 @@ class ReelComposer:
             [image_track, end_card],
             method="compose"
         )
-        final_video_duration = self.duration + END_CARD_DURATION
+        final_video_duration = expected_visual_end + END_CARD_DURATION
 
         print("Creating audio...")
         audio_track = self.create_audio_track(total_duration=final_video_duration)
@@ -834,7 +867,7 @@ class ReelComposer:
         # Add subtitles on top
         composite_clips.extend(subtitle_track)
 
-        # Add pinned hook overlay on top (first ~1.8s)
+        # Add cold-open hook overlay on top (audio_delay seconds)
         if hook_clip is not None:
             composite_clips.append(hook_clip)
         

@@ -37,6 +37,46 @@ client = genai.Client(
 
 MODEL = GEMINI_MODEL
 
+# ---------------------------------------------------------------------------
+# HOOK MEMORY — the hook line must feel brand new every reel, never recycled.
+# Storage is owned by PromptSelector (reel_hook_tracker.json) so the ban list
+# is identical everywhere in the pipeline; these are thin delegates.
+# ---------------------------------------------------------------------------
+
+
+def load_recent_hooks(limit=15):
+    """Return the most recent hook lines (newest last) from PromptSelector."""
+    try:
+        return _PS._load_hook_history()[-limit:]
+    except Exception:
+        return []
+
+
+def save_hook_line(hook):
+    """Append a generated hook line to PromptSelector's history."""
+    try:
+        _PS._remember_hook_line(hook)
+    except Exception:
+        pass
+
+
+def build_hook_rule():
+    """Prompt rule forbidding reuse of recent hooks (uniqueness engine)."""
+    hooks = load_recent_hooks()
+    base = (
+        "- hook_line must be SHORT and punchy: 3-7 words, max 9. It must stop a "
+        "scrolling thumb in under a second — a hint, a question, or a flash of "
+        "the feeling, never a summary and never a full sentence of the narration"
+    )
+    if not hooks:
+        return base
+    recent = "; ".join(f'"{h}"' for h in hooks[-10:])
+    return (
+        f"{base}\n"
+        f"- hook_line must feel BRAND NEW — never reuse or closely imitate the "
+        f"wording, structure or opening pattern of these recent hooks: {recent}"
+    )
+
 def build_generation_prompt(pinned_key=None) -> str:
 
     # Get the complete prompt (returns a string, not a dict).
@@ -88,6 +128,9 @@ nostalgic memory instead.
         )
 
     # Note: content info is already printed in PromptSelector.get_prompt_for_current_time()
+
+    # Uniqueness rule for the hook line (never repeat recent hooks)
+    rule_hooks = build_hook_rule()
     # No need to import or call get_content_type_for_time again
 
     # Add JSON output format requirements to the prompt
@@ -139,12 +182,13 @@ nostalgic memory instead.
         JSON RULES
 
         - narration must contain 80-110 words
-        - hook_line must be 4-9 words: the punchiest scroll-stopping line from the narration, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
+        - hook_line must be 3-7 words (max 9): the punchiest scroll-stopping teaser for THIS story, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
         - the first spoken line of narration must be DIFFERENT from hook_line; the hook is a teaser, the narration opens with the moment
         - captions.caption_line must be the single most shareable line in the narration (may repeat the hook or the final line)
         - captions.cta must be one gentle human question inviting comments or saves (e.g. "Who felt this tonight?"); use "" if no good question comes to mind
         {rule_category}
         {rule_event}
+        {rule_hooks}
         - exactly 6 visual scenes
         - each scene must represent one clear visual moment
         - every scene must directly match the narration
@@ -154,8 +198,24 @@ nostalgic memory instead.
         - if no character is needed, keep the emotional world consistent through place, color, weather, objects, or nature
         - scenes must be illustration-friendly and visually varied
         - avoid repeating the same location unless intentional
-        - avoid sunset as the default; use varied natural aesthetics like rain, morning mist, moonlight, cloudy afternoon, warm indoor lamps, forest shade, blue hour, monsoon reflections, snow, or soft dawn
-        - avoid making every scene a lonely man looking at sunset
+        - PERSONS FIRST: at least 4 of the 6 scenes must include ONE ordinary
+          person - a boy, a girl, or an older person - doing a simple everyday
+          task (crossing a bridge, waiting at a window, walking a street,
+          reading, carrying groceries, holding a phone, tying a shoelace,
+          watering plants). The scenery is the beautiful background; the person
+          in an honest moment is the subject.
+        - the remaining 1-2 scenes may be scenery-only (landscape, place, object)
+          for breathing room, but never an empty weather shot with no person
+        - keep the same person's identity (age and quiet style) across all scenes
+          when a character mode is used; vary only the task and the place
+        - vary locations strongly: bridge over a river, mountain road, railway
+          platform, cafe window, village field, city street, seaside, library,
+          rooftop garden, forest path, bus stop - never the same twice
+        - avoid sunset as the default AND avoid rain as the default; rotate
+          aesthetics: morning mist, golden afternoon, blue hour, moonlight,
+          cloudy evening, warm indoor lamps, fog, snow, autumn leaves, lakeside
+          breeze, heat haze, streetlights, soft dawn
+        - never let the whole reel feel like one weather or one place
 
         ==================================================
         CHARACTER RULES
@@ -163,11 +223,15 @@ nostalgic memory instead.
         {visual_instruction}
 
         General rules:
-        - Ordinary people only if the selected visual mode needs people
+        - PERSONS ARE THE HERO: most scenes (4-5 of 6) feature one ordinary
+          person - boy, girl, or older - doing a relatable everyday task. The
+          selected visual mode tells you HOW the person appears; follow it.
         - No celebrities, no fantasy characters, no glamour portraits, no selfies
         - Use realistic, simple, relatable clothes when humans appear
         - Prefer medium/wide cinematic shots over close-up faces
-        - Include natural or meaningful elements: plants, rain, birds, fields, rivers, windows, books, cups, letters, lamps, roads, balconies, buses, libraries, train stations
+        - Keep beautiful scenery everywhere: plants, bridges, rivers, fields,
+          mountains, windows, books, cups, letters, lamps, roads, balconies,
+          buses, libraries, train stations
         - Avoid stereotypes and clichés
 
         ==================================================
@@ -244,6 +308,8 @@ def generate_story_json():
 
             data = parse_story_json(interaction.output_text)
             annotate_story(data)
+            # Remember this hook so the next reel never reuses/imitates it
+            save_hook_line(data.get("hook_line"))
             return data
 
         except Exception as exc:
