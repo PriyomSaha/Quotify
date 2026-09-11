@@ -147,7 +147,8 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     print("🎤 Step 3 : Voice Generation...\n")
     generate_voice(
         text=story["narration"],
-        output_file=str(audio_path)
+        output_file=str(audio_path),
+        voice=story.get("voice") or None,
     )
     
     # Save story (both for new and existing, to ensure it's in right location)
@@ -169,7 +170,8 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     create_reel(
         images=images,
         narration_audio=str(audio_path),
-        output_file=str(video_file)
+        output_file=str(video_file),
+        hook_line=story.get("hook_line"),
     )
     
     print("\n✅ Reel Generation Completed")
@@ -195,6 +197,7 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
             title=story.get("title", ""),
             fallback_text=story.get("narration", "")[:100],
             event=event,
+            story=story,
         )
         upload_results = upload_to_social_media(video_file, caption, output_folder)
         result["upload_results"] = upload_results

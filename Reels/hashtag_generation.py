@@ -3,192 +3,71 @@ from typing import Optional, Dict, Any
 
 from event_detector import build_event_caption_prefix, get_event_hashtags
 
-# Always included
+# Always included (brand + niche anchors)
 FIXED_HASHTAGS = [
+    "#AestheticVibes",
     "#LifeQuotes",
-    "#LifeLessons",
-    "#Reels",
-    "#AestheticVibes"
+    "#LifeLessons"
 ]
 
-# Random pool
-HASHTAG_POOL = [
-    "#Quotes",
-    "#Quote",
-    "#QuoteOfTheDay",
-    "#DailyQuote",
-    "#DailyQuotes",
-    "#QuoteLife",
-    "#InspirationalQuotes",
-    "#MotivationalQuotes",
-    "#PositiveQuotes",
-    "#WisdomQuotes",
-    "#PowerfulQuotes",
-    "#MeaningfulQuotes",
-    "#DeepQuotes",
-    "#FamousQuotes",
-    "#QuoteLover",
-    "#Words",
-    "#WordsOfWisdom",
-    "#WiseWords",
-    "#Thoughts",
-    "#DeepThoughts",
-    "#DailyWisdom",
-    "#Life",
-    "#LifeAdvice",
-    "#LifeJourney",
-    "#LifeMotivation",
-    "#LifeInspiration",
-    "#LifeTips",
-    "#Advice",
-    "#GoodAdvice",
-    "#Motivation",
-    "#Inspiration",
-    "#Success",
-    "#SuccessMindset",
-    "#Growth",
-    "#GrowthMindset",
-    "#SelfGrowth",
-    "#PersonalGrowth",
-    "#SelfImprovement",
-    "#SelfDevelopment",
-    "#BetterYourself",
-    "#Mindset",
-    "#PositiveMindset",
-    "#PositiveThinking",
-    "#Discipline",
-    "#Habits",
-    "#Focus",
-    "#Consistency",
-    "#Family",
-    "#FamilyFirst",
-    "#FamilyLove",
-    "#FamilyTime",
-    "#FamilyGoals",
-    "#Parents",
-    "#Parenting",
-    "#ParentingTips",
-    "#Relationship",
-    "#Relationships",
-    "#Love",
-    "#Respect",
-    "#Trust",
-    "#Kindness",
-    "#Gratitude",
-    "#Togetherness",
-    "#Home",
-    "#Marriage",
-    "#HealthyRelationships",
-    "#MentalHealth",
-    "#InnerPeace",
-    "#Peace",
-    "#Healing",
-    "#HealingJourney",
-    "#SelfCare",
-    "#SelfLove",
-    "#EmotionalHealing",
-    "#Mindfulness",
-    "#CalmMind",
-    "#Hope",
-    "#Happiness",
-    "#Joy",
-    "#Positivity",
-    "#BeKind",
-    "#DailyMotivation",
-    "#NeverGiveUp",
-    "#KeepGoing",
-    "#DreamBig",
-    "#BelieveInYourself",
-    "#HardWork",
-    "#SuccessQuotes",
-    "#GoalSetter",
-    "#WorkHard",
-    "#MindsetMatters",
-    "#StayStrong",
-    "#BeBetter",
-    "#WinTheDay",
-    "#Inspirational",
-    "#Inspire",
-    "#InspireDaily",
-    "#InspirationalWords",
-    "#DailyInspiration",
-    "#Encouragement",
-    "#Faith",
-    "#Believe",
-    "#Purpose",
-    "#Vision",
-    "#Deep",
-    "#RealTalk",
-    "#Truth",
-    "#Reality",
-    "#TruthOfLife",
-    "#Emotions",
-    "#Feelings",
-    "#Heart",
-    "#Soul",
-    "#InnerStrength",
-    "#Reflection",
-    "#SelfReflection",
-    "#LessonsLearned",
-    "#WakeUpCall",
-    "#InstagramReels",
-    "#ReelsInstagram",
-    "#Reel",
-    "#ReelVideo",
-    "#ReelCreator",
-    "#ReelLife",
-    "#Explore",
-    "#ExplorePage",
-    "#ExploreMore",
-    "#Viral",
-    "#Trending",
-    "#TrendingReels",
-    "#ContentCreator",
-    "#Creators",
-    "#DailyContent",
-    "#ShortVideo",
-    "#VideoOfTheDay",
-    "#Productivity",
-    "#Goals",
-    "#GoalSetting",
-    "#Leadership",
-    "#BusinessMindset",
-    "#Entrepreneur",
-    "#Winning",
-    "#Ambition",
-    "#DisciplineEqualsFreedom",
-    "#LearnEveryDay",
-    "#KeepLearning",
-    "#DailyReminder",
-    "#DailyThought",
-    "#Reminder",
-    "#SimpleLiving",
-    "#HealthyMind",
-    "#PositiveVibes",
-    "#GoodVibes",
-    "#Humble",
-    "#Wisdom",
-    "#Character",
-    "#RespectEveryone",
-    "#Humanity",
-    "#KindnessMatters",
-    "#LiveBetter",
-    "#LiveInspired",
-    "#BeYourBest",
-    "#LifeIsBeautiful",
-    "#ChooseKindness",
-    "#StayPositive",
-    "#BeHappy",
+# Curated niche pool - relevance >> spam. These are the tags that actually
+# carry your real audience (South Asian, healing, deep-thoughts) into
+# saves/shares/explore. The old pool's "#Viral/#Explore/#Trending" spam
+# actively hurts niche relevance signals, so it is no longer used.
+NICHE_HASHTAGS = [
+    "#deepthoughts",
+    "#healingjourney",
+    "#innerpeace",
+    "#selflove",
+    "#selflovejourney",
+    "#selfcare",
+    "#mentalhealthmatters",
+    "#mentalwellness",
+    "#soulfulvibes",
+    "#emotional",
+    "#deepfeelings",
+    "#relatable",
+    "#relatablequotes",
+    "#quotestoliveby",
+    "#quotestoremember",
+    "#wordsforwomen",
+    "#wordsforher",
+    "#southasiangirls",
+    "#southasiancreator",
+    "#desilife",
+    "#desicontent",
+    "#monsoonvibes",
+    "#chaiandthoughts",
+    "#desivibes",
+    "#reelsindia",
+    "#reelsinstagram",
+    "#quietreflections",
+    "#healingmind",
+    "#wordsfromtheheart",
+    "#southasianstories",
+    "#morningquotes",
+    "#growthjourney",
+    "#lettinggo",
+    "#boundaries",
+    "#mindset",
+    "#calmquotes",
+    "#quietmoments",
+    "#dailyquotes",
+    "#quoteoftheday",
 ]
 
-
-def generate_hashtags(min_count=20, max_count=23, event: Optional[Dict[str, Any]] = None):
+def generate_hashtags(
+    min_count=8,
+    max_count=12,
+    event: Optional[Dict[str, Any]] = None,
+):
     """
-    Returns a string of 20-23 hashtags.
-    Always includes:
-        #LifeQuotes
-        #LifeLessons
-        #Reels
+    Returns a string of 8-12 niche-first hashtags.
+
+    Always includes the fixed brand anchors, then fills from the curated
+    # niche pool.
+    pool. The old 20-23 tag spam (including #Viral / #Explore / #Trending) is
+    gone - 8-12 relevant tags perform better for saves, shares and explore.
     """
 
     event_tags = get_event_hashtags(event)
@@ -201,7 +80,7 @@ def generate_hashtags(min_count=20, max_count=23, event: Optional[Dict[str, Any]
         max_count = min_count
 
     total = random.randint(min_count, max_count)
-    available_pool = [tag for tag in HASHTAG_POOL if tag not in fixed_tags]
+    available_pool = [tag for tag in NICHE_HASHTAGS if tag not in fixed_tags]
     random_count = min(total - len(fixed_tags), len(available_pool))
 
     random_tags = random.sample(
@@ -215,28 +94,60 @@ def generate_hashtags(min_count=20, max_count=23, event: Optional[Dict[str, Any]
     return " ".join(hashtags)
 
 
+# ---------------------------------------------------------------------------
+# CTA BANK - rotate so the feed never asks the same call twice
+# ---------------------------------------------------------------------------
+
+CTA_BANK = [
+    "Save this for the day you need it.",
+    "Send this to someone who needs to hear it.",
+    "What did this bring back for you?",
+    "Who does this sound like? Share it with them.",
+    "Paste this where you keep the words that matter.",
+    "If this found you, it was meant to find you.",
+    "Comment your own story - this community reads every word.",
+    "Tag the friend you grew up with the most.",
+    "Read it once. Then read it again, slowly.",
+    "Which line stayed with you? Drop it below.",
+]
+
+
 def build_reel_caption(
     title: str = "",
     fallback_text: str = "",
     max_title_chars: int = 300,
     event: Optional[Dict[str, Any]] = None,
+    story: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
-    Build a Meta-safe reel caption with hashtags clearly appended.
+    Build a Meta-safe reel caption with:
+      1st line: the strongest line (hook_line > caption_line > title)
+      2nd: a rotating soft call-to-action (or the story's own CTA)
+      3rd: 8-12 niche hashtags
 
-    Keep only two line breaks between title and hashtags. Too many blank lines
-    can make logs/social previews look like only the title was sent.
+    Keeps only clean line breaks between blocks.
     """
-    clean_title = (title or fallback_text or "Aesthetic Vibes").strip()
-    clean_title = " ".join(clean_title.split())[:max_title_chars].strip()
+    story = story or {}
+    hook_line = (story.get("hook_line") or "").strip()
+    caps = story.get("captions")
+    if not isinstance(caps, dict):
+        caps = {}
+    caption_line = (caps.get("caption_line") or "").strip()
+    cta = (caps.get("cta") or "").strip()
+    cta = cta or random.choice(CTA_BANK)
+
+    first_line = (
+        hook_line or caption_line or title or fallback_text or "Aesthetic Vibes"
+    )
+    first_line = " ".join(first_line.split())[:max_title_chars].strip()
 
     event_prefix = build_event_caption_prefix(event)
-    if event_prefix and event_prefix.lower() not in clean_title.lower():
-        clean_title = f"{event_prefix}: {clean_title}"
+    if event_prefix and event_prefix.lower() not in first_line.lower():
+        first_line = f"{event_prefix}: {first_line}"
 
     hashtags = generate_hashtags(event=event).strip()
 
-    return f"{clean_title}\n\n{hashtags}"
+    return f"{first_line}\n\n{cta}\n\n{hashtags}"
 
 
 if __name__ == "__main__":

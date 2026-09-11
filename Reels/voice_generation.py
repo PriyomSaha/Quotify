@@ -1,3 +1,5 @@
+from typing import Optional
+
 import asyncio
 from datetime import datetime
 import json
@@ -33,11 +35,60 @@ from .video_generation import create_reel
 # VOICE_PITCH = "-2Hz"
 # VOLUME = "+10%"
 
-FIXED_VOICE_NAME = "RyanNeural"
-EDGE_VOICE = "en-GB-RyanNeural"
-VOICE_RATE = "-15%"
-VOICE_PITCH = "-5Hz"
-VOLUME = "+10%"
+# ============================================================================
+# VOICE PROFILES - rotate by reel archetype so the voice never goes stale
+# ============================================================================
+# Keyed by the "voice" value the PromptSelector archetypes emit:
+#   calm_male     - default brand voice (the original Ryan)
+#   deep_male     - deeper, older stories / real talk
+#   warm_female   - hope, letters, quiet joy
+#   soft_female   - Indian-accented warmth, desi slice-of-life
+VOICE_PROFILES = {
+    "calm_male": {
+        "name": "Ryan (en-GB calm)",
+        "voice": "en-GB-RyanNeural",
+        "rate": "-15%",
+        "pitch": "-5Hz",
+        "volume": "+10%",
+    },
+    "deep_male": {
+        "name": "Guy (en-US deep)",
+        "voice": "en-US-GuyNeural",
+        "rate": "-12%",
+        "pitch": "-4Hz",
+        "volume": "+10%",
+    },
+    "warm_female": {
+        "name": "Sonia (en-GB warm)",
+        "voice": "en-GB-SoniaNeural",
+        "rate": "-10%",
+        "pitch": "+0Hz",
+        "volume": "+10%",
+    },
+    "soft_female": {
+        "name": "Neerja (en-IN warm)",
+        "voice": "en-IN-NeerjaNeural",
+        "rate": "-12%",
+        "pitch": "+0Hz",
+        "volume": "+10%",
+    },
+}
+
+DEFAULT_VOICE_KEY = "calm_male"
+
+def get_voice_profile(voice_key: Optional[str] = None) -> dict:
+    """Return the voice profile for an archetype, falling back to the default."""
+    if voice_key and voice_key in VOICE_PROFILES:
+        return VOICE_PROFILES[voice_key]
+    return VOICE_PROFILES[DEFAULT_VOICE_KEY]
+
+
+# Backwards-compatible aliases (the original default voice):
+FIXED_VOICE_NAME = VOICE_PROFILES[DEFAULT_VOICE_KEY]["name"]
+EDGE_VOICE = VOICE_PROFILES[DEFAULT_VOICE_KEY]["voice"]
+VOICE_RATE = VOICE_PROFILES[DEFAULT_VOICE_KEY]["rate"]
+VOICE_PITCH = VOICE_PROFILES[DEFAULT_VOICE_KEY]["pitch"]
+VOLUME = VOICE_PROFILES[DEFAULT_VOICE_KEY]["volume"]
 
 # FIXED_VOICE_NAME = "ChristopherNeural"
 # EDGE_VOICE = "en-US-ChristopherNeural"
@@ -55,34 +106,36 @@ def clean_and_slow_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-async def generate_voice_edge(text: str, output_file: str):
-    """
-    Asynchronous runner to communicate with the free Edge-TTS servers.
-    """
+async def generate_voice_edge(text: str, output_file: str, voice_profile: dict):
+    """Asynchronous runner to communicate with the free Edge-TTS servers."""
     paced_text = clean_and_slow_text(text)
-    
     communicate = edge_tts.Communicate(
-        text=paced_text, 
-        voice=EDGE_VOICE, 
-        rate=VOICE_RATE, 
-        pitch=VOICE_PITCH,
-        volume=VOLUME
+        text=paced_text,
+        voice=voice_profile["voice"],
+        rate=voice_profile["rate"],
+        pitch=voice_profile["pitch"],
+        volume=voice_profile["volume"]
     )
     await communicate.save(output_file)
 
-def generate_voice(text: str, output_file="output.mp3"):
+def generate_voice(text: str, output_file="output.mp3", voice: Optional[str] = None):
     """
     Synchronous wrapper matching your pipeline layout exactly.
     Safe for low-spec cloud deployments like Render & GitHub Actions.
+
+    Args:
+        voice: optional archetype voice key ("deep_male", "warm_female", ...).
+              None = the classic Ryan calm default.
     """
+    profile = get_voice_profile(voice)
     try:
-        asyncio.run(generate_voice_edge(text, output_file))
-        
+        asyncio.run(generate_voice_edge(text, output_file, profile))
         print("=" * 50)
         print("Voice Generated Successfully (Edge-TTS Cloud)")
         print("=" * 50)
-        print(f"Voice Locked : {FIXED_VOICE_NAME}")
-        print(f"Saved To     : {output_file}\n")
+        print(f"Voice profile : {profile['name']}")
+        print(f"Voice key     : {voice or DEFAULT_VOICE_KEY}")
+        print(f"Saved To      : {output_file}\n")
         return output_file
     except Exception as e:
         raise RuntimeError(f"Cloud Voice Generation Failed: {str(e)}")

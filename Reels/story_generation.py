@@ -16,24 +16,36 @@ pip install google-genai
 
 from typing import Dict, Any
 from google import genai
+from google.genai import types
 from .config import GEMINI_API_KEY, GEMINI_MODEL
-from .PromptSelector import get_prompt_for_current_time , BASE_INSTRUCTION
+from . import PromptSelector as _PS
+from .PromptSelector import get_prompt_for_current_time, BASE_INSTRUCTION
 from .gender_tracker import get_next_gender, get_gender_instruction
 from event_detector import CONTENT_REEL, build_reel_event_instruction, get_today_event
 import json
 import random
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Timeout in ms. Generating a full story JSON (narration + hook + captions
+# + 6 scenes + style) can take 30-90s; 120s is a generous ceiling so a dead
+# API fails with a clear message instead of hanging silently forever.
+REQUEST_TIMEOUT_MS = 120_000
+
+client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT_MS),
+)
 
 MODEL = GEMINI_MODEL
 
-def build_generation_prompt() -> str:
+def build_generation_prompt(pinned_key=None) -> str:
 
-    # Get the complete prompt (returns a string, not a dict)
-    final_prompt = get_prompt_for_current_time()
+    # Get the complete prompt (returns a string, not a dict).
+    # pinned_key lets a retry reuse the EXACT same archetype (no re-pick).
+    final_prompt = get_prompt_for_current_time(pinned=pinned_key)
     
-    # Pick a random visual mode
-    visual_mode = get_next_gender()
+    # Pick a visual mode from the archetype's preferred pool (diverse, no repeats)
+    _arch = getattr(_PS, "LAST_ARCHETYPE_INFO", None) or {}
+    visual_mode = get_next_gender(preferred_modes=_arch.get("visual_modes"))
     visual_instruction = get_gender_instruction(visual_mode)
 
     print(f"\n🎭 Visual mode for this reel: {visual_mode.upper()}")
@@ -44,7 +56,7 @@ def build_generation_prompt() -> str:
     event = get_today_event(content_type=CONTENT_REEL)
     event_instruction = build_reel_event_instruction(event) if event else ""
     event_override = ""
-    rule_category = "- narration must strictly follow the selected content category"
+    rule_category = "- narration must strictly follow the selected story type (archetype)"
     rule_event = (
         "- if SPECIAL DATE REEL MODE is present, the narration and scenes must "
         "feel connected to that occasion"
@@ -57,12 +69,11 @@ def build_generation_prompt() -> str:
 ==================================================
 EVENT DAY OVERRIDE — READ BEFORE WRITING
 ==================================================
-The base instructions above say "content is NOT a story", "Do not create
-events, places, characters or fictional situations". IGNORE all of those today.
-
-Today is {event_name}: write the 80-110 word nostalgic, first-person memory
-story described in SPECIAL DATE REEL MODE. The selected content category only
-sets the mood; it NEVER sets the subject. If the category (e.g. jokes, love
+Today is {event_name}. The occasion below overrides EVERYTHING in the base
+instruction: today's archetype, theme, hook, ending and mood are all set
+aside. Write the 80-110 word nostalgic, first-person memory story
+described in SPECIAL DATE REEL MODE. The selected story type only sets
+the mood; it NEVER sets the subject. If the story type (e.g. jokes, love
 drama, or generic wisdom) contradicts the occasion, choose the occasion's
 nostalgic memory instead.
         """
@@ -94,6 +105,11 @@ nostalgic memory instead.
         {{
             "content_type": "",
             "title": "",
+            "hook_line": "",
+            "captions": {{
+                "caption_line": "",
+                "cta": ""
+            }},
             "narration": "",
             "visual_style": {{
                 "art_style": "cinematic painterly editorial illustration",
@@ -123,6 +139,10 @@ nostalgic memory instead.
         JSON RULES
 
         - narration must contain 80-110 words
+        - hook_line must be 4-9 words: the punchiest scroll-stopping line from the narration, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
+        - the first spoken line of narration must be DIFFERENT from hook_line; the hook is a teaser, the narration opens with the moment
+        - captions.caption_line must be the single most shareable line in the narration (may repeat the hook or the final line)
+        - captions.cta must be one gentle human question inviting comments or saves (e.g. "Who felt this tonight?"); use "" if no good question comes to mind
         {rule_category}
         {rule_event}
         - exactly 6 visual scenes
@@ -175,67 +195,229 @@ nostalgic memory instead.
         """
 
 
+def annotate_story(data):
+    """
+    Fill optional fields used by the caption / voice / video steps so the rest
+    of the pipeline never depends on a field Gemini forgot.
+    """
+    info = getattr(_PS, "LAST_ARCHETYPE_INFO", None) or {}
+    data.setdefault("archetype", info.get("key"))
+    data.setdefault("voice", info.get("voice"))
+    data.setdefault("hook_line", "")
+    caps = data.get("captions")
+    if not isinstance(caps, dict):
+        caps = {}
+        data["captions"] = caps
+    caps.setdefault("caption_line", "")
+    caps.setdefault("cta", "")
+    return data
+
+
 def generate_story_json():
     """
-    Generate story JSON from Gemini, or use a local fallback if credentials are missing.
-    """
+    Generate story JSON from Gemini.
 
+    Retry behaviour:
+    - Attempt 1 uses the full prompt.
+    - If validation fails, one corrective retry with a fresh prompt.
+    - If both fail, returns a RANDOM varied fallback story so the fallback is
+      never the same canned text twice in a row.
+    """
     print("Generating story...")
 
-    # if client is None or not GEMINI_API_KEY:
-    #     print("GEMINI_API_KEY missing. Using demo story fallback.")
-    #     return get_demo_story_json()
+    max_attempts = 2
+    pinned_key = None
 
-    try:
-        prompt = build_generation_prompt()
+    for attempt in range(1, max_attempts + 1):
+        try:
+            prompt = build_generation_prompt(pinned_key=pinned_key)
 
-        interaction = client.interactions.create(
-            model=MODEL,
-            input=prompt
-        )
+            print("⏳ Asking Gemini to write the story... (takes 30-90s, please wait)")
 
-        if interaction.output_text is None:
-            raise ValueError("Gemini returned empty response.")
+            interaction = client.interactions.create(
+                model=MODEL,
+                input=prompt
+            )
 
-        return parse_story_json(interaction.output_text)
+            if interaction.output_text is None:
+                raise ValueError("Gemini returned empty response.")
 
-    except Exception as exc:
-        print(f"Gemini call failed: {exc}")
-        print("Using demo story fallback.")
-        return get_demo_story_json()
+            data = parse_story_json(interaction.output_text)
+            annotate_story(data)
+            return data
+
+        except Exception as exc:
+            print(f"\n⚠️  Generation attempt {attempt}/{max_attempts} failed: {exc}")
+            if attempt < max_attempts:
+                print("Retrying once with the same archetype...")
+                # Pin the same selection so the retry does NOT re-pick an
+                # archetype (which would waste the alternation slot).
+                pinned_key = getattr(_PS, "LAST_PROMPT_SELECTION", None)
+
+    print("\nUsing a random varied fallback story.")
+    return get_demo_story_json()
 
 
 def get_demo_story_json():
     """
-    Fallback demo story when Gemini API fails.
+    Fallback: a RANDOM story from a varied bank (never identical back-to-back),
+    with all optional fields (visual_style, character, captions) filled in.
     """
-    return {
-        "content_type": "QUIET_MEMORY",
-        "title": "The Things That Stay",
-        "narration": "Some memories do not need people inside them to feel alive. A cup left near the window. Rain touching the balcony plants. An old book opening by itself in the fan's wind. We think love disappears when life changes, but sometimes it only changes shape. It becomes the light on the floor, the song from another room, the empty chair we still do not move. The heart remembers quietly, even when the world keeps walking.",
-        "visual_style": {
-            "art_style": "cinematic painterly editorial illustration",
-            "palette": "soft earthy greens, warm lamp light, muted rain blues",
-            "lighting": "rainy window light and warm indoor glow",
-            "camera": "medium-wide poetic still frames",
-            "aspect_ratio": "9:16"
+    return _build_fallback(random.choice(_FALLBACK_STORIES))
+
+
+# ===========================================================================
+# FALLBACK STORY BANK - varied so a fallback is never identical
+# ===========================================================================
+
+_BASE_VISUAL_STYLE = {
+    "art_style": "cinematic painterly editorial illustration",
+    "palette": "soft muted earth tones with warm lamps and monsoon blues",
+    "lighting": "warm window light and soft indoor glow",
+    "camera": "medium-wide poetic still frames",
+    "aspect_ratio": "9:16",
+}
+
+_NO_CHARACTER = {"gender": "none", "age": "N/A", "hair": "N/A", "clothes": "N/A"}
+
+
+def _build_fallback(data):
+    data.setdefault("visual_style", dict(_BASE_VISUAL_STYLE))
+    data.setdefault("character", dict(_NO_CHARACTER))
+    data.setdefault("hook_line", "")
+    data.setdefault("captions", {"caption_line": "", "cta": ""})
+    return data
+
+
+_FALLBACK_STORIES = [
+    {
+        "content_type": "MICRO_STORY",
+        "title": "The Call You Almost Missed",
+        "archetype": "MICRO_STORY",
+        "voice": "deep_male",
+        "hook_line": "The call you almost missed.",
+        "captions": {
+            "caption_line": "Some calls simply say: I am still here.",
+            "cta": ""
         },
-        "visual_mode": "object",
-        "character": {
-            "gender": "none",
-            "age": "N/A",
-            "hair": "N/A",
-            "clothes": "N/A"
-        },
+        "narration": "That night my father called just to hear my voice. I almost did not answer. I said I was busy, but he only wanted two minutes. He asked about the weather, about food, about nothing at all. Yet his voice carried the whole house with it, the old chair, the running tap, my mother asking who it was. I realized I had not heard him in weeks. Some calls bring no news. They just walk you back to the door of home and make sure you still remember where it is.",
+        "visual_mode": "nostalgic_room",
         "scenes": [
-            "A half-full tea cup beside a rainy apartment window, balcony plants blurred outside",
-            "An old book open on a wooden table while curtain shadows move across the pages",
-            "A small lamp glowing beside a photo frame turned slightly away",
-            "Rain drops sliding down glass with city lights reflected softly in the background",
-            "An empty chair near a quiet window with fallen leaves on the floor",
-            "Morning light entering the same room, touching the tea cup and open book"
+            "A phone glowing on a wooden table at night, a finger about to decline the call",
+            "A dim kitchen with a running tap and a kettle on the stove",
+            "An old armchair by the window holding a folded shawl",
+            "A hallway with family photo frames lit by a single lamp",
+            "A phone on a bedside table just after being answered",
+            "Morning light on the same wooden table, the phone now quiet"
+        ]
+    },
+    {
+        "content_type": "REALITY_TALK",
+        "title": "Some Doors Close for Your Own Good",
+        "archetype": "REALITY_TALK",
+        "voice": "calm_male",
+        "hook_line": "Some doors close for your own good.",
+        "captions": {
+            "caption_line": "You are allowed to stop knocking.",
+            "cta": ""
+        },
+        "narration": "You cannot heal in the same place that keeps opening the wound. Letting go sounds cruel, but it is the kindest thing you can give yourself. Some doors only look like home. The people who truly see you do not need a loud announcement. They stay, they show up, they make tea without being asked. Closing a door is not losing. It is finally choosing the rooms where your presence means something. And the one who was meant to stay is already inside.",
+        "visual_mode": "abstract_emotion",
+        "scenes": [
+            "A closed wooden door with warm light leaking from underneath",
+            "A road splitting into two paths at evening blue hour",
+            "A single key on a windowsill catching the last sun",
+            "An open window with a curtain lifting in warm wind",
+            "A chair at a small table facing an open room of light",
+            "Morning freshness on the same table after the door was left empty"
+        ]
+    },
+    {
+        "content_type": "HOPE_AFTER",
+        "title": "Light Comes Back Slowly",
+        "archetype": "HOPE_AFTER",
+        "voice": "warm_female",
+        "hook_line": "You made it. Even untidily.",
+        "captions": {
+            "caption_line": "Rebuilding is still building.",
+            "cta": ""
+        },
+        "narration": "Healing is not a clean line, but it is still moving forward. Some days you woke up tired and cried and still went out and existed. That counts. Nobody was watching while you rebuilt, but you did. The plants grew on your window because of the little sun you let in. Look at yourself now, softer around the edges, stronger underneath. You are not where you started. You made it here, somehow. Your kind heart is still beating. Light comes back slowly. It always comes back.",
+        "visual_mode": "nature",
+        "scenes": [
+            "First warm light breaking over a quiet field after rain",
+            "A small green shoot growing between wet tile cracks",
+            "A window ledge with two plants turning toward morning",
+            "A hand holding a cup of tea with steam rising in soft light",
+            "A garden path drying after monsoon rain",
+            "Soft dawn over the same field, warm and calm"
+        ]
+    },
+    {
+        "content_type": "DESI_SLICE",
+        "title": "Rain at the Chai Stall",
+        "archetype": "DESI_SLICE",
+        "voice": "soft_female",
+        "hook_line": "First rain at the chai stall.",
+        "captions": {
+            "caption_line": "Some happiness lives at the tea stall in the rain.",
+            "cta": ""
+        },
+        "narration": "The first rain came like a small festival. We rushed under the tin roof of the chai stall, strangers sharing the same seconds of weather. The kettle went faster, the steam mixed with wet earth, someone sang a film line and everyone half smiled. For one while, nobody was alone. We drank from small glasses, the rain drumming above us like an old friend. Then it slowed, the glasses returned, and every person went their separate way. But to this day, that one inch of rain was the closest we all ever felt to home.",
+        "visual_mode": "rainy_city",
+        "scenes": [
+            "One tin-roof chai stall by a street soaked in monsoon rain",
+            "Steam rising from a brass kettle in soft grey light",
+            "A few people with small tea glasses under the tin roof",
+            "Rain splashing into dark puddles reflecting the stall bulb",
+            "Empty glasses collected as the rain turns to drizzle",
+            "Puddle mirror of the quiet street after the rain stops"
+        ]
+    },
+    {
+        "content_type": "LETTER_FORMAT",
+        "title": "A Letter to Me Before It Got Hard",
+        "archetype": "LETTER_FORMAT",
+        "voice": "soft_female",
+        "hook_line": "Dear the me I used to be...",
+        "captions": {
+            "caption_line": "You did not ruin anything. You were learning.",
+            "cta": ""
+        },
+        "narration": "Dear the version of me from five years ago, you think everything is falling. It is not. You will lose a few people, cry in quiet rooms, doubt every choice, then wash your face and keep moving. You will make mistakes and laugh about them later. You were never weak. You were a whole human disappearing stories, still learning how to stand. I want you to know you became okay, on your own terms, with your heart still open. Do not be scared. Look how far we are. Keep going.",
+        "visual_mode": "object",
+        "scenes": [
+            "An old diary open on a desk with a pen resting on the pages",
+            "A lamp over a study desk with scuffed edges",
+            "A window with a paper plane on the sill",
+            "A worn backpack against a bedroom chair",
+            "A gentle hand closing the diary",
+            "Soft window light warming the closed diary"
+        ]
+    },
+    {
+        "content_type": "JOY_QUIET",
+        "title": "The Quiet Joy of Belonging",
+        "archetype": "JOY_QUIET",
+        "voice": "warm_female",
+        "hook_line": "Happiness is a small ordinary thing.",
+        "captions": {
+            "caption_line": "Keep every quiet happy thing. It is enough.",
+            "cta": ""
+        },
+        "narration": "Some happiness is so quiet we forget to name it. First rain on dry earth. Home food after a long journey. A saved message you re-read on a hard day. A Sunday with no plans. The kind of laughter that leaves your stomach soft. The sudden health of the people you love. It all counts. The world sells happiness as loud, but one soft evening where nothing is wrong is already everything. Own it. Let the small gladness be enough.",
+        "visual_mode": "animal_life",
+        "scenes": [
+            "A stray cat napping by a warm shop wall in early morning",
+            "A window with steam rising from two cups of tea",
+            "A kitchen bench with fresh chapati and tomatoes",
+            "A pair of birds on a wire in golden light",
+            "A dog resting at a sunny street corner",
+            "Warm evening light over a quiet rooftop with plants"
         ]
     }
+]
+
 
 
 import json
@@ -295,9 +477,9 @@ def validate_story_json(data: Dict[str, Any]) -> None:
 
     words = len(narration.split())
 
-    if words < 80 or words > 120:
+    if words < 80 or words > 110:
         raise ValueError(
-            f"Narration must be between 80-120 words. Current: {words}"
+            f"Narration must be between 80-110 words. Current: {words}"
         )
 
     scenes = data["scenes"]

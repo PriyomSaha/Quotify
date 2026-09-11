@@ -326,6 +326,7 @@ def execute_reel_generation():
             title=story.get("title", ""),
             fallback_text=story.get("narration", "")[:100],
             event=event,
+            story=story,
         )
 
         logger.info("✅ Reel generation completed successfully")

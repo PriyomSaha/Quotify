@@ -1,444 +1,373 @@
+"""
+Reels/PromptSelector.py
+
+Reel narration prompt builder for "Aesthetic Vibes" - V2 diversity overhaul.
+
+Changes:
+- 9 rotating Reel archetypes (7 prose + 2 po-em) so every reel is structurally different.
+- Poems alternate with prose reels 1-after-1 (poem -> prose -> poem -> ...).
+- Per-archetype themes, hook styles, ending styles, visual modes and voice.
+- Memory guard (no recent repeats) persisted in a local cache file.
+- Emotional arc (tension -> recognition -> payoff) + sensory/desi detail rule.
+- hook_line + caption instructions for the caption and video composer.
+- Word count unified to 80-110 (matches story_generation.py validation).
+"""
+
+import json
+import os
 import random
 from datetime import datetime
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Local no-repeat memory (like gender_tracker uses)
+# ---------------------------------------------------------------------------
+
+CACHE_FILE = Path.home() / ".cache" / "reel_prompt_tracker.json"
 
 
-# ============================================================
+def _load_cache() -> dict:
+    try:
+        if CACHE_FILE.exists():
+            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    return {"archetypes": [], "themes": []}
+
+
+def _save_cache(cache: dict) -> None:
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        CACHE_FILE.write_text(json.dumps(cache), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _pick_no_repeat(pool, history_key, cache, history_len=2):
+    """Pick a random item from pool avoiding items toto recent history."""
+    history = cache.get(history_key, [])
+    recent = set(history[-history_len:])
+    candidates = [item for item in pool if item not in recent]
+    if not candidates:
+        candidates = list(pool)
+    return random.choice(candidates)
+
+
+# ===========================================================================
 # CORE WRITING INSTRUCTION
-# ============================================================
-
-BASE_INSTRUCTION = """
-
-You write short viral wisdom voiceovers for Instagram Reels.
-
-Your content is NOT a story.
-
-Do NOT create:
-- characters
-- names
-- places
-- events
-- conversations
-- fictional situations
-
-Write like a person sharing a deep truth they learned from life.
-
-The viewer should feel:
-"I needed to hear this."
-
-STYLE:
-
-- Simple English
-- Mature and calm tone
-- Deep meaning with few words
-- Emotional but controlled
-- Easy to understand
-- Natural spoken language
-
-FORMAT:
-
-Every sentence must be on a separate line.
-Keep most sentences short.
-Prefer 4-12 words per sentence.
-Use pauses naturally and frequently.
-Use line breaks as breathing pauses.
-Do not fill the Reel just to reach the word limit.
-
-Example:
-
-People change...
-
-Sometimes the person who values you today...
-
-May become the person who ignores you tomorrow.
-
-That is why...
-
-Never lose yourself trying to keep someone else.
-
-
-WRITING PATTERNS:
-
-Use different styles:
-
-1. Personal realization:
-
-"I trusted people too easily..."
-
-"I gave chances they never deserved..."
-
-
-2. Life advice:
-
-"Let people misunderstand you..."
-
-"Time reveals what words cannot..."
-
-
-3. Hard truth:
-
-"Nobody talks about this..."
-
-"Some lessons only come after losing something..."
-
-
-4. Emotional reflection:
-
-"Sometimes you don't miss the person..."
-
-"You miss who they used to be..."
-
-The first line must stop scrolling.
-The first line is the HOOK.
-
-HOOK RULES:
-- The hook must be 4-9 words.
-- It must create curiosity, recognition, tension, or emotion immediately.
-- Do not waste the first line introducing the topic.
-- Do not begin with generic setup.
-- Avoid repeatedly using "Sometimes", "People", or "Life".
-- The viewer should understand the emotional direction within the first 2 seconds.
-
-Use varied hook styles:
-- A surprising truth
-- A relatable question
-- A painful realization
-- A direct statement
-- A quiet observation
-- A contradiction
-- A "you probably..." style thought
-- A short POV-style thought
-
-Examples of structure only:
-"Maybe you don't miss them anymore."
-"You knew it before they said it."
-"Nobody warns you about this part."
-"Have you noticed how people change?"
-"Some goodbyes happen without leaving."
-
-
-ENDING RULES:
-
-The last 1-2 lines must contain the strongest thought.
-
-The ending should feel like the line the viewer wants to:
-- remember
-- screenshot
-- share
-- send to someone
-
-Do not explain the message after the strongest line.
-End shortly after the emotional payoff.
-
-Rotate endings:
-
-- painful realization
-- life lesson
-- self respect reminder
-- acceptance
-- emotional truth
-- peaceful conclusion
-
-
-IMPORTANT:
-
-Do not sound like a motivational speaker.
-
-Do not use:
-- "You can do anything"
-- "Never give up"
-- "Everything happens for a reason"
-
-Avoid clichés.
-
-Length:
-40-65 words.
-
-Tone:
-A calm person sharing wisdom after experiencing life.
-
-
-# ============================================================
-# VARIETY
-# ============================================================
-
-Keep the existing style, quality, and tone.
-
-Do not make every piece follow the same structure.
-
-Vary the opening and rhythm naturally:
-- observation
-- realization
-- question
-- direct thought
-- contradiction
-- poetic line
-- relatable feeling
-- unexpected comparison
-- quiet reflection
-
-Existing hooks are still allowed, including:
-"A painful truth is..."
-"Nobody talks about this..."
-"Remember this..."
-
-Use them occasionally rather than repeatedly.
-
-Some pieces may feel like a short modern free-verse poem.
-
-Poems should be:
-- simple
-- emotional
-- conversational
-- modern
-- easy to understand
-- free of forced rhymes
-
-Do not make every piece sound like a motivational speech.
-
-Let some thoughts build slowly and others be direct.
-
-Do not force every sentence to sound profound.
-
+# ===========================================================================
+
+BASE_INSTRUCTION = """You write short, heartfelt voiceovers for Reels on "Aesthetic Vibes" - a page for lost souls finding their way home through words.
+
+Readership: 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-35, mostly women. The words should feel personal, relatable, touching, and worth saving or sharing.
+
+LANGUAGE:
+- Simple English, like telling a friend over chai or refusing between.
+- No long, fancy, heavy or rare words. The feeling must land in one listen.
+- Short sentences with natural breathing pauses (line breaks = pauses).
+- Calm, mature tone. Never a motivational speaker. No cliches.
+
+EMOTIONAL ARC - every piece must travel three beats:
+1. TENSION - the first 1-2 lines establish something at stake: a truth, a loss, a contradiction, a feeling held too long.
+2. RECOGNITION - one specific everyday detail that makes the viewer think "that's exactly me."
+3. PAYOFF - the last 1-2 lines are the strongest thought: worth saving, screen captioning, or sending to someone.
+
+ALWAYS include at least ONE sensory or desi detail somewhere: rain on glass, chai steam, a ringing phone, a metro bus, a mother's voice, a home-cooked smell, a train window, an exam hall, a hostel night. Make it feel lived, not invented.
+
+HOOK RULES (the first line must stop the scroll):
+- 4-9 words, curiosity or emotion in under 2 seconds.
+- Use the today's hook style.
+- Never start with "Sometimes", "People", or "Life" every time.
+- Start mid-feeling, not with a setup.
+
+LENGTH (hard rule):
+- Between 80 and 110 words total. The API enforces this.
+
+SAFETY - always:
+- No names that are not obviously ordinary, no celebrities.
+- No politics, religion debates, hate, or violence.
+- Keep it original. Never copy songs, poems, speeches or famous quotes.
+- Be gentle. Hard truths are okay; cruelty is not.
 """
 
 
-# ============================================================
-# CONTENT THEMES
-# ============================================================
+# ===========================================================================
+# WEEKDAY ENERGY ENVELOPE (merged with time-of-day mood, never replacing it)
+# ===========================================================================
 
-THEMES = [
+WEEKDAY_DIRECTION = {
+    0: ("Monday - steady push", "grounded, move steady, small steps"),
+    1: ("Tuesday - quiet comfort", "gentle warmth, soft comfort"),
+    2: ("Wednesday - mid-week honesty", "a soft realization or an honest check-in"),
+    3: ("Thursday - real talk", "respectful, direct, clear-eyed"),
+    4: ("Friday - lightness", "something light, joyful or relieving"),
+    5: ("Saturday - slow", "rest, friends, simple pleasures"),
+    6: ("Sunday - memory", "family, childhood, reflection, nostalgia"),
+}
 
-"hard truths about life",
 
-"people changing over time",
+def get_weekday_direction():
+    """Return (label, direction) for today."""
+    return WEEKDAY_DIRECTION.get(datetime.now().weekday(), ("", ""))
 
-"learning to stand alone",
 
-"protecting your peace",
+# ===========================================================================
+# REEL ARCHETYPES - the diversity engine
+# ===========================================================================
 
-"self respect and boundaries",
-
-"trusting people too much",
-
-"fake friendships",
-
-"silent struggles nobody sees",
-
-"being taken for granted",
-
-"expectations and disappointment",
-
-"letting people go",
-
-"accepting change",
-
-"emotional maturity",
-
-"healing after pain",
-
-"forgiving but remembering",
-
-"choosing yourself",
-
-"life lessons learned late",
-
-"human nature",
-
-"relationships and distance",
-
-"things people realize too late",
-
-"success and sacrifice",
-
-"loneliness and growth",
-
-"patience and timing",
-
-"not explaining yourself",
-
-"finding peace"
-
+ARCHETYPES = [
+    {
+        "format": "prose",
+        "key": "MICRO_STORY",
+        "name": "Micro Story",
+        "script": ("ONE specific everyday moment that could truly have happened, told like a memory: "
+                    "a phone call, a bus ride, a night of silence, a quiet goodbye. "
+                    "Tell it scene by scene; the story makes the truth; the last line is that truth."),
+        "hook_styles": [
+            "Start with the moment itself (e.g. That night my father called just to hear my voice)",
+            "Start with one small gesture that carried meaning",
+            "Start with a place and a time (e.g. Last winter, at the metro gate)",
+            "Start with a journal-style line about that specific night",
+        ],
+        "ending_styles": [
+            "End with the quiet truth the moment pointed to",
+            "End with what you would tell that person now",
+            "End warm and human, not dramatic",
+        ],
+        "themes": [
+            "a parent's repeated phone call you almost ignored",
+            "a goodbye said casually that stayed forever",
+            "the last bus home after everything changed",
+            "a friend's voice after years of silence",
+            "a small habit that quietly saved a hard month",
+        ],
+        "visual_modes": ["nostalgic_room", "rainy_city", "object", "female", "male", "architecture"],
+        "voice": "deep_male",
+    },
+    {
+        "format": "prose",
+        "key": "WISDOM_TRUTH",
+        "name": "Wisdom Truth",
+        "script": "A calm, universal truth someone learns from living. No story characters, one central idea that unfolds line by line and lands in a shareable last line.",
+        "hook_styles": [
+            "Start with a quiet realization",
+            "Start with a thought that sounds like a journal entry",
+            "Start with something only experience teaches",
+            "Start with a contradiction that resolves itself",
+        ],
+        "ending_styles": [
+            "End with a universal life lesson",
+            "End with acceptance",
+            "End with a peaceful realization",
+        ],
+        "themes": [
+            "people change and love changes shape",
+            "growing up means saying goodbye quietly",
+            "we outgrow versions of ourselves we used to know",
+            "the small habits that actually built you",
+            "the roads you did not take also shaped you",
+        ],
+        "visual_modes": ["nature", "object", "abstract_emotion", "architecture", "nostalgic_room"],
+        "voice": "calm_male",
+    },
+    {
+        "format": "prose",
+        "key": "REALITY_TALK",
+        "name": "Real Talk",
+        "script": "One caring reality check - the truth you wish someone had told you earlier. Direct, warm, never cruel. It should feel like a wise friend, not a lecture.",
+        "hook_styles": [
+            "Start with the honest sentence no one says aloud",
+            "Start with a wake-up observation",
+            "Start with a hard truth delivered gently",
+            "Start with 'Nobody warns you about this part'",
+        ],
+        "ending_styles": [
+            "End with self-respect",
+            "End with a clear, kind boundary",
+            "End with the choice that is still yours",
+        ],
+        "themes": [
+            "you cannot heal in the place that keeps breaking you",
+            "protecting your energy is not selfish",
+            "some doors close and it is your job to not keep knocking",
+            "being everyone's listener has a cost only you notice",
+            "wanting peace is not the same as giving up",
+        ],
+        "visual_modes": ["abstract_emotion", "rainy_city", "object", "architecture", "nature"],
+        "voice": "calm_male",
+    },
+    {
+        "format": "prose",
+        "key": "HOPE_AFTER",
+        "name": "Hope After Everything",
+        "script": "The positive mirror. A warm, healing voice over - proof that the hard part does not have the last word. Sunrise, growth, light, gentle triumph.",
+        "hook_styles": [
+            "Start with a quiet promise of better days",
+            "Start with what kept you going when nothing made sense",
+            "Start with the first good morning after a long night",
+            "Start with a small sign that it was, actually, going to be okay",
+        ],
+        "ending_styles": [
+            "End with a hopeful truth",
+            "End with gratitude",
+            "End with a warm forward step",
+        ],
+        "themes": [
+            "healing is not linear but it is real",
+            "the light returns slowly and that is okay",
+            "you rebuilt yourself with no one watching - and it worked",
+            "letting go made room for the right thing",
+            "peace is not absence of pain but growth around it",
+        ],
+        "visual_modes": ["nature", "animal_life", "rainy_city", "object", "female"],
+        "voice": "warm_female",
+    },
+    {
+        "format": "prose",
+        "key": "LETTER_FORMAT",
+        "name": "A Letter",
+        "script": "Write it as a short letter: Dear 18-year-old-me, or Dear friend who stayed, or Dear the one I used to be. Intimate, personal, addressed - but still universal enough that anyone feels it is for them.",
+        "hook_styles": [
+            "Start with the address line - Dear...",
+            "Start with what you would change if the letter could reach them",
+            "Start with 'to the version of me from...'",
+            "Start with the thing you wish they knew back then",
+        ],
+        "ending_styles": [
+            "End with what you want them to always remember",
+            "End with a signature-style line (warm)",
+            "End with advice as forgiveness",
+        ],
+        "themes": [
+            "a letter to the younger self before it got hard",
+            "a letter to the friend who left town",
+            "a letter to the parent who tried their best",
+            "a letter to yourself before you healed",
+            "a letter to the love that taught you how to leave",
+        ],
+        "visual_modes": ["nostalgic_room", "object", "rainy_city", "male", "female", "architecture"],
+        "voice": "soft_female",
+    },
+    {
+        "format": "prose",
+        "key": "DESI_SLICE",
+        "name": "Desi Slice of Life",
+        "script": "A small, specific South Asian everyday scene: monsoon rain on the window, chai at home, a metro ride, a hostel night, a phone call from mom, an exam morning. The beauty is the ordinary reality of it.",
+        "hook_styles": [
+            "Start with the specific desi moment (rain, chai, metro, mama phone call)",
+            "Start with the smell or sound that means home",
+            "Start with a hostel or college memory",
+            "Start with a bus seat, a window, a street",
+        ],
+        "ending_styles": [
+            "End with the warmth the ordinary moment carried",
+            "End with what we forget to thank because it is everyday",
+            "End with that world feeling",
+        ],
+        "themes": [
+            "monsoon at a tea stall", 
+            "the metro ride that one day became home",
+            "the phone call from home you almost missed",
+            "hostel food and the nights it held",
+            "the Diwali smell of oil lamps anda window seat",
+        ],
+        "visual_modes": ["rainy_city", "nature", "architecture", "nostalgic_room", "animal_life"],
+        "voice": "soft_female",
+    },
+    {
+        "format": "prose",
+        "key": "JOY_QUIET",
+        "name": "Quiet Joy",
+        "script": "Ordinary happiness that deserves a video: first rain on parched earth, home-cooked food after a long week, a saved message that still helps, a Sunday that was actually restful. Light, gentle, shareable.",
+        "hook_styles": [
+            "Start with the exact small joy itself",
+            "Start with what today finally felt like",
+            "Start with the moment you caught yourself smiling",
+            "Start with something ordinary you now protect",
+        ],
+        "ending_styles": [
+            "End with the worth of small gladness",
+            "End with permission to enjoy the quiet",
+            "End with a simple exhale",
+        ],
+        "themes": [
+            "the first rain after months of heat",
+            "a homecooked meal after a long week",
+            "a song that saved a whole day",
+            "a Sunday with no plans at all",
+            "small wins that happiness is made of",
+        ],
+        "visual_modes": ["nature", "animal_life", "rainy_city", "object", "nostalgic_room"],
+        "voice": "warm_female",
+    },
+    {
+        "format": "poem",
+        "key": "RELATABLE_POEM",
+        "name": "Poem (Relatable)",
+        "script": ("A short free-verse poem in the SIMPLEST everyday words about a feeling almost everyone has lived: "
+                    "the one who says 'I'm fine', overthinking at 1am, the daughter still seeking a parent's approval, "
+                    "the person in a rented room far from home, the friend who always gives. No big metaphors, no heavy "
+                    "words. Every line is one short breath - a line break is a pause in the voiceover. The LAST TWO "
+                    "LINES are the strongest: the ones people screenshot and send to someone."),
+        "hook_styles": [
+            "Begin the poem with the everyday moment itself, in one short line",
+            "Begin with a question someone has whispered to themselves at night",
+            "Begin with the ordinary thing that quietly holds the feeling",
+            "Begin with a confession - one plain line, no drama",
+        ],
+        "ending_styles": [
+            "End with a soft acceptance - the last two lines screenshot-worthy",
+            "End by turning the ache into a quiet kindness",
+            "End with a line people would want to send to someone",
+        ],
+        "themes": [
+            "the one who says 'I'm fine' when they are not",
+            "overthinking at 1am about a message that means nothing",
+            "the child who still waits for a parent's loud love",
+            "the friend who always gives and never asks",
+            "a rented room at night and the whole city outside",
+            "growing up away from home and learning to call a new place 'here'",
+            "the last quiet morning of a love that had already ended",
+            "the way you talk to yourself when no one is listening",
+        ],
+        "visual_modes": ["nostalgic_room", "rainy_city", "abstract_emotion", "object", "architecture", "female"],
+        "voice": "soft_female",
+    },
+    {
+        "format": "poem",
+        "key": "HEALING_POEM",
+        "name": "Poem (Healing)",
+        "script": ("A gentle healing poem: it starts from the ache, walks through one small ordinary image, "
+                    "and ends warm. The words must be plain - a friend speaking slowly at night. No rhymes forced, "
+                    "no drama. The last three lines are where the poem earns its 'save this' power."),
+        "hook_styles": [
+            "Begin with the ache in one plain line",
+            "Begin with the night and how long it felt",
+            "Begin with what broke, quietly, without drama",
+            "Begin with the day the light came back, slowly",
+        ],
+        "ending_styles": [
+            "End with the day it quietly got lighter",
+            "End with permission - you are allowed to be gentle with yourself",
+            "End by handing the ache back to the rain, warm",
+        ],
+        "themes": [
+            "the slow return of light after a long dark season",
+            "learning to be gentle with the version of you that broke",
+            "the quiet strength in asking for help",
+            "rebuilding yourself in small, ordinary ways",
+            "grief that slowly became a softer room to carry",
+            "forgiving yourself for surviving wrong",
+            "the first morning you woke up and did not check the old messages",
+        ],
+        "visual_modes": ["nature", "rainy_city", "abstract_emotion", "object", "animal_life"],
+        "voice": "warm_female",
+    },
 ]
 
-
-# ============================================================
-# HOOK STYLES
-# ============================================================
-
-HOOK_STYLES = [
-
-"Start with a hard truth",
-
-"Start with a surprising observation",
-
-"Start with a direct advice",
-
-"Start with a painful realization",
-
-"Start with a question",
-
-"Start with a statement people relate to",
-
-# Additional variety — existing hooks above are intentionally kept
-
-"Start with a quiet realization",
-
-"Start with an unexpected observation",
-
-"Start with something people usually understand with age",
-
-"Start with a simple thought that becomes deeper as it continues",
-
-"Start with a thought about something we often take for granted",
-
-"Start with a relatable feeling",
-
-"Start with a contradiction",
-
-"Start with two things that seem opposite but are both true",
-
-"Start with a short poetic line",
-
-"Start with a metaphor about life",
-
-"Start with a thought that sounds like a journal entry",
-
-"Start with something the viewer may have felt but never said",
-
-"Start with a subtle observation about human nature",
-
-"Start with a question that makes the viewer look inward",
-
-"Start with a sentence that creates curiosity without explaining everything",
-
-"Start with a very short statement",
-
-"Start with a quiet thought rather than direct advice",
-
-"Start with an observation about time",
-
-"Start with an observation about growing older",
-
-"Start with an unexpected comparison",
-
-"Start with a realization that unfolds gradually",
-
-"Start with a thought about something we usually notice too late",
-
-"Start with a simple statement that carries a deeper meaning",
-
-"Start with a thought that feels like the beginning of a personal journal entry",
-
-"Start with a line that creates curiosity without sounding dramatic"
-
-]
-
-
-# ============================================================
-# ENDING STYLES
-# ============================================================
-
-ENDING_STYLES = [
-
-"End with a powerful life lesson",
-
-"End with self respect",
-
-"End with acceptance",
-
-"End with a painful truth",
-
-"End with emotional reflection",
-
-"End with a peaceful realization"
-
-]
-
-
-# ============================================================
-# CONTENT FORMATS
-# ============================================================
-
-CONTENT_FORMATS = [
-
-# Normal style — intentionally dominant
-"wisdom voiceover",
-"wisdom voiceover",
-"wisdom voiceover",
-"wisdom voiceover",
-
-"life reflection",
-
-"life observation",
-
-"hard truth",
-
-"emotional reflection",
-
-"personal realization",
-
-"quiet realization",
-
-"philosophical reflection",
-
-# Occasional poetic styles
-"short free verse poem",
-
-"poetic reflection",
-
-"minimalist poem",
-
-"short modern poem"
-
-]
-
-
-# ============================================================
-# ADDITIONAL CONTENT DIRECTIONS
-# ============================================================
-
-# These are small directions rather than completely different formats.
-# They help prevent the generated pieces from following one repeated
-# structure while keeping the original style intact.
-
-CONTENT_DIRECTIONS = [
-
-"Build the thought gradually",
-
-"Keep it direct and conversational",
-
-"Let the meaning unfold naturally",
-
-"Use a quiet emotional tone",
-
-"Use a subtle contrast",
-
-"Focus on one clear realization",
-
-"Make the thought feel relatable",
-
-"Keep the language simple but meaningful",
-
-"Use a slightly poetic rhythm",
-
-"Make the ending feel earned rather than forced",
-
-"Use short lines for breathing pauses",
-
-"Let one sentence carry the central idea",
-
-"Keep the emotion controlled and mature",
-
-"Make it feel like a thought someone had after living through something",
-
-"Leave a little space for the viewer to interpret the meaning"
-
-]
-
-
-# ============================================================
-# TIME BASED CONTENT MOOD
-# ============================================================
+# ===========================================================================
+# TIME BASED CONTENT MOOD (unchanged)
+# ===========================================================================
 
 TIME_SCHEDULE = {
 
@@ -462,16 +391,16 @@ TIME_SCHEDULE = {
 
 "night": {
     "start": 22,
-    "end": 6,  # Covers 22-24 and 0-6 (wraps around midnight)
+    "end": 6,   # Covers 22-24 and 0-6 (wraps around midnight)
     "mood": "deep thoughts and quiet reflections"
 }
 
 }
 
 
-# ============================================================
+# ===========================================================================
 # GET CURRENT TIME CATEGORY
-# ============================================================
+# ===========================================================================
 
 def get_content_type_for_time():
 
@@ -502,82 +431,186 @@ def get_content_type_for_time():
     }
 
 
+# ===========================================================================
+# LAST SELECTED ARCHETYPE (read by story_generation / voice_generation)
+# ===========================================================================
 
-# ============================================================
+LAST_ARCHETYPE_INFO = None
+
+# Full last selection (key/theme/hook/ending) so story_generation can pin a
+# retry to the SAME archetype instead of re-picking and burning a slot.
+LAST_PROMPT_SELECTION = None
+
+
+def reset_tracker():
+    """Clear the local no-repeat memory (for tests)."""
+    try:
+        if CACHE_FILE.exists():
+            CACHE_FILE.unlink()
+    except OSError:
+        pass
+
+
+# ===========================================================================
 # CREATE FINAL LLM PROMPT
-# ============================================================
+# ===========================================================================
 
-def get_prompt_for_current_time():
+def _pick_archetype(cache, forced_format=None):
+    """
+    Alternate poem/prose 1-after-1 so the feed never shows the same format
+    twice in a row (poem -> prose -> poem -> prose ...), with no-repeat
+    inside each pool as well. Writes the chosen format back into cache.
+
+    forced_format ("poem"/"prose") overrides alternation for one run, e.g.
+    when the user explicitly wants a poem next: FORCE_REEL_FORMAT=poem.
+    """
+    poem_keys = [a["key"] for a in ARCHETYPES if a.get("format") == "poem"]
+    prose_keys = [a["key"] for a in ARCHETYPES if a.get("format") != "poem"]
+
+    # Strict 1-after-1 alternation: if last was a poem, pick prose (and vice versa)
+    if forced_format == "poem":
+        pool = poem_keys
+    elif forced_format == "prose":
+        pool = prose_keys
+    elif cache.get("last_format") == "poem":
+        pool = prose_keys
+    else:
+        pool = poem_keys
+
+    history = cache.get("archetypes", [])
+    recent = [h for h in history[-2:] if h in pool]
+    candidates = [k for k in pool if k not in recent]
+    if not candidates:
+        candidates = list(pool)
+
+    key = random.choice(candidates)
+    cache["last_format"] = "poem" if key in poem_keys else "prose"
+    return key
+
+
+def get_prompt_for_current_time(pinned=None):
+    """
+    Build the full Gemini prompt for today's reel.
+
+    Picks an archetype while alternating poem/prose 1-after-1 (no same format
+    twice in a row), a theme (no repeats within the last few), a hook style,
+    an ending style, the time-of-day mood and the weekday energy. Sets
+    LAST_ARCHETYPE_INFO so the rest of the pipeline (visual mode, voice) can
+    stay consistent with the chosen archetype.
+
+    pinned: optional dict from LAST_PROMPT_SELECTION. When provided (retry
+    path), the EXACT same archetype/theme/hook/ending is reused and the
+    no-repeat tracker is left untouched, so a retry never burns a slot or
+    breaks the poem/prose alternation.
+    """
+    global LAST_ARCHETYPE_INFO, LAST_PROMPT_SELECTION
 
     content = get_content_type_for_time()
+    weekday_label, weekday_direction = get_weekday_direction()
 
-    theme = random.choice(THEMES)
+    cache = _load_cache()
 
-    hook = random.choice(HOOK_STYLES)
+    if pinned is not None:
+        selected_key = pinned["key"]
+        selected = next(a for a in ARCHETYPES if a["key"] == selected_key)
+        theme = pinned["theme"]
+        hook = pinned["hook"]
+        ending = pinned["ending"]
+    else:
+        forced = os.getenv("FORCE_REEL_FORMAT", "").strip().lower()
+        forced = forced if forced in ("poem", "prose") else None
 
-    ending = random.choice(ENDING_STYLES)
+        selected_key = _pick_archetype(cache, forced_format=forced)
+        selected = next(a for a in ARCHETYPES if a["key"] == selected_key)
 
-    content_format = random.choice(CONTENT_FORMATS)
+        theme = _pick_no_repeat(selected["themes"], "themes", cache, history_len=5)
+        hook = random.choice(selected["hook_styles"])
+        ending = random.choice(selected["ending_styles"])
 
-    content_direction = random.choice(CONTENT_DIRECTIONS)
+        # Update local memory
+        cache.setdefault("archetypes", []).append(selected_key)
+        cache["archetypes"] = cache["archetypes"][-12:]
+        cache.setdefault("themes", []).append(theme)
+        cache["themes"] = cache["themes"][-12:]
+        _save_cache(cache)
+
+        # Remember the full selection so a retry can pin the identical prompt
+        LAST_PROMPT_SELECTION = {
+            "key": selected_key,
+            "theme": theme,
+            "hook": hook,
+            "ending": ending,
+        }
+
+    LAST_ARCHETYPE_INFO = {
+        "key": selected["key"],
+        "name": selected["name"],
+        "format": selected.get("format", "prose"),
+        "theme": theme,
+        "visual_modes": selected["visual_modes"],
+        "voice": selected["voice"],
+        "weekday": weekday_label,
+    }
+
+    print(f"\n🎭 Reel archetype: {selected['name']} ({selected['key']} / {selected.get('format', 'prose')})")
+    print(f"💡 Theme: {theme}")
+    print(f"🗣️ Voice profile: {selected['voice']}")
 
     final_prompt = f"""
-
 {BASE_INSTRUCTION}
 
 
-TODAY'S CONTENT DIRECTION:
+==================================================
+TODAY'S REEL GENERATOR - READ ALL OF IT
+==================================================
 
-Theme:
+STORY TYPE:
+{selected['name']}
+{selected['script']}
+
+
+THEME / MOMENT TO WRITE ABOUT:
 {theme}
 
 
-Mood:
-{content['mood']}
-
-
-Hook Style:
+HOOK STYLE (first line must follow this):
 {hook}
 
 
-Ending Style:
+ENDING STYLE:
 {ending}
 
 
-Content Format:
-{content_format}
+TIME-OF-DAY MOOD:
+{content['mood']}
 
 
-Writing Direction:
-{content_direction}
+WEEKDAY FEEL:
+{weekday_label} - {weekday_direction}
 
 
+==================================================
+WRITING THIS REEL
 
-Generate ONE short wisdom reel voiceover.
-
-The selected content format and writing direction are guidelines, not rigid templates.
-
-If the format is a poem, write it as a short modern free-verse poem while keeping the same wisdom, simplicity, and emotional tone.
-
-Remember:
-
-No story.
-No characters.
-No explanation.
-
-Only a powerful thought written line by line.
-
+- Write ONE reel voiceover, 80 to 110 words, line by line.
+- Follow the emotional arc: tension -> recognition -> payoff.
+- End on the strongest line. Do not explain after it.
+- If the story type is a letter, write it as a short intimate letter.
+- If the story type is a POEM, write a short free-verse poem in the simplest
+  everyday words: each line is one short breath (line breaks = subtitle
+  pauses), no forced rhymes, and the LAST TWO LINES are the strongest -
+  the ones people screenshot and send.
+- Keep it simple, specific, and shareable. No cliches, no motivational-speaker tone.
+- The six visual scenes will be built from your narration, so make the
+  narration visual enough to paint (a moment, a place, a gesture, light, rain).
 """
-
 
     return final_prompt
 
 
-
-# ============================================================
+# ===========================================================================
 # TEST
-# ============================================================
+# ===========================================================================
 
 if __name__ == "__main__":
-
     print(get_prompt_for_current_time())

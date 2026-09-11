@@ -18,7 +18,7 @@ Features:
 
 
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import random
 import numpy as np
 import tempfile
@@ -95,7 +95,7 @@ from .config import (
 
 class ReelComposer:
 
-    def __init__(self, images: List[str], narration_audio: str, output_file: str):
+    def __init__(self, images: List[str], narration_audio: str, output_file: str, hook_line: Optional[str] = None):
         import logging
         logger = logging.getLogger(__name__)
         
@@ -104,6 +104,7 @@ class ReelComposer:
             self.images = images
             self.audio_path = narration_audio
             self.output = output_file
+            self.hook_line = (hook_line or "").strip()
             
             logger.info(f"Loading audio file: {narration_audio}")
             self.audio = AudioFileClip(narration_audio)
@@ -295,10 +296,24 @@ class ReelComposer:
         """
         subtitle_clips = []
 
+        # If a pinned hook overlay is showing the same text at the top for the
+        # first ~1.8s, don't ALSO render that sentence as the opening subtitle
+        # (avoids the "double/overlapping subtitle" on the first frame).
+        hook_text = (getattr(self, "hook_line", "") or "").strip().lower()
+
+        def _same_as_hook(text: str) -> bool:
+            if not hook_text:
+                return False
+            t = text.strip().lower()
+            return t == hook_text or t.endswith(hook_text) or hook_text.endswith(t)
+
         for i, subtitle in enumerate(self.subtitles):
             text = subtitle["text"].strip()
 
             if not text:
+                continue
+
+            if _same_as_hook(text):
                 continue
 
             start_time = subtitle["start"]
@@ -463,6 +478,101 @@ class ReelComposer:
 
         return temp.name
 
+
+    def _render_hook_image(self, text):
+        """
+        Renders the pinned hook line as a transparent PNG (top-third overlay).
+        """
+        font_size = int(FONT_SIZE * 1.25)
+        max_width = VIDEO_WIDTH - int(VIDEO_WIDTH * 0.10)
+        padding = SUBTITLE_PADDING * 2
+        line_spacing = SUBTITLE_LINE_SPACING + 8
+
+        font = ImageFont.truetype(FONT, font_size)
+
+        dummy = Image.new("RGBA", (1, 1))
+        draw = ImageDraw.Draw(dummy)
+
+        words = text.split()
+        lines = []
+        current = ""
+
+        for word in words:
+            test = word if current == "" else current + " " + word
+            bbox = draw.textbbox((0, 0), test, font=font, stroke_width=STROKE_WIDTH)
+            width = bbox[2] - bbox[0]
+            if width <= max_width:
+                current = test
+            else:
+                lines.append(current)
+                current = word
+
+        if current:
+            lines.append(current)
+
+        # Measure
+        line_heights = []
+        max_line_width = 0
+        for line in lines:
+            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=STROKE_WIDTH)
+            w = bbox[2] - bbox[0]
+            h = bbox[3] - bbox[1]
+            max_line_width = max(max_line_width, w)
+            line_heights.append(h)
+
+        text_height = sum(line_heights) + line_spacing * (len(lines) - 1)
+        img_w = int(max_line_width + padding * 2)
+        img_h = int(text_height + padding * 2)
+
+        img = Image.new("RGBA", (img_w, img_h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        # Soft dark backing for readability over any image
+        draw.rounded_rectangle(
+            (0, 0, img_w - 1, img_h - 1),
+            radius=24,
+            fill=(0, 0, 0, 140),
+        )
+
+        y = padding
+        for i, line in enumerate(lines):
+            draw.text(
+                (padding, y),
+                line,
+                font=font,
+                fill=FONT_COLOR,
+                stroke_width=STROKE_WIDTH + 1,
+                stroke_fill=STROKE_COLOR,
+            )
+            y += line_heights[i] + line_spacing
+
+        temp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        img.save(temp.name)
+        return temp.name
+
+    def create_hook_overlay(self):
+        """
+        Returns an ImageClip with the pinned hook line for the first ~1.8s,
+        positioned in the top third. Returns None when no hook_line exists.
+        """
+        hook = getattr(self, "hook_line", "") or ""
+        hook = hook.strip()
+        if not hook:
+            return None
+
+        image_path = self._render_hook_image(hook)
+
+        clip = (
+            ImageClip(image_path)
+            .with_start(0)
+            .with_duration(1.8)
+            .with_position(("center", int(VIDEO_HEIGHT * 0.16)))
+            .with_effects([
+                vfx.CrossFadeIn(0.15),
+                vfx.CrossFadeOut(0.4),
+            ])
+        )
+        return clip
 
     def create_end_card(self, duration=END_CARD_DURATION):
         """
@@ -689,6 +799,9 @@ class ReelComposer:
         print("Creating subtitles...")
         subtitle_track = self.create_subtitle_track()
 
+        # Pinned hook overlay (first ~1.8s) keeps the first 2 seconds strong
+        hook_clip = self.create_hook_overlay()
+
         # Make sure the story visuals run until narration is complete.
         # The profile template/end card should appear only after this point.
         if abs(image_track.duration - self.duration) > 0.05:
@@ -720,6 +833,10 @@ class ReelComposer:
         
         # Add subtitles on top
         composite_clips.extend(subtitle_track)
+
+        # Add pinned hook overlay on top (first ~1.8s)
+        if hook_clip is not None:
+            composite_clips.append(hook_clip)
         
         final_video = CompositeVideoClip(
             composite_clips,
@@ -823,7 +940,9 @@ def create_reel(
 
     narration_audio: str,
 
-    output_file: str
+    output_file: str,
+
+    hook_line: Optional[str] = None
 
 ):
     import logging
@@ -837,7 +956,8 @@ def create_reel(
         composer = ReelComposer(
             images=images,
             narration_audio=narration_audio,
-            output_file=output_file
+            output_file=output_file,
+            hook_line=hook_line
         )
         
         logger.info("ReelComposer initialized, starting composition...")

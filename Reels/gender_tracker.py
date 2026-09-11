@@ -37,16 +37,29 @@ def _ensure_tracker_file():
     TRACKER_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
-def get_next_gender():
+def get_next_gender(preferred_modes=None):
     """
-    Pick a random visual mode.
+    Pick a visual mode.
+
+    - If preferred_modes is given (from the reel archetype), pick from that
+      pool while avoiding the last used mode (no consecutive repeats).
+    - Otherwise pick randomly from the broader VISUAL_SEQUENCE pool.
     Returns modes such as: "nature", "female", "object", "rainy_city",
     "animal_life", "architecture", "abstract_emotion", "friends_or_couple",
     "nostalgic_room", or "male".
     """
     _ensure_tracker_file()
 
-    visual_mode = random.choice(VISUAL_SEQUENCE)
+    last_mode = TRACKER_FILE.read_text().strip() if TRACKER_FILE.exists() else ""
+
+    pool = list(preferred_modes) if preferred_modes else list(VISUAL_SEQUENCE)
+
+    # Avoid repeating the last mode back-to-back when the pool allows it.
+    candidates = [mode for mode in pool if mode != last_mode]
+    if not candidates:
+        candidates = pool
+
+    visual_mode = random.choice(candidates)
     TRACKER_FILE.write_text(visual_mode)
 
     return visual_mode
