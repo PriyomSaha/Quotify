@@ -1,17 +1,4 @@
-"""
-Reels/PromptSelector.py
-
-Reel narration prompt builder for "Aesthetic Vibes" - V2 diversity overhaul.
-
-Changes:
-- 9 rotating Reel archetypes (7 prose + 2 po-em) so every reel is structurally different.
-- Poems alternate with prose reels 1-after-1 (poem -> prose -> poem -> ...).
-- Per-archetype themes, hook styles, ending styles, visual modes and voice.
-- Memory guard (no recent repeats) persisted in a local cache file.
-- Emotional arc (tension -> recognition -> payoff) + sensory/desi detail rule.
-- hook_line + caption instructions for the caption and video composer.
-- Word count unified to 80-110 (matches story_generation.py validation).
-"""
+"""Creative selection and prompt building for Aesthetic Vibes reels."""
 
 import json
 import os
@@ -30,12 +17,18 @@ CACHE_FILE = Path.home() / ".cache" / "reel_prompt_tracker.json"
 
 
 def _load_cache() -> dict:
+    default = {
+        "archetypes": [], "themes": [], "formats": [], "recent_dna": [],
+    }
     try:
         if CACHE_FILE.exists():
-            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            cached = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            if isinstance(cached, dict):
+                default.update(cached)
+                return default
     except (OSError, ValueError):
         pass
-    return {"archetypes": [], "themes": []}
+    return default
 
 
 def _save_cache(cache: dict) -> None:
@@ -207,21 +200,11 @@ LANGUAGE:
 - Short sentences with natural breathing pauses (line breaks = pauses).
 - Calm, mature tone. Never a motivational speaker. No cliches.
 
-EMOTIONAL ARC - every piece must travel three beats:
-1. TENSION - the first 1-2 lines establish something at stake: a truth, a loss, a contradiction, a feeling held too long.
-2. RECOGNITION - one specific everyday detail that makes the viewer think "that's exactly me."
-3. PAYOFF - the last 1-2 lines are the strongest thought: worth saving, screen captioning, or sending to someone.
-
-ALWAYS include at least ONE sensory or desi detail somewhere, and ROTATE which one - do not use rain in every reel: chai steam rising, a phone ringing at the wrong hour, the smell of home-cooked food, morning light through a window, a bus window in motion, a mother's voice, a street dog at the gate, dust dancing in sunlight, the whistle of a pressure cooker, a train pulling in, the hum of a ceiling fan, a cold breeze off a river, an auto-rickshaw ride, the first bite of something familiar, footsteps on a quiet staircase. Make it feel lived, not invented.
-
-HOOK RULES (the first line must stop the scroll):
-- A VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 words, max 9): punchy, not too big, stopping the scroll in ~1.5s.
-- Use the today's hook style.
-- Never start with "Sometimes", "People", or "Life" every time.
-- Start mid-feeling, not with a setup.
-
-LENGTH (hard rule):
-- Between 80 and 110 words total. The API enforces this.
+CREATIVE FREEDOM:
+- Follow the selected purpose, viewer intent, pillar, format, and arc as a coherent direction.
+- The arc is optional guidance, not a checklist. Do not force a twist, reversal, concrete object, punch line, or dramatic final line.
+- Use a concrete or desi detail only when it belongs naturally to the idea. Never insert chai, rain, a phone, or any object just to satisfy a rule.
+- A reel may be quiet, funny, warm, direct, unfinished, or deeply emotional.
 
 SAFETY - always:
 - No names that are not obviously ordinary, no celebrities.
@@ -232,17 +215,152 @@ SAFETY - always:
 
 
 # ===========================================================================
-# KICK ENGINE - the anti-monotony layer
+# CREATIVE ARCHITECTURE
 # ===========================================================================
-# A reel feels monotonous when it walks in a straight line: mood -> mood ->
-# soft conclusion. Three things fix that, and all three are enforced below:
-#   1. a required TURN in the middle (a reversal, not a mood shift),
-#   2. a required CONCRETE ANCHOR (number / object / action / one line of
-#      real speech) so the feeling belongs to a real moment,
-#   3. a LANDING LINE that re-reads the opening instead of summarising.
-# The same constants feed story_generation's validator, so a flat draft is
-# rejected and rewritten instead of being published.
+# The selected values are injected into the prompt one at a time. They are
+# preferences for a creative direction, not a checklist every reel must pass.
 # ===========================================================================
+
+CREATIVE_ARCS = {
+    "EMOTIONAL_REALIZATION": "tension -> recognition -> realization, when the idea genuinely needs movement",
+    "MICRO_STORY": "scene -> detail -> meaning; let the moment reveal the point",
+    "ADVICE": "problem -> truth -> useful practical thought, without lecturing",
+    "CONFIDENCE": "doubt -> realization -> quiet confidence",
+    "NOSTALGIA": "memory -> specific detail -> what it means now",
+    "POEM": "feeling -> images -> emotional release, with no forced twist",
+    "FUNNY": "situation -> escalation -> punchline or deadpan observation",
+    "WARM": "ordinary moment -> appreciation -> a small smile",
+    "BOLD_TRUTH": "assumption -> contradiction -> clear truth",
+    "OBSERVATIONAL": "observation -> example -> unexpected insight",
+    "LETTER": "address -> memory or thought -> intimate closing",
+    "ROMANTIC": "moment -> detail -> feeling, without melodrama",
+    "NO_ARC": "one honest thought that can end naturally; no required turn",
+}
+
+VIEWER_INTENTS = {
+    "IDENTIFICATION": "make the viewer think: this is literally me",
+    "SEND_TO_SOMEONE": "make the viewer think of one person to send it to",
+    "YOU_NEED_THIS": "offer something someone quietly needs to hear",
+    "NOSTALGIA": "bring back home, childhood, or a time that felt ordinary then",
+    "FRIENDSHIP": "make the viewer think: this is us",
+    "FAMILY": "bring to mind a parent, sibling, or home",
+    "LAUGHTER": "make the viewer laugh because it is painfully accurate",
+    "SAVE": "make the viewer want to remember the thought",
+    "COMMENT": "leave room for a genuine personal response",
+    "HOPE": "leave the viewer lighter without forced positivity",
+    "CONFIDENCE": "make the viewer want to become this version of themselves",
+    "WARMTH": "make the viewer smile at an ordinary good moment",
+    "REFLECTION": "make the viewer see a familiar thing differently",
+}
+
+CONTENT_PURPOSES = {
+    "RECOGNIZE": "name a familiar human experience precisely",
+    "REMEMBER": "bring a person, place, or time back to mind",
+    "COMFORT": "offer companionship without trying to fix everything",
+    "AMUSE": "turn an everyday contradiction into a laugh",
+    "NOTICE": "show an overlooked detail or social truth",
+    "ENCOURAGE": "give grounded courage without generic motivation",
+    "CONNECT": "create something people send to someone they love",
+    "RETHINK": "change how the viewer sees a familiar choice",
+}
+
+FORMAT_RANGES = {
+    "prose": (80, 110), "poem": (55, 90), "micro_story": (80, 110),
+    "short_reflection": (50, 80), "advice": (60, 100), "funny": (35, 70),
+    "letter": (80, 110), "observational": (45, 80),
+}
+
+HOOK_BEHAVIORS = {
+    "CURIOSITY": "open with an unfinished thought that creates curiosity",
+    "CONFESSION": "open with a plain personal confession",
+    "SCENE": "open inside a specific scene, place, or time",
+    "QUESTION": "open with a natural question",
+    "CONTRADICTION": "open with a statement that seems to disagree with itself",
+    "DIALOGUE": "open with a short line of believable dialogue",
+    "FUNNY": "open with a dry, recognizable joke or observation",
+    "NOSTALGIA": "open with a memory whose meaning is not yet clear",
+    "DIRECT": "open by saying the truth plainly",
+    "ACTION": "open with a small action already happening",
+    "POETIC": "open with one simple image, only when it feels natural",
+    "OBSERVATIONAL": "open with something people rarely say out loud",
+}
+
+ENDING_BEHAVIORS = {
+    "PUNCHLINE": "end with a funny turn or dry punchline",
+    "REALIZATION": "let the meaning become clear at the end",
+    "OPEN_ENDING": "leave the thought open without explaining it",
+    "WARM_ENDING": "land gently on appreciation or connection",
+    "QUESTION": "end with a genuine question, not a slogan",
+    "FULL_CIRCLE": "make the opening mean something new",
+    "QUIET_FACT": "end on a simple fact without announcing its meaning",
+    "DIRECT_ADVICE": "end with one useful, human suggestion",
+    "DIALOGUE_ECHO": "return to a line of believable speech",
+    "NOSTALGIC_END": "end with what the remembered time means now",
+    "EMOTIONAL_RELEASE": "allow the feeling to loosen without overexplaining",
+    "NO_BIG_ENDING": "stop naturally; do not manufacture a climax",
+    "UNDERSTATED_ENDING": "end plainly and let the viewer do the feeling",
+}
+
+PACING_STYLES = {
+    "SLOW": "slow, spacious sentences with room to breathe",
+    "CONVERSATIONAL": "natural speech with varied sentence lengths",
+    "QUICK": "short beats and quick movement",
+    "RHYTHMIC": "intentional line breaks and a light musical cadence",
+    "STORYTELLING": "clear scene progression and lived details",
+    "DEADPAN": "flat, dry delivery that makes the contrast funny",
+    "POETIC": "simple images and measured pauses without fancy language",
+    "DIRECT": "plain statements with little decoration",
+}
+
+CREATIVE_TEMPERATURES = {
+    "LOW": "quiet, observational, or warm; no need to peak emotionally",
+    "MEDIUM": "engaging and emotionally clear but natural",
+    "HIGH": "strong emotional or comedic impact, without melodrama",
+}
+
+EVERYDAY_DETAILS = [
+    "a phone, missed call, or voice note", "an old photograph or school notebook",
+    "a lunchbox, grocery receipt, or train ticket", "a parent's handwriting or sandals",
+    "a half-written message, keychain, or old T-shirt", "a lift button, hostel cupboard, or office badge",
+    "an alarm at 6:30, college ID, or restaurant bill", "a kitchen light, empty chair, or balcony",
+    "a metro card, bus window, or shopping bag", "a childhood toy, folded clothes, or medicine strip",
+]
+
+HOOK_OPTIONS_BY_KEY = {
+    "MICRO_STORY": ["SCENE", "CURIOSITY", "DIALOGUE", "ACTION"],
+    "WISDOM_TRUTH": ["OBSERVATIONAL", "CONTRADICTION", "DIRECT", "CURIOSITY"],
+    "REALITY_TALK": ["DIRECT", "CONTRADICTION", "QUESTION", "OBSERVATIONAL"],
+    "HOPE_AFTER": ["CONFESSION", "CURIOSITY", "DIRECT", "POETIC"],
+    "LETTER_FORMAT": ["DIRECT", "CONFESSION", "DIALOGUE", "NOSTALGIA"],
+    "DESI_SLICE": ["SCENE", "NOSTALGIA", "DIALOGUE", "ACTION"],
+    "JOY_QUIET": ["SCENE", "CONFESSION", "OBSERVATIONAL", "FUNNY"],
+    "RELATABLE_POEM": ["CONFESSION", "QUESTION", "POETIC", "OBSERVATIONAL"],
+    "HEALING_POEM": ["CONFESSION", "POETIC", "CURIOSITY", "QUESTION"],
+}
+
+ENDING_OPTIONS_BY_KEY = {
+    "MICRO_STORY": ["REALIZATION", "DIALOGUE_ECHO", "QUIET_FACT", "FULL_CIRCLE"],
+    "WISDOM_TRUTH": ["OPEN_ENDING", "QUIET_FACT", "REALIZATION", "UNDERSTATED_ENDING"],
+    "REALITY_TALK": ["DIRECT_ADVICE", "QUIET_FACT", "OPEN_ENDING", "UNDERSTATED_ENDING"],
+    "HOPE_AFTER": ["WARM_ENDING", "EMOTIONAL_RELEASE", "REALIZATION", "UNDERSTATED_ENDING"],
+    "LETTER_FORMAT": ["DIALOGUE_ECHO", "WARM_ENDING", "NOSTALGIC_END", "OPEN_ENDING"],
+    "DESI_SLICE": ["WARM_ENDING", "NOSTALGIC_END", "QUIET_FACT", "NO_BIG_ENDING"],
+    "JOY_QUIET": ["WARM_ENDING", "PUNCHLINE", "NO_BIG_ENDING", "UNDERSTATED_ENDING"],
+    "RELATABLE_POEM": ["EMOTIONAL_RELEASE", "OPEN_ENDING", "UNDERSTATED_ENDING", "WARM_ENDING"],
+    "HEALING_POEM": ["EMOTIONAL_RELEASE", "WARM_ENDING", "OPEN_ENDING", "UNDERSTATED_ENDING"],
+}
+
+PILLAR_OPTIONS_BY_KEY = {
+    "MICRO_STORY": ["FAMILY", "FRIENDSHIP", "RELATIONSHIPS", "ADULTING"],
+    "WISDOM_TRUTH": ["LIFE_CHOICES", "OBSERVATIONAL", "BOLD_TRUTH", "PERSONAL_GROWTH"],
+    "REALITY_TALK": ["SELF_RESPECT", "CONFIDENCE", "BOLD_TRUTH", "LIFE_CHOICES"],
+    "HOPE_AFTER": ["HOPE", "HEALING", "PERSONAL_GROWTH", "SMALL_HAPPINESS"],
+    "LETTER_FORMAT": ["FAMILY", "FRIENDSHIP", "ROMANCE", "RELATIONSHIPS"],
+    "DESI_SLICE": ["DESI_DAILY_LIFE", "COLLEGE_YOUTH", "CHILDHOOD", "FAMILY"],
+    "JOY_QUIET": ["SMALL_HAPPINESS", "FUNNY_REAL_LIFE", "FRIENDSHIP", "DESI_DAILY_LIFE"],
+    "RELATABLE_POEM": ["RELATIONSHIPS", "ADULTING", "HEALING", "IDENTITY"],
+    "HEALING_POEM": ["HEALING", "HOPE", "PERSONAL_GROWTH", "SELF_RESPECT"],
+}
 
 BANNED_PLATITUDES = [
     "you are enough",
@@ -338,51 +456,6 @@ def has_concrete_signal(text: str) -> bool:
 
 _BANNED_FOR_PROMPT = ", ".join(f'"{p}"' for p in BANNED_PLATITUDES)
 
-KICK_ENGINE = f"""
-==================================================
-THE KICK - ANTI-MONOTONY LAYER (do ALL FOUR)
-==================================================
-A reel feels monotonous when it walks a straight line: mood -> mood -> soft
-conclusion. One real TURN in the middle is what makes people rewatch, comment
-and send it. Do all four of these.
-
-1. TURN (required, at about 55-70% of the words):
-   The piece must TURN once - a reversal, a confession, an admission, a
-   contradiction or a quiet revelation that re-reads everything before it.
-   NOT a mood shift ("and then it got better") and NOT a lesson.
-   The turn is the sentence the viewer was not expecting.
-   Illustrations of the SHAPE only - write your own for this story and never
-   reuse these words: "I was not angry. I was scared." / "The lie was mine."
-   / "It was never about the city." / "She never asked me to stay - I did."
-
-2. CONCRETE ANCHOR (required, at least 1, ideally 2):
-   An exact number or time (three years, 6 a.m., the 9:40 train), a named
-   ordinary object (a steel tiffin, a cracked phone screen, a red thread),
-   a small physical action (soaking rice, tying a shoelace, unplugging the
-   fan), or ONE short line of real speech in double quotes (she said, "eat
-   something"). Feelings alone are flat; the object is what makes a stranger
-   feel it. Never reuse the same object twice in one reel.
-
-3. VARIED RHYTHM (required):
-   Line lengths must differ. Include at least one very short line (2-4 words)
-   that lands like a beat. Never open two lines with the same word. If every
-   line is about the same length, the voiceover sounds like a list - break
-   that pattern.
-
-4. LANDING LINE (required):
-   The final line is the strongest line of the reel: max 9 words, and it must
-   close the loop with the opening (make the first line mean something new) or
-   land one quiet gut-punch. It may also be the bare fact with no comfort at
-   all. Never advice, never a summary, never a motivational close.
-
-BANNED PLATITUDES - never use these or a close paraphrase. They are the main
-reason reels feel identical to each other:
-{_BANNED_FOR_PROMPT}
-"""
-
-
-
-
 # ===========================================================================
 # WEEKDAY ENERGY ENVELOPE (merged with time-of-day mood, never replacing it)
 # ===========================================================================
@@ -407,47 +480,99 @@ def get_weekday_direction():
 # REEL ARCHETYPES - the diversity engine
 # ===========================================================================
 
+KICK_ENGINE = f"""
+==================================================
+SELECTED CREATIVE DIRECTION
+==================================================
+Use the selected creative arc naturally. Do not manufacture a twist because a
+twist is expected. A powerful reel may simply observe, remember, amuse, advise,
+or end quietly. Let the selected format, pacing, temperature, and ending decide
+how much movement the piece needs.
+
+Concrete details are optional. Use one only when it makes the idea more real;
+never add a random object merely to satisfy a prompt. Vary sentence lengths
+when the selected pacing calls for it, but do not force a short punch line.
+
+BANNED PLATITUDES - use this as a safety net, not as the creative engine:
+{_BANNED_FOR_PROMPT}
+"""
+
 ARCHETYPES = [
     {
-        "format": "prose",
-        "key": "MICRO_STORY",
-        "name": "Micro Story",
-        "script": ("ONE specific everyday moment that could truly have happened, told like a memory: "
-                    "a phone call, a bus ride, a night of silence, a quiet goodbye. "
-                    "Tell it scene by scene; the story makes the truth; the last line is that truth."),
-        "hook_styles": [
-            "Start with the moment itself (e.g. That night my father called just to hear my voice)",
-            "Start with one small gesture that carried meaning",
-            "Start with a place and a time (e.g. Last winter, at the metro gate)",
-            "Start with a journal-style line about that specific night",
-        ],
-        "ending_styles": [
-            "End with the quiet truth the moment pointed to",
-            "End with what you would tell that person now",
-            "End warm and human, not dramatic",
-        ],
-        "themes": [
-            "a parent's repeated phone call you almost ignored",
-            "a goodbye said casually that stayed forever",
-            "the last bus home after everything changed",
-            "a friend's voice after years of silence",
-            "a small habit that quietly saved a hard month",
-        ],
-        "visual_modes": ["bridge", "nostalgic_room", "female", "male", "landscape", "friends_or_couple"],
-        "voice": "deep_male",
+        "format": "prose", "key": "MICRO_STORY", "name": "Micro Story",
+        "script": "ONE specific everyday moment told like a memory. Tell it scene by scene; let the story make the truth.",
+        "hook_styles": ["Start with the moment itself", "Start with one small gesture", "Start with a place and time", "Start with a journal-style line"],
+        "ending_styles": ["End with the quiet truth", "End with what you would tell them now", "End warm and human"],
+        "themes": ["a parent's repeated phone call you almost ignored", "a goodbye said casually that stayed forever", "the last bus home after everything changed", "a friend's voice after years of silence", "a small habit that quietly saved a hard month"],
+        "visual_modes": ["bridge", "nostalgic_room", "female", "male", "landscape", "friends_or_couple"], "voice": "deep_male",
     },
     {
-        "format": "prose",
-        "key": "WISDOM_TRUTH",
-        "name": "Wisdom Truth",
-        "script": "A calm, universal truth someone learns from living. No story characters, one central idea that unfolds line by line and lands in a shareable last line.",
-        "hook_styles": [
-            "Start with a quiet realization",
-            "Start with a thought that sounds like a journal entry",
-            "Start with something only experience teaches",
-            "Start with a contradiction that resolves itself",
-        ],
-        "ending_styles": [
+        "format": "prose", "key": "WISDOM_TRUTH", "name": "Wisdom Truth",
+        "script": "A calm, universal truth learned from living. No story characters; let one central idea unfold naturally.",
+        "hook_styles": ["Start with a quiet realization", "Start with a journal thought", "Start with something experience teaches", "Start with a contradiction"],
+        "ending_styles": ["End with a universal life lesson", "End with acceptance", "End with a peaceful realization"],
+        "themes": ["people change and love changes shape", "growing up means saying goodbye quietly", "outgrowing versions of ourselves", "the small habits that built you", "the roads you did not take"],
+        "visual_modes": ["landscape", "bridge", "object", "abstract_emotion", "nostalgic_room", "architecture"], "voice": "calm_male",
+    },
+    {
+        "format": "prose", "key": "REALITY_TALK", "name": "Real Talk",
+        "script": "One caring reality check: direct, warm, and never cruel. It should feel like a wise friend, not a lecture.",
+        "hook_styles": ["Start with the honest sentence", "Start with a wake-up observation", "Start with a hard truth gently", "Start with nobody warns you about this"],
+        "ending_styles": ["End with self-respect", "End with a kind boundary", "End with the choice that is yours"],
+        "themes": ["you cannot heal in the place that keeps breaking you", "protecting your energy is not selfish", "some doors close", "being everyone's listener has a cost", "wanting peace is not giving up"],
+        "visual_modes": ["abstract_emotion", "bridge", "architecture", "landscape", "female", "male"], "voice": "calm_male",
+    },
+    {
+        "format": "prose", "key": "HOPE_AFTER", "name": "Hope After Everything",
+        "script": "A warm voiceover showing that the hard part does not have the last word. Keep hope grounded and never forced.",
+        "hook_styles": ["Start with a quiet promise", "Start with what kept you going", "Start with a first good morning", "Start with a small sign"],
+        "ending_styles": ["End with a hopeful truth", "End with gratitude", "End with a warm forward step"],
+        "themes": ["healing is not linear but real", "light returns slowly", "rebuilding with no one watching", "letting go made room", "peace growing around pain"],
+        "visual_modes": ["landscape", "bridge", "female", "friends_or_couple", "nature", "object"], "voice": "warm_female",
+    },
+    {
+        "format": "prose", "key": "LETTER_FORMAT", "name": "A Letter",
+        "script": "Write a short intimate letter addressed to a younger self, friend, parent, or past love. Keep it universal.",
+        "hook_styles": ["Start with the address line", "Start with what you would change", "Start with to the version of me", "Start with what they should know"],
+        "ending_styles": ["End with what to remember", "End with a warm signature", "End with advice as forgiveness"],
+        "themes": ["a letter to your younger self", "a letter to a friend who left town", "a letter to a parent", "a letter before healing", "a letter to a love that taught you to leave"],
+        "visual_modes": ["nostalgic_room", "landscape", "bridge", "female", "male", "object"], "voice": "soft_female",
+    },
+    {
+        "format": "prose", "key": "DESI_SLICE", "name": "Desi Slice of Life",
+        "script": "A specific South Asian everyday scene. The beauty is in ordinary reality, not a forced lesson or object.",
+        "hook_styles": ["Start with the desi moment", "Start with a smell or sound", "Start with a hostel or college memory", "Start with a bus seat or street"],
+        "ending_styles": ["End with the warmth it carried", "End with what we forget to thank", "End with the world feeling"],
+        "themes": ["a tea stall in the rain", "a metro ride that became home", "a phone call from home", "hostel food and the nights it held", "a festival window seat"],
+        "visual_modes": ["bridge", "rainy_city", "landscape", "nostalgic_room", "friends_or_couple", "animal_life"], "voice": "soft_female",
+    },
+    {
+        "format": "prose", "key": "JOY_QUIET", "name": "Quiet Joy",
+        "script": "Capture ordinary happiness: light, gentle, specific, and allowed to simply make someone smile.",
+        "hook_styles": ["Start with the small joy", "Start with what today felt like", "Start with catching yourself smiling", "Start with something ordinary you protect"],
+        "ending_styles": ["End with the worth of small gladness", "End with permission to enjoy it", "End with a simple exhale"],
+        "themes": ["first rain after heat", "a home-cooked meal", "a song saving a day", "a Sunday with no plans", "small wins"],
+        "visual_modes": ["landscape", "bridge", "nature", "friends_or_couple", "animal_life", "object"], "voice": "warm_female",
+    },
+    {
+        "format": "poem", "key": "RELATABLE_POEM", "name": "Poem (Relatable)",
+        "script": "Write a simple free-verse poem about an everyday feeling. Use a steady cadence without forcing metaphors or a dramatic ending.",
+        "hook_styles": ["Begin with the everyday moment", "Begin with a whispered question", "Begin with an ordinary thing", "Begin with a plain confession"],
+        "ending_styles": ["End with soft acceptance", "Turn the ache into kindness", "End with a sendable line"],
+        "themes": ["saying I'm fine", "overthinking at 1am", "seeking a parent's approval", "the friend who always gives", "a rented room far from home", "growing up away from home", "a love already ending", "talking to yourself"],
+        "visual_modes": ["nostalgic_room", "bridge", "landscape", "female", "abstract_emotion", "friends_or_couple"], "voice": "soft_female",
+    },
+    {
+        "format": "poem", "key": "HEALING_POEM", "name": "Poem (Healing)",
+        "script": "Write a plain, gentle healing poem. Start wherever the feeling naturally starts and let it end without forcing a climax.",
+        "hook_styles": ["Begin with the ache", "Begin with the night", "Begin with what broke", "Begin with light returning"],
+        "ending_styles": ["End with lighter days", "End with permission", "End with a warm image"],
+        "themes": ["light after a dark season", "being gentle with yourself", "asking for help", "rebuilding in ordinary ways", "grief becoming softer", "forgiving yourself", "not checking old messages"],
+        "visual_modes": ["landscape", "bridge", "nature", "abstract_emotion", "friends_or_couple", "object"], "voice": "warm_female",
+    },
+]
+
+"""
             "End with a universal life lesson",
             "End with acceptance",
             "End with a peaceful realization",
@@ -660,6 +785,9 @@ ARCHETYPES = [
 ]
 
 # ===========================================================================
+# End of quarantined legacy fragment.
+"""
+
 # TIME BASED CONTENT MOOD (unchanged)
 # ===========================================================================
 
@@ -749,37 +877,88 @@ def reset_tracker():
 # CREATE FINAL LLM PROMPT
 # ===========================================================================
 
+def _weighted_choice(items, weights):
+    return random.choices(items, weights=weights, k=1)[0]
+
+
+def _archetype_options(forced_format=None):
+    if forced_format in ("poem", "prose"):
+        return [a for a in ARCHETYPES if (a.get("format") == forced_format)]
+    return list(ARCHETYPES)
+
+
 def _pick_archetype(cache, forced_format=None):
-    """
-    Alternate poem/prose 1-after-1 so the feed never shows the same format
-    twice in a row (poem -> prose -> poem -> prose ...), with no-repeat
-    inside each pool as well. Writes the chosen format back into cache.
+    """Pick a varied archetype without making poem/prose predictable."""
+    options = _archetype_options(forced_format)
+    recent = cache.get("archetypes", [])[-4:]
+    recent_formats = cache.get("formats", [])[-3:]
+    weights = []
+    for archetype in options:
+        weight = 1
+        if archetype["key"] in recent:
+            weight = 0.15
+        if len(recent_formats) >= 2 and all(
+            value == archetype.get("format", "prose") for value in recent_formats[-2:]
+        ):
+            weight *= 0.25
+        weights.append(weight)
+    selected = _weighted_choice(options, weights)
+    return selected["key"]
 
-    forced_format ("poem"/"prose") overrides alternation for one run, e.g.
-    when the user explicitly wants a poem next: FORCE_REEL_FORMAT=poem.
-    """
-    poem_keys = [a["key"] for a in ARCHETYPES if a.get("format") == "poem"]
-    prose_keys = [a["key"] for a in ARCHETYPES if a.get("format") != "poem"]
 
-    # Strict 1-after-1 alternation: if last was a poem, pick prose (and vice versa)
-    if forced_format == "poem":
-        pool = poem_keys
-    elif forced_format == "prose":
-        pool = prose_keys
-    elif cache.get("last_format") == "poem":
-        pool = prose_keys
-    else:
-        pool = poem_keys
+def _pick_from(values, recent, default):
+    values = list(values or [default])
+    candidates = [value for value in values if value not in recent[-2:]] or values
+    return random.choice(candidates)
 
-    history = cache.get("archetypes", [])
-    recent = [h for h in history[-2:] if h in pool]
-    candidates = [k for k in pool if k not in recent]
-    if not candidates:
-        candidates = list(pool)
 
-    key = random.choice(candidates)
-    cache["last_format"] = "poem" if key in poem_keys else "prose"
-    return key
+def _creative_profile(selected, cache):
+    key = selected["key"]
+    format_name = selected.get("format", "prose")
+    defaults = {
+        "MICRO_STORY": ("CONNECT", "SEND_TO_SOMEONE", "MICRO_STORY", "STORYTELLING", "MEDIUM", "micro_story"),
+        "WISDOM_TRUTH": ("RETHINK", "REFLECTION", "OBSERVATIONAL", "SLOW", "MEDIUM", "short_reflection"),
+        "REALITY_TALK": ("NOTICE", "YOU_NEED_THIS", "BOLD_TRUTH", "DIRECT", "MEDIUM", "advice"),
+        "HOPE_AFTER": ("ENCOURAGE", "HOPE", "EMOTIONAL_REALIZATION", "SLOW", "MEDIUM", "short_reflection"),
+        "LETTER_FORMAT": ("CONNECT", "SEND_TO_SOMEONE", "LETTER", "CONVERSATIONAL", "MEDIUM", "letter"),
+        "DESI_SLICE": ("REMEMBER", "NOSTALGIA", "NOSTALGIA", "STORYTELLING", "LOW", "micro_story"),
+        "JOY_QUIET": ("NOTICE", "WARMTH", "WARM", "SLOW", "LOW", "short_reflection"),
+        "RELATABLE_POEM": ("RECOGNIZE", "IDENTIFICATION", "POEM", "RHYTHMIC", "MEDIUM", "poem"),
+        "HEALING_POEM": ("COMFORT", "YOU_NEED_THIS", "POEM", "POETIC", "MEDIUM", "poem"),
+    }
+    purpose, intent, arc, pacing, temperature, creative_format = defaults.get(
+        key, ("RECOGNIZE", "IDENTIFICATION", "NO_ARC", "CONVERSATIONAL", "MEDIUM", format_name)
+    )
+    format_name = selected.get("creative_format", creative_format)
+    if selected.get("arc_options"):
+        arc = _pick_from(selected["arc_options"], [item.get("arc") for item in cache.get("recent_dna", [])], arc)
+    hook = _pick_from(
+        selected.get("hook_behaviors") or HOOK_OPTIONS_BY_KEY.get(key),
+        [item.get("hook_style") for item in cache.get("recent_dna", [])],
+        "CONFESSION",
+    )
+    ending = _pick_from(
+        selected.get("ending_behaviors") or ENDING_OPTIONS_BY_KEY.get(key),
+        [item.get("ending_style") for item in cache.get("recent_dna", [])],
+        "UNDERSTATED_ENDING",
+    )
+    return {
+        "purpose": purpose,
+        "intent": intent,
+        "pillar": _pick_from(
+            selected.get("pillar_options") or PILLAR_OPTIONS_BY_KEY.get(key),
+            [item.get("pillar") for item in cache.get("recent_dna", [])],
+            key,
+        ),
+        "format": format_name,
+        "arc": arc,
+        "hook_style": hook,
+        "ending_style": ending,
+        "pacing": pacing,
+        "temperature": temperature,
+        "word_range": FORMAT_RANGES.get(format_name, (80, 110)),
+        "detail_hint": random.choice(EVERYDAY_DETAILS),
+    }
 
 
 def get_prompt_for_current_time(pinned=None, story_payload=None):
@@ -805,16 +984,17 @@ def get_prompt_for_current_time(pinned=None, story_payload=None):
     content = get_content_type_for_time()
     weekday_label, weekday_direction = get_weekday_direction()
     hook_history = _load_hook_history()
-
     cache = _load_cache()
 
     if pinned is not None:
+        content = pinned.get("time_context", content)
+        weekday_label = pinned.get("weekday_label", weekday_label)
+        weekday_direction = pinned.get("weekday_direction", weekday_direction)
         selected_key = pinned["key"]
         selected = next(a for a in ARCHETYPES if a["key"] == selected_key)
-        theme = pinned["theme"]
-        hook = pinned["hook"]
-        ending = pinned["ending"]
-        hook_instruction = pinned.get("hook_instruction", hook)
+        theme = pinned.get("theme", selected["themes"][0])
+        profile = pinned.get("profile") or _creative_profile(selected, cache)
+        hook_instruction = pinned.get("hook_instruction", HOOK_BEHAVIORS.get(profile["hook_style"], profile["hook_style"]))
         recent_hooks_block = _format_recent_hooks(hook_history, pinned.get("hook_block"))
     else:
         forced = os.getenv("FORCE_REEL_FORMAT", "").strip().lower()
@@ -824,29 +1004,30 @@ def get_prompt_for_current_time(pinned=None, story_payload=None):
         selected = next(a for a in ARCHETYPES if a["key"] == selected_key)
 
         theme = _pick_no_repeat(selected["themes"], "themes", cache, history_len=5)
-        hook = random.choice(selected["hook_styles"])
-        ending = random.choice(selected["ending_styles"])
-        hook_instruction = hook
+        profile = _creative_profile(selected, cache)
+        hook_instruction = HOOK_BEHAVIORS.get(profile["hook_style"], random.choice(selected["hook_styles"]))
 
-        # Build the do-not-repeat block ONCE and store it, so the retry
-        # path reuses the exact same text (identical prompt).
         recent_hooks_block = _format_recent_hooks(hook_history)
 
-        # Update local memory
         cache.setdefault("archetypes", []).append(selected_key)
         cache["archetypes"] = cache["archetypes"][-12:]
         cache.setdefault("themes", []).append(theme)
         cache["themes"] = cache["themes"][-12:]
+        cache.setdefault("formats", []).append(profile["format"])
+        cache["formats"] = cache["formats"][-12:]
+        cache.setdefault("recent_dna", []).append({"theme": theme, **profile})
+        cache["recent_dna"] = cache["recent_dna"][-10:]
         _save_cache(cache)
 
-        # Remember the full selection so a retry can pin the identical prompt
         LAST_PROMPT_SELECTION = {
             "key": selected_key,
             "theme": theme,
-            "hook": hook,
             "hook_instruction": hook_instruction,
-            "ending": ending,
+            "profile": profile,
             "hook_block": recent_hooks_block,
+            "time_context": content,
+            "weekday_label": weekday_label,
+            "weekday_direction": weekday_direction,
         }
 
     LAST_ARCHETYPE_INFO = {
@@ -854,6 +1035,7 @@ def get_prompt_for_current_time(pinned=None, story_payload=None):
         "name": selected["name"],
         "format": selected.get("format", "prose"),
         "theme": theme,
+        **profile,
         "visual_modes": selected["visual_modes"],
         "voice": selected["voice"],
         "weekday": weekday_label,
@@ -862,6 +1044,8 @@ def get_prompt_for_current_time(pinned=None, story_payload=None):
     print(f"\n🎭 Reel archetype: {selected['name']} ({selected['key']} / {selected.get('format', 'prose')})")
     print(f"💡 Theme: {theme}")
     print(f"🗣️ Voice profile: {selected['voice']}")
+    print(f"🎯 Purpose/intent: {profile['purpose']} / {profile['intent']}")
+    print(f"🧩 Creative DNA: {profile['format']} / {profile['arc']} / {profile['pacing']}")
 
     final_prompt = f"""
 {BASE_INSTRUCTION}
@@ -876,12 +1060,37 @@ STORY TYPE:
 {selected['script']}
 
 
+CONTENT PURPOSE:
+{profile['purpose']} - {CONTENT_PURPOSES.get(profile['purpose'], '')}
+
+VIEWER INTENT:
+{profile['intent']} - {VIEWER_INTENTS.get(profile['intent'], '')}
+
+CONTENT PILLAR:
+{profile['pillar']}
+
+CREATIVE ARC:
+{profile['arc']} - {CREATIVE_ARCS.get(profile['arc'], '')}
+
+FORMAT AND LENGTH:
+{profile['format']} - write between {profile['word_range'][0]} and {profile['word_range'][1]} words so the downstream compatibility validator can accept it.
+
+PACING:
+{profile['pacing']} - {PACING_STYLES.get(profile['pacing'], '')}
+
+CREATIVE TEMPERATURE:
+{profile['temperature']} - {CREATIVE_TEMPERATURES[profile['temperature']]}
+
+OPTIONAL DETAIL POOL:
+If a physical detail improves this idea, choose one naturally from this kind of world: {profile['detail_hint']}. Do not add it merely because it appears here.
+
+
 THEME / MOMENT TO WRITE ABOUT:
 {theme}
 
 
-HOOK STYLE (first line must follow this):
-{hook_instruction}
+HOOK BEHAVIOR:
+{profile['hook_style']} - {hook_instruction}
 
 HOOK UNIQUENESS – READ CAREFULLY:
 The hook must be short, fresh, unique, and relatable – never a line that has
@@ -890,8 +1099,8 @@ paraphrases of them:
 {recent_hooks_block}
 
 RULES FOR THIS HOOK:
-- A SHORT 1-LINER (not 2): punchy, very catching and relatable, not too big. Each line UNDER 45 characters including spaces.
-- Original, concrete, emotional, and in three or fewer short beats.
+- Let the selected hook behavior decide the length and shape. It may be a short phrase, a full sentence, a question, dialogue, or a scene line.
+- Make it fresh and fitted to this reel, not a generic quote-card slogan.
 - DO NOT use the same opening line as the narration below.
 - DO NOT quote the narration's first spoken line.
 - A fresh visual metaphor is welcome, but avoid overused reels language.
@@ -899,36 +1108,49 @@ RULES FOR THIS HOOK:
   discard it and write a stronger, completely different one.
 
 
-ENDING STYLE:
-{ending}
+ENDING BEHAVIOR:
+{profile['ending_style']} - {ENDING_BEHAVIORS.get(profile['ending_style'], '')}
 
 
-TIME-OF-DAY MOOD:
+TIME-OF-DAY SUGGESTION (LOW WEIGHT; CONTENT MAY IGNORE IT):
 {content['mood']}
 
 
-WEEKDAY FEEL:
+WEEKDAY SUGGESTION (LOW WEIGHT; CONTENT MAY IGNORE IT):
 {weekday_label} - {weekday_direction}
 
 
 ==================================================
 WRITING THIS REEL
 
-- Write ONE reel voiceover, 80 to 110 words, line by line.
-- Follow the emotional arc: tension -> recognition -> TURN -> payoff.
-  (the TURN is mandatory - see THE KICK below)
-- End on the strongest line. Do not explain after it.
+- Write one voiceover in the selected format and word range.
+- Follow the selected creative direction naturally. Do not force a turn, object,
+    short punch line, or strongest final line unless the selected arc or ending
+    calls for it.
+- The narration should sound complete even if the background video is removed.
 
 {KICK_ENGINE}
 - If the story type is a letter, write it as a short intimate letter.
 - If the story type is a POEM, write a short RHYTHMIC free-verse poem in the
   simplest everyday words: each line is one short breath with a steady musical
-  cadence (line breaks = subtitle pauses), and the LAST TWO LINES are the
-  strongest - the ones people screenshot and send. The rhythm should make
-  people feel seen and connected, never forced rhymes.
+-  cadence (line breaks = subtitle pauses). Do not force the last lines to be
+    stronger than the rest unless the selected ending calls for that.
 - Keep it simple, specific, and shareable. No cliches, no motivational-speaker tone.
 - The six visual scenes will be built from your narration, so make the
   narration visual enough to paint (a moment, a place, a gesture, light, rain).
+
+==================================================
+FINAL CREATIVE CHECK (SILENT)
+==================================================
+Before returning, ask:
+1. Does this sound like a real human thought rather than a reel template?
+2. Is there a specific idea, even if there is no object or twist?
+3. Am I forcing a turn, object, punch line, or huge ending?
+4. Does the hook fit this story and the selected viewer intent?
+5. Is the ending natural for this format?
+6. Could someone recognize themselves or send this to one person?
+7. Would it still be interesting without the background video?
+8. Does it sound like one of the recent reels? If yes, rewrite it.
 """
 
     return final_prompt

@@ -63,11 +63,15 @@ def save_hook_line(hook):
 def build_hook_rule():
     """Prompt rule forbidding reuse of recent hooks (uniqueness engine)."""
     hooks = load_recent_hooks()
+    creative_info = getattr(_PS, "LAST_ARCHETYPE_INFO", None) or {}
+    hook_style = creative_info.get("hook_style", "CONFESSION")
+    hook_behavior = _PS.HOOK_BEHAVIORS.get(
+        hook_style, "use a natural opening fitted to the story"
+    )
     base = (
-        "- hook_line must be a VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 "
-        "words, max 9): punchy, not too big. It must stop a scrolling thumb in "
-        "under a second — a hint, a question, or a flash of the feeling, never "
-        "a summary and never a full sentence of the narration"
+        f"- hook_line must follow the selected {hook_style} behavior: {hook_behavior}. "
+        "Its length and shape may vary; it should be a fresh teaser, not a summary "
+        "and not a full sentence copied from the narration"
     )
     if not hooks:
         return base
@@ -86,6 +90,7 @@ def build_generation_prompt(pinned_key=None) -> str:
     
     # Pick a visual mode from the archetype's preferred pool (diverse, no repeats)
     _arch = getattr(_PS, "LAST_ARCHETYPE_INFO", None) or {}
+    word_range = _PS.FORMAT_RANGES.get(_arch.get("format", "prose"), (80, 110))
     visual_mode = get_next_gender(preferred_modes=_arch.get("visual_modes"))
     visual_instruction = get_gender_instruction(visual_mode)
 
@@ -182,8 +187,8 @@ nostalgic memory instead.
         ==================================================
         JSON RULES
 
-        - narration must contain 80-110 words
-        - hook_line must be a VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 words, max 9): punchy and not too big — the punchiest scroll-stopping teaser for THIS story, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
+                - narration must contain {word_range[0]}-{word_range[1]} words
+        - hook_line must follow the selected hook behavior and must not copy the opening spoken sentence; its length and shape may vary with the chosen style
         - the first spoken line of narration must be DIFFERENT from hook_line; the hook is a teaser, the narration opens with the moment
         - captions.caption_line must be the single most shareable line in the narration (may repeat the hook or the final line)
         - captions.cta must be one gentle human question inviting comments or saves (e.g. "Who felt this tonight?"); use "" if no good question comes to mind
@@ -543,10 +548,12 @@ def validate_story_json(data: Dict[str, Any]) -> None:
     narration = data["narration"].strip()
 
     words = len(narration.split())
+    creative_info = getattr(_PS, "LAST_ARCHETYPE_INFO", None) or {}
+    word_range = _PS.FORMAT_RANGES.get(creative_info.get("format", "prose"), (80, 110))
 
-    if words < 80 or words > 110:
+    if words < word_range[0] or words > word_range[1]:
         raise ValueError(
-            f"Narration must be between 80-110 words. Current: {words}"
+            f"Narration must be between {word_range[0]}-{word_range[1]} words. Current: {words}"
         )
 
     # ------------------------------------------------------------------
@@ -578,15 +585,20 @@ def validate_story_json(data: Dict[str, Any]) -> None:
             "with a real turn and a concrete anchor."
         )
 
-    if not _PS.has_concrete_signal(narration):
+    requires_concrete = creative_info.get("arc") in {
+        "MICRO_STORY", "NOSTALGIA", "LETTER", "ROMANTIC"
+    }
+    if requires_concrete and not _PS.has_concrete_signal(narration):
         raise ValueError(
-            "Narration has no concrete anchor: no exact number/time, no named "
-            "ordinary object, no line of real speech. Add one so the feeling "
-            "belongs to a real moment."
+            "This selected creative arc needs a concrete human detail, but none "
+            "was found. Add one naturally or choose a less scene-dependent arc."
         )
 
     landing_words = len(landing_line.split())
-    if landing_words > 14:
+    requires_short_landing = creative_info.get("ending_style") in {
+        "PUNCHLINE", "REALIZATION", "FULL_CIRCLE", "QUIET_FACT", "UNDERSTATED_ENDING"
+    }
+    if requires_short_landing and landing_words > 14:
         raise ValueError(
             f"The landing line is {landing_words} words - too long to land. "
             "End on one short, strongest line (max 9 words)."

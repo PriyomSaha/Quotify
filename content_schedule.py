@@ -33,6 +33,7 @@ MORNING_ENERGY_TYPES = [
     {"type": "LIFE_LESSONS_SUGGESTIONS", "name": "Life Lessons"},
     {"type": "SMALL_VICTORIES", "name": "Small Victories"},
     {"type": "MUSIC_ART_SOUL", "name": "Music & Art"},
+    {"type": "HUMAN_TRUTH", "name": "Human Truth"},
 ]
 
 
@@ -114,7 +115,7 @@ EVENING_QUOTE_TYPES = (
 )
 
 
-# All 34 content types.
+# All content types.
 ALL_CONTENT_TYPES = (
     MORNING_ENERGY_TYPES
     + AFTERNOON_RELATABLE_TYPES
@@ -126,6 +127,44 @@ ALL_CONTENT_TYPE_COUNT = len({
     content_info["type"]
     for content_info in ALL_CONTENT_TYPES
 })
+
+
+CONTENT_PILLARS = {
+    "HUMAN_TRUTH": ("HUMAN_TRUTH", 25),
+    "BITTERSWEET_RELATABLE": ("HUMAN_TRUTH", 25),
+    "THINGS_NOBODY_TALKS_ABOUT": ("HUMAN_TRUTH", 25),
+    "DEEP_EMOTIONAL": ("HUMAN_TRUTH", 25),
+    "LATE_NIGHT_THOUGHTS": ("HUMAN_TRUTH", 25),
+    "OVERTHINKING_ANXIETY": ("HUMAN_TRUTH", 25),
+    "MENTAL_HEALTH_REAL": ("HUMAN_TRUTH", 25),
+    "SELF_LOVE_BOUNDARIES": ("SELF_WORTH", 15),
+    "TRUTH_BOMBS": ("SELF_WORTH", 15),
+    "UNPOPULAR_OPINION": ("SELF_WORTH", 15),
+    "ONE_LINER": ("SELF_WORTH", 15),
+    "ELDER_WISDOM": ("WISDOM", 15),
+    "LIFE_WISDOM": ("WISDOM", 15),
+    "LIFE_LESSONS_SUGGESTIONS": ("WISDOM", 15),
+    "PHILOSOPHICAL_LIGHT": ("WISDOM", 15),
+    "NATURE_UNIVERSE": ("WISDOM", 15),
+    "HE_SHE_RELATIONSHIP": ("RELATIONSHIPS", 10),
+    "FRIENDSHIP_BONDS": ("RELATIONSHIPS", 10),
+    "FORGIVENESS_LETTING_GO": ("RELATIONSHIPS", 10),
+    "MUSIC_ART_SOUL": ("FREEDOM", 10),
+    "TRAVEL_WANDERLUST": ("FREEDOM", 10),
+    "SUCCESS_HUSTLE": ("FREEDOM", 10),
+    "GROWTH_HEALING": ("GROWTH", 10),
+    "MOTIVATIONAL_INSPIRING": ("GROWTH", 10),
+    "DREAMS_AMBITIONS": ("GROWTH", 10),
+    "SMALL_VICTORIES": ("GROWTH", 10),
+    "CHILDHOOD_VS_NOW": ("NOSTALGIA", 5),
+    "TIME_PERSPECTIVE": ("NOSTALGIA", 5),
+    "FOOD_COMFORT": ("NOSTALGIA", 5),
+    "SOCIAL_COMMENTARY": ("BOLD_TRUTHS", 5),
+    "FUNNY_SASSY": ("LIGHT_EXPERIMENTAL", 5),
+    "DAILY_STRUGGLE_HUMOR": ("LIGHT_EXPERIMENTAL", 5),
+    "POP_CULTURE_LYRICS": ("LIGHT_EXPERIMENTAL", 5),
+    "WHOLESOME_JOY": ("LIGHT_EXPERIMENTAL", 5),
+}
 
 
 # ============================================================================
@@ -287,12 +326,37 @@ def get_content_type_for_time(record_history=True):
 
     history = get_content_history() or []
 
-    # Last 10 posts are used for repetition control.
+    # Last 10 posts are used for both type and broad-pillar repetition control.
     recent_types = history[-10:]
+    recent_pillars = [
+        CONTENT_PILLARS[content_type][0]
+        for content_type in recent_types
+        if content_type in CONTENT_PILLARS
+    ]
+
+    available_pillars = {}
+    for content_info in available_types:
+        pillar, pillar_weight = CONTENT_PILLARS.get(
+            content_info["type"], ("OTHER", 1)
+        )
+        available_pillars.setdefault(pillar, {"weight": pillar_weight, "types": []})
+        available_pillars[pillar]["types"].append(content_info)
+
+    weighted_pillars = []
+    for pillar, pillar_info in available_pillars.items():
+        weight = pillar_info["weight"]
+        if pillar in recent_pillars[-2:]:
+            weight = max(1, weight // 4)
+        elif pillar in recent_pillars[-5:]:
+            weight = max(1, weight // 2)
+        weighted_pillars.extend([pillar] * weight)
+
+    selected_pillar = random.choice(weighted_pillars or list(available_pillars))
+    pillar_types = available_pillars[selected_pillar]["types"]
 
     weighted_types = []
 
-    for content_info in available_types:
+    for content_info in pillar_types:
         content_type = content_info["type"]
 
         if content_type not in recent_types:
@@ -319,6 +383,7 @@ def get_content_type_for_time(record_history=True):
     result = {
         "type": selected["type"],
         "name": selected["name"],
+        "pillar": selected_pillar,
         "reason": (
             f"{time_label} energy - "
             "randomly selected for maximum variety"
@@ -336,6 +401,7 @@ def get_content_type_for_time(record_history=True):
     f"📊 Recent types: "
     f"{', '.join(recent_types[-5:]) if recent_types else 'None'}"
     )
+    print(f"🧭 Selected pillar: {selected_pillar}")
 
     if not record_history:
         print(
@@ -446,7 +512,7 @@ def get_all_types_summary():
 
     print(
         "✅ MORNING COVERAGE: "
-        "13 content types available"
+        f"{len(MORNING_QUOTE_TYPES)} content types available"
     )
 
     print(

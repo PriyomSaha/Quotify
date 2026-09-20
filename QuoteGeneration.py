@@ -60,12 +60,14 @@ def generate_quote_caption(quote_text, event=None):
 
     prompt = f"""You are a social media caption writer for "Aesthetic Vibes" - a page for lost souls finding their way home through words.
 
-The quote image below is about to be posted. Write ONE warm, engaging caption (1-2 short sentences, max 25 words) that adds a fresh feeling to the quote instead of repeating it.
+The quote image below is about to be posted. Write ONE short caption (1-2 sentences, max 25 words) that feels like a natural afterthought, not a summary.
 
 Rules:
 - Use the simplest everyday words only - like saying it to a friend over chai. No fancy, heavy, or uncommon words.
 - SIMPLE ENGLISH the South Asian audience can easily understand.
 - Relatable, warm, human tone - a small hook that makes people want to save, share, or comment.
+- Choose one role that suits the quote: add a second thought, invite a genuine reaction, add a tiny everyday detail, or make it feel personal.
+- Vary the opening and tone. Do not keep using "Sometimes...", "Some words...", or "Read this again."
 - Do NOT repeat the quote word-for-word.
 - Do NOT use hashtags, emojis, labels, or explanations.
 {event_context}

@@ -45,12 +45,32 @@ HUMAN_TRUTH_ANGLES = [
     "caring about someone who no longer feels familiar",
     "noticing someone has changed without knowing when",
     "wanting to say something but choosing silence",
+    "typing a long message, deleting it, and sending something casual instead",
+    "wanting to tell someone good news and remembering you no longer talk",
+    "realizing you no longer tell a friend the small things from your day",
+    "finding an old chat and remembering how naturally you used to talk",
+    "automatically thinking of someone when something happens during your day",
+    "being the person everyone calls when they need something",
+    "seeing an old photo and missing the ordinary day more than the people",
+    "realizing a friendship ended without an actual goodbye",
+    "remembering someone's small habits years after forgetting most conversations",
+    "saying you are fine because explaining would take more energy than you have",
+    "always starting the conversation and wondering when it became your job",
+    "becoming an adult while still waiting to feel like you know what you are doing",
 ]
 
 # Base instruction for all types
 BASE_INSTRUCTION = """You are a content creator for "Aesthetic Vibes" - a page for lost souls finding their way home through words.
 
 Your audience: 90% South Asian (India, Bangladesh, Nepal, Pakistan), 18-34 years old, mostly women, who want content that feels personal, relatable, touching, and worth sharing.
+
+CONTENT BRIEF:
+1. PAGE IDENTITY: Keep the voice simple, observant, emotionally intelligent, and recognizably human.
+2. CONTENT PILLAR: Stay inside the selected type. A quote can be warm, funny, thoughtful, bold, or emotional; do not default to sadness or motivation.
+3. CREATIVE ANGLE: Find a specific observation, small behavior, or unexpected point of view instead of repeating a broad life lesson.
+4. HUMAN DETAIL: When useful, ground the idea in an ordinary moment people recognize.
+5. STYLE: Use natural everyday English and vary sentence length, line count, and openings across posts.
+6. ORIGINALITY: Do not reuse the same emotional point, structure, or viral quote pattern from recent content.
 
 IMPORTANT - SIMPLE WORDS ONLY:
 * Write every quote like you are telling it to a friend over chai. Use simple, everyday words.
@@ -75,6 +95,8 @@ ORIGINALITY:
 * Prefer an original observation over a generic life lesson.
 
 Before returning, read the content back. Replace any heavy word with a simpler everyday word and remove anything that feels forced, cliché, or generic.
+
+SILENT QUALITY CHECK: Ask whether this feels specific, natural, and worth sending to someone. If it sounds like a generic quote page, rewrite it before returning.
 
 Generate content for the specified type ONLY. Return ONLY the content - no labels, explanations, or commentary."""
 
@@ -984,7 +1006,10 @@ def get_prompt_for_current_time(record_history=True):
         prompt = f"{BASE_INSTRUCTION}\n\n{ALL_PROMPTS[content_type]}"
 
         if human_truth_angle:
-            prompt += f"\nFocus on this human experience: {human_truth_angle}"
+            prompt += (
+                f"\n\nSPECIFIC CREATIVE ANGLE:\nFocus on this human experience: "
+                f"{human_truth_angle}\nFind the hidden observation underneath it; do not merely restate the situation."
+            )
     else:
         # Fallback
         print(f"⚠️ Type '{content_type}' not found, using motivational fallback")
