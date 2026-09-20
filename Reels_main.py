@@ -122,9 +122,32 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
     image_dir = output_folder / "images"
     audio_path = output_folder / "voiceover.mp3"
     video_file = output_folder / "reel.mp4"
-    
+
+     # Save story (both for new and existing, to ensure it's in right location)
+    print("📄 Saving Story...\n")
+    with open(
+        story_file,
+        "w",
+        encoding="utf8"
+    ) as f:
+        json.dump(
+            story,
+            f,
+            indent=4,
+            ensure_ascii=False
+        )
+       
+    # Generate voice
+    print("🎤 Step 2 : Voice Generation...\n")
+    generate_voice(
+        text=story["narration"],
+        output_file=str(audio_path),
+        voice=story.get("voice") or None,
+    )
+
+
     # Generate images
-    print("🎨 Step 2 : Generating Images...\n")
+    print("🎨 Step 3 : Generating Images...\n")
     images: List[str] = generate_images_for_reel(
         reel_json=story,
         output_dir=image_dir,
@@ -142,28 +165,7 @@ def generate_complete_reel(story_path: Optional[str] = None, images_only: bool =
             "image_dir": str(image_dir),
             "images": images
         }
-    
-    # Generate voice
-    print("🎤 Step 3 : Voice Generation...\n")
-    generate_voice(
-        text=story["narration"],
-        output_file=str(audio_path),
-        voice=story.get("voice") or None,
-    )
-    
-    # Save story (both for new and existing, to ensure it's in right location)
-    print("📄 Saving Story...\n")
-    with open(
-        story_file,
-        "w",
-        encoding="utf8"
-    ) as f:
-        json.dump(
-            story,
-            f,
-            indent=4,
-            ensure_ascii=False
-        )
+     
     
     # Create video
     print("🎬 Step 4 : Composing Reel...\n")

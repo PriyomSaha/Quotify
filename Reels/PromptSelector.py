@@ -215,7 +215,7 @@ EMOTIONAL ARC - every piece must travel three beats:
 ALWAYS include at least ONE sensory or desi detail somewhere, and ROTATE which one - do not use rain in every reel: chai steam rising, a phone ringing at the wrong hour, the smell of home-cooked food, morning light through a window, a bus window in motion, a mother's voice, a street dog at the gate, dust dancing in sunlight, the whistle of a pressure cooker, a train pulling in, the hum of a ceiling fan, a cold breeze off a river, an auto-rickshaw ride, the first bite of something familiar, footsteps on a quiet staircase. Make it feel lived, not invented.
 
 HOOK RULES (the first line must stop the scroll):
-- 4-9 words, curiosity or emotion in under 2 seconds.
+- A VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 words, max 9): punchy, not too big, stopping the scroll in ~1.5s.
 - Use the today's hook style.
 - Never start with "Sometimes", "People", or "Life" every time.
 - Start mid-feeling, not with a setup.
@@ -229,6 +229,158 @@ SAFETY - always:
 - Keep it original. Never copy songs, poems, speeches or famous quotes.
 - Be gentle. Hard truths are okay; cruelty is not.
 """
+
+
+# ===========================================================================
+# KICK ENGINE - the anti-monotony layer
+# ===========================================================================
+# A reel feels monotonous when it walks in a straight line: mood -> mood ->
+# soft conclusion. Three things fix that, and all three are enforced below:
+#   1. a required TURN in the middle (a reversal, not a mood shift),
+#   2. a required CONCRETE ANCHOR (number / object / action / one line of
+#      real speech) so the feeling belongs to a real moment,
+#   3. a LANDING LINE that re-reads the opening instead of summarising.
+# The same constants feed story_generation's validator, so a flat draft is
+# rejected and rewritten instead of being published.
+# ===========================================================================
+
+BANNED_PLATITUDES = [
+    "you are enough",
+    "you're enough",
+    "stay strong",
+    "you've got this",
+    "you got this",
+    "everything happens for a reason",
+    "trust the process",
+    "this too shall pass",
+    "never give up",
+    "keep going",
+    "believe in yourself",
+    "just be yourself",
+    "love yourself first",
+    "be kind to yourself",
+    "happiness is a choice",
+    "the best is yet to come",
+    "good things take time",
+    "time heals",
+    "one day at a time",
+    "it is what it is",
+    "everything will be okay",
+    "everything will be fine",
+    "life goes on",
+    "hard work pays off",
+    "you deserve the world",
+    "follow your heart",
+    "dream big",
+    "let it go",
+    "you matter",
+    "and that's okay",
+    "and it's okay",
+]
+
+# Concrete anchors that make a narration feel lived instead of invented.
+# Matched on word boundaries so "tea" never fires inside "teach".
+CONCRETE_SIGNAL_WORDS = [
+    "chai", "tea", "kettle", "cup", "glass", "thermos", "tiffin", "plate",
+    "spoon", "cooker", "rice", "roti", "chapati", "pickle", "mango", "market",
+    "stall", "shop", "shopkeeper", "rickshaw", "auto", "scooter", "bicycle",
+    "cycle", "helmet", "ticket", "bus", "train", "platform", "metro", "berth",
+    "phone", "charger", "screen", "battery", "call", "letter", "envelope",
+    "diary", "notebook", "pen", "page", "book", "lamp", "bulb", "switch",
+    "fan", "radio", "song", "saree", "kurta", "dupatta", "sweater", "shoe",
+    "sandal", "locket", "ring", "thread", "bangle", "photo", "album", "frame",
+    "window", "balcony", "roof", "terrace", "gate", "stairs", "staircase",
+    "corridor", "wall", "door", "lock", "key", "mirror", "jar", "blanket",
+    "pillow", "bed", "table", "chair", "bench", "basket", "bag", "plant",
+    "flower", "leaf", "dog", "cat", "crow", "pigeon", "kite", "umbrella",
+    "puddle", "dust", "streetlight", "pole", "school", "college", "office",
+    "library", "hospital", "saloon", "candle", "curtain", "apron", "bucket",
+    "tap", "pressure", "incense",
+]
+
+_CONCRETE_RE = re.compile(
+    r"\b(" + "|".join(sorted(set(CONCRETE_SIGNAL_WORDS))) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def find_platitudes(text: str) -> list:
+    """
+    Return the banned platitude phrases present in ``text`` (lowercase, in
+    declaration order). Used by the prompt (as a ban list) and by
+    story_generation's validator (as a hard gate on flat drafts).
+    """
+    normalized = " ".join(str(text or "").lower().split())
+    if not normalized:
+        return []
+    return [phrase for phrase in BANNED_PLATITUDES if phrase in normalized]
+
+
+def has_concrete_signal(text: str) -> bool:
+    """
+    True when the narration carries a concrete anchor: an exact number/time,
+    one line of real speech in double quotes, or a named ordinary object
+    (chai glass, tiffin, ticket, balcony, ...).
+
+    This is the difference between a reel that makes a stranger feel seen and
+    a reel that reads like a mood board.
+    """
+    raw = str(text or "")
+    if not raw.strip():
+        return False
+    if re.search(r"\d", raw):
+        return True
+    # Only double quotes count as speech, so an apostrophe in "don't" can
+    # never be mistaken for a quoted line.
+    if re.search(r'["\u201c][^"\u201c\u201d]{3,80}["\u201d]', raw):
+        return True
+    return _CONCRETE_RE.search(raw) is not None
+
+_BANNED_FOR_PROMPT = ", ".join(f'"{p}"' for p in BANNED_PLATITUDES)
+
+KICK_ENGINE = f"""
+==================================================
+THE KICK - ANTI-MONOTONY LAYER (do ALL FOUR)
+==================================================
+A reel feels monotonous when it walks a straight line: mood -> mood -> soft
+conclusion. One real TURN in the middle is what makes people rewatch, comment
+and send it. Do all four of these.
+
+1. TURN (required, at about 55-70% of the words):
+   The piece must TURN once - a reversal, a confession, an admission, a
+   contradiction or a quiet revelation that re-reads everything before it.
+   NOT a mood shift ("and then it got better") and NOT a lesson.
+   The turn is the sentence the viewer was not expecting.
+   Illustrations of the SHAPE only - write your own for this story and never
+   reuse these words: "I was not angry. I was scared." / "The lie was mine."
+   / "It was never about the city." / "She never asked me to stay - I did."
+
+2. CONCRETE ANCHOR (required, at least 1, ideally 2):
+   An exact number or time (three years, 6 a.m., the 9:40 train), a named
+   ordinary object (a steel tiffin, a cracked phone screen, a red thread),
+   a small physical action (soaking rice, tying a shoelace, unplugging the
+   fan), or ONE short line of real speech in double quotes (she said, "eat
+   something"). Feelings alone are flat; the object is what makes a stranger
+   feel it. Never reuse the same object twice in one reel.
+
+3. VARIED RHYTHM (required):
+   Line lengths must differ. Include at least one very short line (2-4 words)
+   that lands like a beat. Never open two lines with the same word. If every
+   line is about the same length, the voiceover sounds like a list - break
+   that pattern.
+
+4. LANDING LINE (required):
+   The final line is the strongest line of the reel: max 9 words, and it must
+   close the loop with the opening (make the first line mean something new) or
+   land one quiet gut-punch. It may also be the bare fact with no comfort at
+   all. Never advice, never a summary, never a motivational close.
+
+BANNED PLATITUDES - never use these or a close paraphrase. They are the main
+reason reels feel identical to each other:
+{_BANNED_FOR_PROMPT}
+"""
+
+
 
 
 # ===========================================================================
@@ -444,11 +596,12 @@ ARCHETYPES = [
         "format": "poem",
         "key": "RELATABLE_POEM",
         "name": "Poem (Relatable)",
-        "script": ("A short free-verse poem in the SIMPLEST everyday words about a feeling almost everyone has lived: "
+        "script": ("A short RHYTHMIC free-verse poem in the SIMPLEST everyday words about a feeling almost everyone has lived: "
                     "the one who says 'I'm fine', overthinking at 1am, the daughter still seeking a parent's approval, "
                     "the person in a rented room far from home, the friend who always gives. No big metaphors, no heavy "
-                    "words. Every line is one short breath - a line break is a pause in the voiceover. The LAST TWO "
-                    "LINES are the strongest: the ones people screenshot and send to someone."),
+                    "words. Keep a steady musical cadence - every line is one short breath, a line break is a pause in "
+                    "the voiceover. Write it so people feel seen and connected. The LAST TWO LINES are the strongest: "
+                    "the ones people screenshot and send to someone."),
         "hook_styles": [
             "Begin the poem with the everyday moment itself, in one short line",
             "Begin with a question someone has whispered to themselves at night",
@@ -478,8 +631,9 @@ ARCHETYPES = [
         "key": "HEALING_POEM",
         "name": "Poem (Healing)",
         "script": ("A gentle healing poem: it starts from the ache, walks through one small ordinary image, "
-                    "and ends warm. The words must be plain - a friend speaking slowly at night. No rhymes forced, "
-                    "no drama. The last three lines are where the poem earns its 'save this' power."),
+                    "and ends warm. The words must be plain - a friend speaking slowly at night, with a quiet "
+                    "rhythmic cadence that lets people feel a real connection. No drama. The last three lines are "
+                    "where the poem earns its 'save this' power."),
         "hook_styles": [
             "Begin with the ache in one plain line",
             "Begin with the night and how long it felt",
@@ -736,7 +890,7 @@ paraphrases of them:
 {recent_hooks_block}
 
 RULES FOR THIS HOOK:
-- 1-2 short lines maximum; each line UNDER 45 characters including spaces.
+- A SHORT 1-LINER (not 2): punchy, very catching and relatable, not too big. Each line UNDER 45 characters including spaces.
 - Original, concrete, emotional, and in three or fewer short beats.
 - DO NOT use the same opening line as the narration below.
 - DO NOT quote the narration's first spoken line.
@@ -761,13 +915,17 @@ WEEKDAY FEEL:
 WRITING THIS REEL
 
 - Write ONE reel voiceover, 80 to 110 words, line by line.
-- Follow the emotional arc: tension -> recognition -> payoff.
+- Follow the emotional arc: tension -> recognition -> TURN -> payoff.
+  (the TURN is mandatory - see THE KICK below)
 - End on the strongest line. Do not explain after it.
+
+{KICK_ENGINE}
 - If the story type is a letter, write it as a short intimate letter.
-- If the story type is a POEM, write a short free-verse poem in the simplest
-  everyday words: each line is one short breath (line breaks = subtitle
-  pauses), no forced rhymes, and the LAST TWO LINES are the strongest -
-  the ones people screenshot and send.
+- If the story type is a POEM, write a short RHYTHMIC free-verse poem in the
+  simplest everyday words: each line is one short breath with a steady musical
+  cadence (line breaks = subtitle pauses), and the LAST TWO LINES are the
+  strongest - the ones people screenshot and send. The rhythm should make
+  people feel seen and connected, never forced rhymes.
 - Keep it simple, specific, and shareable. No cliches, no motivational-speaker tone.
 - The six visual scenes will be built from your narration, so make the
   narration visual enough to paint (a moment, a place, a gesture, light, rain).

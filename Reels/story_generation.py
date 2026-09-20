@@ -64,9 +64,10 @@ def build_hook_rule():
     """Prompt rule forbidding reuse of recent hooks (uniqueness engine)."""
     hooks = load_recent_hooks()
     base = (
-        "- hook_line must be SHORT and punchy: 3-7 words, max 9. It must stop a "
-        "scrolling thumb in under a second — a hint, a question, or a flash of "
-        "the feeling, never a summary and never a full sentence of the narration"
+        "- hook_line must be a VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 "
+        "words, max 9): punchy, not too big. It must stop a scrolling thumb in "
+        "under a second — a hint, a question, or a flash of the feeling, never "
+        "a summary and never a full sentence of the narration"
     )
     if not hooks:
         return base
@@ -182,7 +183,7 @@ nostalgic memory instead.
         JSON RULES
 
         - narration must contain 80-110 words
-        - hook_line must be 3-7 words (max 9): the punchiest scroll-stopping teaser for THIS story, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
+        - hook_line must be a VERY CATCHING and RELATABLE SHORT 1-LINER (3-7 words, max 9): punchy and not too big — the punchiest scroll-stopping teaser for THIS story, written as a caption-style tag, NOT the first line of the narration and NOT the opening spoken sentence (so the video doesn't show the same text twice)
         - the first spoken line of narration must be DIFFERENT from hook_line; the hook is a teaser, the narration opens with the moment
         - captions.caption_line must be the single most shareable line in the narration (may repeat the hook or the final line)
         - captions.cta must be one gentle human question inviting comments or saves (e.g. "Who felt this tonight?"); use "" if no good question comes to mind
@@ -546,6 +547,49 @@ def validate_story_json(data: Dict[str, Any]) -> None:
     if words < 80 or words > 110:
         raise ValueError(
             f"Narration must be between 80-110 words. Current: {words}"
+        )
+
+    # ------------------------------------------------------------------
+    # KICK GATE (anti-monotony)
+    # ------------------------------------------------------------------
+    # A flat draft is the #1 reason a reel feels monotonous: it lands on a
+    # platitude, it drifts in abstractions, or it ends on a summary instead of
+    # a punch. Raising here lets generate_story_json's retry loop rewrite the
+    # reel, so a sleepy one is never published. Detectors live in
+    # PromptSelector (same ban list the prompt itself receives).
+    narration_lines = [
+        line.strip() for line in narration.splitlines() if line.strip()
+    ]
+    landing_line = narration_lines[-1] if narration_lines else narration
+
+    landing_platitudes = _PS.find_platitudes(landing_line)
+    if landing_platitudes:
+        raise ValueError(
+            "Narration lands on the banned platitude "
+            f"{landing_platitudes[0]!r}. The final line must be a concrete, "
+            "screenshot-worthy line - rewrite the ending."
+        )
+
+    flat_platitudes = _PS.find_platitudes(narration)
+    if len(flat_platitudes) >= 2:
+        raise ValueError(
+            "Narration is built on banned platitudes "
+            f"({', '.join(repr(p) for p in flat_platitudes[:3])}). Rewrite it "
+            "with a real turn and a concrete anchor."
+        )
+
+    if not _PS.has_concrete_signal(narration):
+        raise ValueError(
+            "Narration has no concrete anchor: no exact number/time, no named "
+            "ordinary object, no line of real speech. Add one so the feeling "
+            "belongs to a real moment."
+        )
+
+    landing_words = len(landing_line.split())
+    if landing_words > 14:
+        raise ValueError(
+            f"The landing line is {landing_words} words - too long to land. "
+            "End on one short, strongest line (max 9 words)."
         )
 
     scenes = data["scenes"]

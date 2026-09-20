@@ -5,7 +5,7 @@ import os
 import random
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
@@ -814,10 +814,154 @@ def build_style_prompt(
     return base
 
 
+# ============================================================
+# PER-IMAGE VISUAL IDENTITY  (random per image, NOT story-based)
+# ============================================================
+# Old behaviour: one ``visual_mode`` (male/female/nature/...) was chosen for
+# the whole reel and reused on every image. That is "story-based" and, because
+# SDXL defaults an ungendered person to female-presenting, reels came out
+# female-only.
+#
+# New behaviour: EVERY image picks its own gender + aesthetic flavor
+# independently — a balanced rotation of male / female / nature / aesthetic —
+# so the reel is a genuine mix and is no longer locked to the story-wide
+# visual_mode. Gender is only injected when a scene actually contains a person,
+# so scenery-only scenes (animals, architecture, objects-as-focus, rainy city)
+# are never contradicted.
+PERSON_CENTERED_SCENE_TYPES = {
+    "person",
+    "abstract_emotion",
+    "nostalgic_room",
+    "environment",
+    "object",
+}
+
+# Balanced male/female shuffle bucket so genders alternate instead of
+# clustering (fixes the female-only skew). One figure per image.
+_PERSON_GENDER_BUCKET: List[str] = []
+
+
+def _next_gender() -> str:
+    """Return the next gender from a balanced male/female shuffle bucket."""
+    global _PERSON_GENDER_BUCKET
+    if not _PERSON_GENDER_BUCKET:
+        _PERSON_GENDER_BUCKET = ["male", "female"] * 3
+        random.shuffle(_PERSON_GENDER_BUCKET)
+    return _PERSON_GENDER_BUCKET.pop()
+
+
+# Age descriptors keep people looking distinct across images. Phrased
+# neutrally ("adult ... figure") they are also far less likely to trip
+# Cloudflare's NSFW classifier than "young woman / girl"-style wording.
+_AGE_PHRASES = [
+    "20-something adult",
+    "30-something adult",
+    "40-something adult",
+    "early-30s adult",
+    "late-20s adult",
+    "adult in their 30s",
+]
+
+
+def _gendered_person_subject(gender: str) -> str:
+    """Build an explicit, portrait-safe subject block for a gendered person."""
+    age = random.choice(_AGE_PHRASES)
+    return (
+        f"One visible {age} {gender}-presenting person is naturally integrated "
+        "in the scene, full body (head to feet), small-to-medium scale, "
+        "distant long-shot composition. Natural body language expressing the "
+        "story. Never a portrait, never a close-up, never a selfie, never "
+        "face-filling framing."
+    )
+
+
+# Gendered nouns / pronouns are rewritten to neutral forms so the per-image
+# gender injected above is the single authority (the story's gender is
+# deliberately ignored — gender is random per image, not story-based).
+_GENDER_NEUTRAL_REWRITES = [
+    (r"\bherself\b", "themself"),
+    (r"\bhimself\b", "themself"),
+    (r"\bhers\b", "their"),
+    (r"\bhis\b", "their"),
+    (r"\bhim\b", "them"),
+    (r"\bher\b", "their"),
+    (r"\bshe\b", "they"),
+    (r"\bhe\b", "they"),
+    (r"\bwomen\b", "people"),
+    (r"\bmen\b", "people"),
+    (r"\bwoman\b", "person"),
+    (r"\bman\b", "person"),
+    (r"\bladies?\b", "people"),
+    (r"\bgentlemen?\b", "people"),
+    (r"\bwife\b", "partner"),
+    (r"\bhusband\b", "partner"),
+    (r"\bgirlfriend\b", "partner"),
+    (r"\bboyfriend\b", "partner"),
+    (r"\bgirls?\b", "young person"),
+    (r"\bboys?\b", "young person"),
+    (r"\bfemale\b", "adult"),
+    (r"\bmale\b", "adult"),
+]
+
+
+def _neutralize_gender(text: str) -> str:
+    """Rewrite gendered person references to neutral form (see table above)."""
+    neutral = text or ""
+    for pattern, replacement in _GENDER_NEUTRAL_REWRITES:
+        neutral = re.sub(pattern, replacement, neutral, flags=re.IGNORECASE)
+    return neutral
+
+
+def pick_per_image_identity(
+    scene_type_resolved: str,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Decide this image's gender + aesthetic flavor independently.
+
+    Returns ``(gender, flavor)`` where ``gender`` is ``None`` or ``"male"`` /
+    ``"female"`` and ``flavor`` is ``None`` or ``"nature"`` / ``"aesthetic"``.
+    Selection is random per image and decoupled from the story-wide
+    ``visual_mode``.
+    """
+    scene_type_resolved = (scene_type_resolved or "").lower()
+    is_person_scene = scene_type_resolved in PERSON_CENTERED_SCENE_TYPES
+
+    # ~60% of images get a nature or aesthetic lift so the reel is visibly a
+    # mix of "male / female / nature / aesthetic" rather than people-only.
+    flavor = random.choice(["nature", "aesthetic", "", "nature", "aesthetic"])
+    gender = _next_gender() if is_person_scene else None
+    return gender, flavor or None
+
+
+def _nsfw_nature_fallback_prompt(prompt: str) -> str:
+    """Last-resort re-wording for Cloudflare NSFW false positives.
+
+    When an otherwise-innocent person scene is blocked on every account,
+    rewind the subject toward a nature / aesthetic environment with no central
+    person. This both dodges the person-flagged phrasing and delivers the
+    nature / aesthetic variety the user wants.
+    """
+    if not re.search(
+        r"\b(person|people|man|woman|male|female)\b", prompt, flags=re.I
+    ):
+        return prompt  # nothing person-flavoured to strip
+    text = re.sub(
+        r"(?i)(CHARACTER \+ ACTION:).*?(ENVIRONMENT:)",
+        r"\1 An aesthetic natural environment (trees, soft grounding elements, "
+        r"atmospheric light, gentle depth of field) tells the story. \2",
+        prompt,
+        flags=re.S,
+    )
+    if not re.search(r"\bno people\b", text, flags=re.I):
+        text += " No people in frame. Nature / aesthetic environmental scene only."
+    return text
+
+
 def build_prompt(
     scene_type: str,
     scene_description: str,
     event_instruction: Optional[str] = None,
+    gender: Optional[str] = None,
+    flavor: Optional[str] = None,
 ) -> str:
     """Build the normal-day image prompt.
 
@@ -908,6 +1052,55 @@ def build_prompt(
             "Full-body or medium-distance composition, not a portrait."
         )
 
+    # ---- Per-image gender identity (balanced, random, NOT story-based) ----
+    # SDXL defaults an ungendered person to female-presenting, which is why
+    # reels used to come out female-only. We now pin an explicit, portrait-safe
+    # gender to EVERY scene that contains a person, picking it fresh per image
+    # (balanced male / female). Gender is only injected when the scene
+    # actually contains a person, so scenery-only scenes are never contradicted.
+    needs_gender_inject = bool(gender) or scene_type == "couple"
+    flavor_text = ""
+    if needs_gender_inject:
+        # The story's own gender is deliberately ignored (random per image);
+        # neutralise gendered nouns/pronouns first so they don't fight the
+        # injected gender and steer SDXL back to a female figure.
+        scene_description = _neutralize_gender(scene_description)
+
+    if scene_type == "couple":
+        subject = (
+            subject
+            + (
+                " Two people appear as a balanced pair: one male and one "
+                "female adult, both full body, small-to-medium scale, "
+                "natural interaction, distant composition. "
+                "No portrait, no close-up."
+            )
+        )
+    elif gender and scene_type == "object":
+        subject = (
+            subject
+            + (
+                f" When a person interacts with the object, they are a "
+                f"{random.choice(_AGE_PHRASES)} {gender}-presenting adult, "
+                "full body, small scale, natural body language."
+            )
+        )
+    elif gender and scene_type in PERSON_CENTERED_SCENE_TYPES:
+        subject = _gendered_person_subject(gender)
+
+    if flavor == "nature":
+        flavor_text = (
+            "NATURE ATMOSPHERE: soft natural textures integrated into the scene "
+            "- wind, leaves, grass, tree shade, earthy grounding elements, "
+            "warm outdoors palette."
+        )
+    elif flavor == "aesthetic":
+        flavor_text = (
+            "AESTHETIC ATMOSPHERE: soft cinematic color grading, gentle film "
+            "glow, muted pastel palette, dreamy depth of field across the "
+            "whole frame."
+        )
+
     # ---- Story-aware scene breakdown ----
     # The scene description is the SOURCE OF TRUTH. The resolvers below
     # only randomise aspects the story does NOT specify, and their random
@@ -968,6 +1161,7 @@ STORY / SCENE (SOURCE OF TRUTH):
 {event_focus_block}
 CHARACTER + ACTION:
 {subject}
+{flavor_text}
 
 ENVIRONMENT:
 {environment}
@@ -1041,6 +1235,17 @@ NSFW_REWRITE_PAIRS = [
     (r"\bstanding\s+quietly\b", "standing calmly"),
     (r"\bunbothered\b", "at ease"),
     (r"\bcompletely relaxed\b", "peaceful and calm"),
+    (r"\bsoft smile\b", "serene look"),
+    (r"\bgentle smile\b", "serene look"),
+    (r"\bquiet smile\b", "calm expression"),
+    (r"\b(to )?herself\b", "to themself"),
+    (r"\bdeep breath\b", "calm moment"),
+    (r"\bstaring out\b", "standing at the opening"),
+    (r"\bgetting up\b", "standing"),
+    (r"\bsitting cross-legged\b", "sitting"),
+    (r"\bly?ing down\b", "resting"),
+    (r"\breaching\b", "reaching"),
+    (r"\bpressing\b", "holding"),
 ]
 
 
@@ -1093,6 +1298,7 @@ def generate_image_with_cloudflare(
     # a vertical composition.
     current_prompt = prompt
     retried_after_nsfw = False
+    retried_nature_fallback = False
 
     while True:
         payload = {
@@ -1183,8 +1389,9 @@ def generate_image_with_cloudflare(
 
         # Every account rejected the prompt as NSFW. Because this comes from
         # Cloudflare's content filter (not a quota/429), hopping accounts will
-        # never help — reword the benign phrasing once and retry. A single
-        # sanitization pass runs to avoid an infinite retry loop.
+        # never help - reword the benign phrasing and retry. Two bounded passes
+        # keep this stable while dodging the stubborn false positives that still
+        # slip through (rare, but they did happen).
         if moderator_blocked_all and not retried_after_nsfw:
             sanitized = compact_prompt(
                 _sanitize_nsfw_prompt(current_prompt)
@@ -1196,6 +1403,17 @@ def generate_image_with_cloudflare(
                 )
                 current_prompt = sanitized
                 retried_after_nsfw = True
+                continue
+
+        if moderator_blocked_all and not retried_nature_fallback:
+            nature_prompt = _nsfw_nature_fallback_prompt(current_prompt)
+            if nature_prompt != current_prompt:
+                print(
+                    "\n⚠️ Still NSFW on all accounts. Retrying as a nature / "
+                    "aesthetic environment (no central person)..."
+                )
+                current_prompt = nature_prompt
+                retried_nature_fallback = True
                 continue
 
         break
@@ -1565,9 +1783,11 @@ def detect_scene_type(
     elif default == "nature":
         default = "environment"
 
-    if default in {"animal_life", "rainy_city", "nostalgic_room", "abstract_emotion"}:
-        return default
-
+    # Content keywords decide the type first; the story-wide default (e.g.
+    # "abstract_emotion") is only a fallback for ambient scenes whose
+    # description does not name a concrete subject. This is what lets a mixed
+    # reel keep scenery scenes like "city skyline" as scenery instead of
+    # forcing a person into every frame.
     if contains_keyword(description, ANIMAL_KEYWORDS):
         return "animal_life"
 
@@ -1715,6 +1935,8 @@ def generate_single_image(
     scene: Dict[str, Any],
     output_path: str,
     event_instruction: Optional[str] = None,
+    gender: Optional[str] = None,
+    flavor: Optional[str] = None,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1731,6 +1953,8 @@ def generate_single_image(
         scene_type=scene_type,
         scene_description=scene_description,
         event_instruction=event_instruction,
+        gender=gender,
+        flavor=flavor,
     )
 
     if event_instruction:
@@ -1839,6 +2063,18 @@ def generate_images_for_reel(
             visual_mode,
         )
 
+        # Per-IMAGE identity (male / female / nature / aesthetic), random and
+        # NOT driven by the story-wide visual_mode. This decouples each frame's
+        # gender and aesthetic so the reel is a genuine mix (and fixes the old
+        # female-only skew, since SDXL no longer gets an ungendered person).
+        _resolved_type = str(scene.get("type", "")).lower()
+        gender, flavor = pick_per_image_identity(_resolved_type)
+        if gender or flavor:
+            print(
+                f"Identity : gender={gender or 'scene-default'}, "
+                f"flavor={flavor or 'none'}"
+            )
+
         # Per-scene event visual identity (deterministic via hint_offset=index)
         # so each reel scene spotlights a different aspect of the event.
         # The artistic STYLE is unchanged: event-based images use the SAME
@@ -1862,6 +2098,8 @@ def generate_images_for_reel(
             scene=scene,
             output_path=str(output_path),
             event_instruction=event_instruction,
+            gender=gender,
+            flavor=flavor,
         )
 
         generated_images.append(image_path)

@@ -45,15 +45,19 @@ DARK_OVERLAY_OPACITY = 0.20
 # Cinematic Effects (tweakable)
 # ----------------------------
 
-# Ken Burns zoom range (1.0 = no zoom)
-ZOOM_MIN = 1.00
-ZOOM_MAX = 1.08
+# Ken Burns zoom range (1.0 = no zoom). A wider, visible zoom range is the
+# single cheapest "vital sign" boost: static moody images feel sleepy, a
+# gentle push-in / pull-out reads as cinematic motion. (image_duration is
+# recomputed to compensate for CROSSFADE, so audio/subtitle sync is preserved.)
+ZOOM_MIN = 1.05
+ZOOM_MAX = 1.22
 
 # Film grain added to every frame
-FILM_GRAIN_AMOUNT = 20
+FILM_GRAIN_AMOUNT = 16
 
-# Crossfade duration in seconds between scene images
-CROSSFADE_DURATION = 0.5
+# Crossfade duration in seconds between scene images (image_duration is
+# auto-compensated so the clip length always matches the narration exactly)
+CROSSFADE_DURATION = 1.0
 
 # End card (profile) duration in seconds after narration finishes
 END_CARD_DURATION = 3.0
@@ -62,7 +66,7 @@ END_CARD_DURATION = 3.0
 SUBTITLE_MIN_DURATION = 1.5   # Minimum seconds a subtitle stays visible
 SUBTITLE_HOLD_TIME = 0.8       # Extra seconds kept on screen after speech ends
 SUBTITLE_FADE = 0.2            # Subtitle fade in/out duration (seconds)
-SUBTITLE_AUDIO_DELAY = 3.0     # Delay (seconds) before narration/subtitles start (hook plays alone first)
+SUBTITLE_AUDIO_DELAY = 1.5     # Delay (seconds) before narration/subtitles start (hook plays alone for 1.5s first)
 SUBTITLE_MAX_WIDTH_OFFSET = 120  # Pixels subtracted from video width (text area)
 SUBTITLE_PADDING = 30          # Padding around subtitle text
 SUBTITLE_LINE_SPACING = 12     # Vertical gap between subtitle lines

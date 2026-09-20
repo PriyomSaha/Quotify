@@ -517,7 +517,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "Sometimes you don't want advice.\n\nYou just want someone\nwho will say,\n\n' I know you're tired.\nYou don't have to explain.\nI can feel your silence '"
+    quote_input = "I think the saddest part is pretending you don't care because caring\nmade you feel foolish."
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,

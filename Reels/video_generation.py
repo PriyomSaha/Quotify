@@ -311,7 +311,7 @@ class ReelComposer:
         subtitle_clips = []
 
         # If a pinned hook overlay is showing the same text at the top for the
-        # first ~1.8s, don't ALSO render that sentence as the opening subtitle
+        # first ~1.5s, don't ALSO render that sentence as the opening subtitle
         # (avoids the "double/overlapping subtitle" on the first frame).
         hook_text = (getattr(self, "hook_line", "") or "").strip().lower()
 
@@ -587,8 +587,8 @@ class ReelComposer:
         hook_y = max(int((VIDEO_HEIGHT - _hook_h) // 2), 0)
 
         # Hook owns the whole cold open; it fades out exactly when the
-        # narration voice + subtitles begin.
-        hook_duration = float(self.audio_delay) if self.audio_delay > 0 else 1.8
+        # narration voice + subtitles begin. The hook plays alone for 1.5s.
+        hook_duration = float(self.audio_delay) if self.audio_delay > 0 else 1.5
 
         clip = (
             ImageClip(image_path)
@@ -831,7 +831,7 @@ class ReelComposer:
         print("Creating subtitles...")
         subtitle_track = self.create_subtitle_track()
 
-        # Cold-open hook overlay (audio_delay seconds) keeps the first 3s strong
+        # Cold-open hook overlay (audio_delay seconds) keeps the first 1.5s strong
         hook_clip = self.create_hook_overlay()
 
         # Make sure the story visuals run through the hook hold + narration.
