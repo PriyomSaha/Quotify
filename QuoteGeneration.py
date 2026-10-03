@@ -3,12 +3,40 @@ import os
 from dotenv import load_dotenv
 from PromptSelector import get_prompt_for_current_time
 from event_detector import CONTENT_QUOTE, build_quote_event_instruction, get_today_event
+from GroqQuoteGeneration import generate_text_with_groq
 
 load_dotenv()
 
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
+
+
+def _generate_text_with_fallback(prompt):
+    """Try Gemini first, then use Groq if Gemini errors or returns no text."""
+    try:
+        interaction = client.interactions.create(
+            model="gemini-3.6-flash",
+            input=prompt,
+        )
+        output_text = (interaction.output_text or "").strip()
+        if not output_text:
+            raise RuntimeError("Gemini returned empty text.")
+        return output_text
+    except Exception as gemini_error:
+        print(
+            "⚠️ Gemini generation failed "
+            f"({type(gemini_error).__name__}); trying Groq fallback..."
+        )
+
+    try:
+        return generate_text_with_groq(prompt)
+    except Exception as groq_error:
+        raise RuntimeError(
+            "Gemini generation failed and the Groq fallback also failed "
+            f"({type(groq_error).__name__})."
+        ) from groq_error
+
 
 def generate_quote(record_history=True):
     """
@@ -30,16 +58,12 @@ def generate_quote(record_history=True):
 
     print("🚀 Sending request to Gemini...")
 
-    # Generate content using Gemini
-    interaction = client.interactions.create(
-        model="gemini-3.6-flash",
-        input=prompt
-    )
-    
+    # Generate content using Gemini, falling back to Groq on any failure.
+    output_text = _generate_text_with_fallback(prompt)
     elapsed = time.time() - start
 
-    print(f"✅ Gemini responded in {elapsed:.2f} seconds")
-    return interaction.output_text or ""
+    print(f"✅ Quote generation completed in {elapsed:.2f} seconds")
+    return output_text
 
 
 def generate_quote_caption(quote_text, event=None):
@@ -77,13 +101,8 @@ Quote:
 
 Return only the caption text.
 """
-    # Generate the caption using Gemini
-    interaction = client.interactions.create(
-        model="gemini-3.6-flash",
-        input=prompt
-    )
-
-    return (interaction.output_text or "").strip()
+    # Generate the caption using Gemini, falling back to Groq on any failure.
+    return _generate_text_with_fallback(prompt)
 
 
 def build_quote_post_caption(quote_text, event=None, base_caption=""):

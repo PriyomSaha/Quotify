@@ -517,7 +517,7 @@ def create_neon_quote_image(
     )
    
 if __name__ == "__main__":
-    quote_input = "I think the saddest part is pretending you don't care because caring\nmade you feel foolish."
+    quote_input = "You can be completely\nover someone and still\nmiss the life you imagined with them."
     print(quote_input)
     create_neon_quote_image(
         raw_text=quote_input,

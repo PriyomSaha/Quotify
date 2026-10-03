@@ -40,6 +40,7 @@ multidict==6.7.1
 networkx==3.6.1
 numba==0.66.0
 numpy==2.4.6
+openai>=1.66.0,<3
 openai-whisper==20250625
 packaging==26.2
 pillow==11.3.0
