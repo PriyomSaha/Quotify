@@ -512,7 +512,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with a quiet realization", "Start with a journal thought", "Start with something experience teaches", "Start with a contradiction"],
         "ending_styles": ["End with a universal life lesson", "End with acceptance", "End with a peaceful realization"],
         "themes": ["people change and love changes shape", "growing up means saying goodbye quietly", "outgrowing versions of ourselves", "the small habits that built you", "the roads you did not take"],
-        "visual_modes": ["landscape", "bridge", "object", "abstract_emotion", "nostalgic_room", "architecture"], "voice": "calm_male",
+        "visual_modes": ["landscape", "object", "abstract_emotion", "nostalgic_room", "architecture"], "voice": "calm_male",
     },
     {
         "format": "prose", "key": "REALITY_TALK", "name": "Real Talk",
@@ -520,7 +520,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with the honest sentence", "Start with a wake-up observation", "Start with a hard truth gently", "Start with nobody warns you about this"],
         "ending_styles": ["End with self-respect", "End with a kind boundary", "End with the choice that is yours"],
         "themes": ["you cannot heal in the place that keeps breaking you", "protecting your energy is not selfish", "some doors close", "being everyone's listener has a cost", "wanting peace is not giving up"],
-        "visual_modes": ["abstract_emotion", "bridge", "architecture", "landscape", "female", "male"], "voice": "calm_male",
+        "visual_modes": ["abstract_emotion", "architecture", "landscape", "female", "male"], "voice": "calm_male",
     },
     {
         "format": "prose", "key": "HOPE_AFTER", "name": "Hope After Everything",
@@ -528,7 +528,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with a quiet promise", "Start with what kept you going", "Start with a first good morning", "Start with a small sign"],
         "ending_styles": ["End with a hopeful truth", "End with gratitude", "End with a warm forward step"],
         "themes": ["healing is not linear but real", "light returns slowly", "rebuilding with no one watching", "letting go made room", "peace growing around pain"],
-        "visual_modes": ["landscape", "bridge", "female", "friends_or_couple", "nature", "object"], "voice": "warm_female",
+        "visual_modes": ["landscape", "female", "friends_or_couple", "nature", "object"], "voice": "warm_female",
     },
     {
         "format": "prose", "key": "LETTER_FORMAT", "name": "A Letter",
@@ -536,7 +536,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with the address line", "Start with what you would change", "Start with to the version of me", "Start with what they should know"],
         "ending_styles": ["End with what to remember", "End with a warm signature", "End with advice as forgiveness"],
         "themes": ["a letter to your younger self", "a letter to a friend who left town", "a letter to a parent", "a letter before healing", "a letter to a love that taught you to leave"],
-        "visual_modes": ["nostalgic_room", "landscape", "bridge", "female", "male", "object"], "voice": "soft_female",
+        "visual_modes": ["nostalgic_room", "landscape", "female", "male", "object"], "voice": "soft_female",
     },
     {
         "format": "prose", "key": "DESI_SLICE", "name": "Desi Slice of Life",
@@ -544,7 +544,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with the desi moment", "Start with a smell or sound", "Start with a hostel or college memory", "Start with a bus seat or street"],
         "ending_styles": ["End with the warmth it carried", "End with what we forget to thank", "End with the world feeling"],
         "themes": ["a tea stall in the rain", "a metro ride that became home", "a phone call from home", "hostel food and the nights it held", "a festival window seat"],
-        "visual_modes": ["bridge", "rainy_city", "landscape", "nostalgic_room", "friends_or_couple", "animal_life"], "voice": "soft_female",
+        "visual_modes": ["rainy_city", "landscape", "nostalgic_room", "friends_or_couple", "animal_life"], "voice": "soft_female",
     },
     {
         "format": "prose", "key": "JOY_QUIET", "name": "Quiet Joy",
@@ -552,7 +552,7 @@ ARCHETYPES = [
         "hook_styles": ["Start with the small joy", "Start with what today felt like", "Start with catching yourself smiling", "Start with something ordinary you protect"],
         "ending_styles": ["End with the worth of small gladness", "End with permission to enjoy it", "End with a simple exhale"],
         "themes": ["first rain after heat", "a home-cooked meal", "a song saving a day", "a Sunday with no plans", "small wins"],
-        "visual_modes": ["landscape", "bridge", "nature", "friends_or_couple", "animal_life", "object"], "voice": "warm_female",
+        "visual_modes": ["landscape", "nature", "friends_or_couple", "animal_life", "object"], "voice": "warm_female",
     },
     {
         "format": "poem", "key": "RELATABLE_POEM", "name": "Poem (Relatable)",
@@ -560,7 +560,7 @@ ARCHETYPES = [
         "hook_styles": ["Begin with the everyday moment", "Begin with a whispered question", "Begin with an ordinary thing", "Begin with a plain confession"],
         "ending_styles": ["End with soft acceptance", "Turn the ache into kindness", "End with a sendable line"],
         "themes": ["saying I'm fine", "overthinking at 1am", "seeking a parent's approval", "the friend who always gives", "a rented room far from home", "growing up away from home", "a love already ending", "talking to yourself"],
-        "visual_modes": ["nostalgic_room", "bridge", "landscape", "female", "abstract_emotion", "friends_or_couple"], "voice": "soft_female",
+        "visual_modes": ["nostalgic_room", "landscape", "female", "abstract_emotion", "friends_or_couple"], "voice": "soft_female",
     },
     {
         "format": "poem", "key": "HEALING_POEM", "name": "Poem (Healing)",
@@ -568,7 +568,7 @@ ARCHETYPES = [
         "hook_styles": ["Begin with the ache", "Begin with the night", "Begin with what broke", "Begin with light returning"],
         "ending_styles": ["End with lighter days", "End with permission", "End with a warm image"],
         "themes": ["light after a dark season", "being gentle with yourself", "asking for help", "rebuilding in ordinary ways", "grief becoming softer", "forgiving yourself", "not checking old messages"],
-        "visual_modes": ["landscape", "bridge", "nature", "abstract_emotion", "friends_or_couple", "object"], "voice": "warm_female",
+        "visual_modes": ["landscape", "nature", "abstract_emotion", "friends_or_couple", "object"], "voice": "warm_female",
     },
 ]
 

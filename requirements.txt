@@ -13,7 +13,7 @@ cloudinary==1.41.0
 # cryptography==49.0.0
 decorator==5.3.1
 distro==1.9.0
-edge-tts==7.2.8
+edge-tts==7.3.1
 # elevenlabs==2.59.0
 fastapi==0.140.0
 filelock==3.32.2

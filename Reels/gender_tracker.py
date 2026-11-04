@@ -16,7 +16,6 @@ TRACKER_FILE = Path.home() / ".cache" / "reel_visual_tracker.txt"
 VISUAL_SEQUENCE = [
     "landscape",
     "female",
-    "bridge",
     "object",
     "male",
     "nature",
@@ -26,8 +25,8 @@ VISUAL_SEQUENCE = [
     "nostalgic_room",
     "animal_life",
     "landscape",
-    "bridge",
     "female",
+    "bridge",
 ]
 
 # Backwards-compatible alias used by older debug code.
@@ -78,13 +77,13 @@ def get_gender_instruction(gender):
         A boy/man appears in MOST scenes doing simple honest tasks:
         - gender: "male"
         - age: vary naturally: early 20s, late 20s, 30s, 40s, 50s, 60s
-        - task ideas (vary each scene): crossing a bridge, waiting at a bus
-          stop, reading by a window, carrying groceries, talking on the phone,
+        - task ideas (vary each scene): waiting at a bus stop, reading by a
+          window, carrying groceries, talking on the phone,
           tying a shoelace, watering plants, walking a street at dusk, sitting
           on a bench, holding an umbrella, writing in a notebook
         - clothes: simple, relatable, context-appropriate
         - keep him small-to-medium in frame, naturally inside the environment
-        - vary locations: bridge, train platform, fields, libraries, buses,
+        - vary locations: train platform, fields, libraries, buses,
           rooftops, quiet streets, seaside, forest path
         - avoid heroic poses, close-up portraits, selfies, and repeated sunset scenes
         """
@@ -96,13 +95,13 @@ def get_gender_instruction(gender):
         A girl/woman appears in MOST scenes doing simple honest tasks:
         - gender: "female"
         - age: vary naturally: early 20s, late 20s, 30s, 40s, 50s, 60s
-        - task ideas (vary each scene): crossing a bridge, watching rain from a
-          bus window, reading by a window, tying her hair back, carrying a
+        - task ideas (vary each scene): watching rain from a bus window,
+          reading by a window, tying her hair back, carrying a
           grocery bag, talking on the phone, watering plants, walking a street
           at dusk, sitting on a balcony, holding chai, writing in a notebook
         - clothes: simple, relatable, context-appropriate
         - keep her small-to-medium in frame, naturally inside the environment
-        - vary locations: bridge, city street, balcony with plants, cafes,
+        - vary locations: city street, balcony with plants, cafes,
           libraries, buses, gardens, rooftops, fields, seaside
         - avoid glamour portraits, close-up faces, selfies, and repeated sunset scenes
         """
@@ -114,25 +113,22 @@ def get_gender_instruction(gender):
         Two ordinary people doing an everyday thing together.
         - gender: "mixed or unspecified"
         - age: choose realistic ages matching the narration
-        - show natural distance/body language: walking a bridge, sitting, sharing tea, waiting at a station, watching a window, walking a street at blue hour
+        - show natural distance/body language: walking, sitting, sharing tea, waiting at a station, watching a window, walking a street at blue hour
         - keep the environment cinematic and emotionally important (river, city street, cafe, rooftop, field)
         - avoid over-romantic poses, wedding imagery, stereotypes, and close-up faces
         """
 
     if gender == "bridge":
         return """
-        VISUAL MODE: ONE PERSON ON A BRIDGE
+        VISUAL MODE: AN OCCASIONAL BRIDGE SCENE
 
-        A person (boy or girl) on or by a bridge in every key scene.
+        A bridge is an occasional visual motif, not the setting for the whole reel.
+        Use a bridge in at most ONE of the six scenes, and only when it fits the narration.
+        The other scenes must use clearly different, story-relevant settings.
+        A person (boy or girl) may appear on the bridge in that single scene.
         - gender: plain "male" or "female"; vary across scenes naturally
-        - show them crossing, standing, leaning on the railing, or stopping
-          mid-way - usual everyday moments (looking at the water, a message on
-          the phone, tying a shoelace, holding a cup, letting the wind hit)
-        - bridges can be a footbridge over a river, a railway overpass, an old
-          stone bridge in a village, a long highway bridge at blue hour
-        - scenery (water, fields, city lights, mist, morning fog) is the
-          beautiful background; the person's moment is the subject
-        - avoid crowds; keep it calm, cinematic, and human
+        - do not repeat the bridge, railing, or crossing in any other scene
+        - avoid crowds; keep the scene calm, cinematic, and human
         """
 
     if gender == "landscape":
@@ -206,9 +202,9 @@ def get_gender_instruction(gender):
         - the person gives the place life: someone at a train station window,
           a person reading in a library corner, waiting at a tea stall, standing
           on a balcony with plants, walking a village street, at a cafe window,
-          leaving an empty classroom, crossing a footbridge, at a lighthouse
+          leaving an empty classroom, or at a lighthouse
         - focus on quiet places: old train station, library, tea stall, balcony,
-          village street, cafe window, classroom, bridge, cabin
+          village street, cafe window, classroom, cabin
         - make the place feel lived-in, nostalgic, and aesthetic; the person
           small-to-medium in frame
         """

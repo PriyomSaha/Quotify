@@ -72,6 +72,15 @@ CONTENT BRIEF:
 5. STYLE: Use natural everyday English and vary sentence length, line count, and openings across posts.
 6. ORIGINALITY: Do not reuse the same emotional point, structure, or viral quote pattern from recent content.
 
+FORMATTING RULES:
+* This is a strict formatting requirement: return exactly 2 paragraphs.
+* Separate the 2 paragraphs with one empty line using two actual line breaks.
+* Do not write the literal characters \n or \n\n in the output.
+* After a sentence-ending period, start the next sentence on a new line using one actual line break.
+* Do not keep two sentences together on the same line.
+* Do not leave a single orphan word at the end of a previous line.
+* Keep the layout visually balanced and readable in poster-style quote cards.
+
 IMPORTANT - SIMPLE WORDS ONLY:
 * Write every quote like you are telling it to a friend over chai. Use simple, everyday words.
 * Avoid long, fancy, heavy, rare, or complicated words.
@@ -149,6 +158,14 @@ WRITING STYLE:
 - No forced sadness.
 - No clichés.
 - No common Instagram quote phrases.
+- This is a strict output requirement: return exactly 2 paragraphs.
+- Use actual newline characters in the final output, not the literal text "\n" or "\n\n".
+- Put a blank line between paragraphs using exactly two real new lines.
+- After each sentence-ending period, start the next sentence on a new line.
+- Keep the first paragraph and second paragraph separated by exactly one empty line.
+- Do not keep a full sentence and the next sentence on the same line.
+- Never leave a single orphan word on a line by itself.
+- Keep the final visual layout balanced and readable.
 
 IMPORTANT:
 Do not simply name an emotion.

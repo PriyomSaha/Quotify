@@ -204,19 +204,23 @@ nostalgic memory instead.
         - if no character is needed, keep the emotional world consistent through place, color, weather, objects, or nature
         - scenes must be illustration-friendly and visually varied
         - avoid repeating the same location unless intentional
-        - PERSONS FIRST: at least 4 of the 6 scenes must include ONE ordinary
-          person - a boy, a girl, or an older person - doing a simple everyday
-          task (crossing a bridge, waiting at a window, walking a street,
-          reading, carrying groceries, holding a phone, tying a shoelace,
-          watering plants). The scenery is the beautiful background; the person
-          in an honest moment is the subject.
+                - PERSONS FIRST: at least 4 of the 6 scenes must include ONE ordinary
+                    adult or older person doing a simple everyday task (waiting for a bus,
+                    sitting beside an empty chair, reading by a window, walking home,
+                    carrying groceries, holding a phone, watering plants). The scenery is
+                    the beautiful background; the person's honest moment is the subject.
         - the remaining 1-2 scenes may be scenery-only (landscape, place, object)
           for breathing room, but never an empty weather shot with no person
-        - keep the same person's identity (age and quiet style) across all scenes
-          when a character mode is used; vary only the task and the place
-        - vary locations strongly: bridge over a river, mountain road, railway
-          platform, cafe window, village field, city street, seaside, library,
-          rooftop garden, forest path, bus stop - never the same twice
+                - keep the same person's identity (age and quiet style) across all scenes
+                    when a character mode is used; vary the task, framing, and place
+                - vary locations strongly: bedroom, nearly empty bus, railway platform,
+                    cafe window, village field, city street, seaside, library, rooftop
+                    garden, forest path, park bench, quiet kitchen - never the same twice
+                - loneliness must be readable through the person's posture, gaze,
+                    distance from others, and relationship to the space; do not rely on
+                    an empty landscape alone to communicate the feeling
+                - bridges are not a default loneliness symbol. Use one only when the
+                    narration specifically calls for it, and never repeat it across scenes
         - avoid sunset as the default AND avoid rain as the default; rotate
           aesthetics: morning mist, golden afternoon, blue hour, moonlight,
           cloudy evening, warm indoor lamps, fog, snow, autumn leaves, lakeside
@@ -229,14 +233,14 @@ nostalgic memory instead.
         {visual_instruction}
 
         General rules:
-        - PERSONS ARE THE HERO: most scenes (4-5 of 6) feature one ordinary
-          person - boy, girl, or older - doing a relatable everyday task. The
+                - PERSONS ARE THE HERO: most scenes (4-5 of 6) feature one ordinary
+                    adult or older person doing a relatable everyday task. The
           selected visual mode tells you HOW the person appears; follow it.
         - No celebrities, no fantasy characters, no glamour portraits, no selfies
         - Use realistic, simple, relatable clothes when humans appear
         - Prefer medium/wide cinematic shots over close-up faces
-        - Keep beautiful scenery everywhere: plants, bridges, rivers, fields,
-          mountains, windows, books, cups, letters, lamps, roads, balconies,
+                - Keep beautiful scenery everywhere: plants, rivers, fields, mountains,
+                    windows, books, cups, letters, lamps, roads, balconies,
           buses, libraries, train stations
         - Avoid stereotypes and clichés
 

@@ -278,8 +278,107 @@ def _wrap_text_by_width(text, max_width, measure):
     return lines
 
 
+def _rebalance_short_lines(lines, max_width, measure):
+    """Shift one word from a longer line onto a very short adjacent line.
+
+    This keeps final lines visually balanced instead of leaving a tiny 2-word
+    tail on the previous paragraph line.
+    """
+    if len(lines) < 2:
+        return lines
+
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(lines) - 1):
+            left_words = lines[i].split()
+            right_words = lines[i + 1].split()
+
+            if len(right_words) > 0 and len(right_words) <= 2 and len(left_words) >= 3:
+                moved_word = left_words[-1]
+                left_candidate = " ".join(left_words[:-1])
+                right_candidate = " ".join([moved_word] + right_words)
+
+                if (
+                    left_candidate
+                    and measure(left_candidate) <= max_width
+                    and measure(right_candidate) <= max_width
+                ):
+                    lines[i] = left_candidate
+                    lines[i + 1] = right_candidate
+                    changed = True
+                    break
+
+    return lines
+
+
+def _sentence_aware_wrap(line, max_width, measure):
+    """Split on sentence boundaries when available, then wrap remaining text."""
+    text = line.strip()
+    if not text:
+        return []
+
+    sentence_matches = list(re.finditer(r"[^.!?]+[.!?]+(?:[\"')\]]+)?|[^.!?]+$", text))
+    if len(sentence_matches) > 1:
+        parts = []
+        for match in sentence_matches:
+            chunk = match.group(0).strip()
+            if chunk:
+                parts.append(chunk)
+        wrapped = []
+        for chunk in parts:
+            wrapped.extend(_wrap_text_by_width(chunk, max_width, measure))
+        return _rebalance_short_lines(wrapped, max_width, measure)
+
+    wrapped = _wrap_text_by_width(text, max_width, measure)
+    return _rebalance_short_lines(wrapped, max_width, measure)
+
+
+def _normalize_quote_layout(text):
+    """Normalize quote text to a readable poster layout.
+
+    Rules:
+    * Keep explicit paragraph breaks as real blank lines
+    * Convert sentence endings into real newline characters when needed
+    * If no paragraph break exists, split into 2 balanced paragraphs
+    * Strip noisy spacing so each sentence begins cleanly
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return text
+
+    # Preserve explicit paragraph breaks first.
+    blocks = [block.strip() for block in text.split("\n\n") if block.strip()]
+    if not blocks:
+        blocks = [text.strip()]
+
+    normalized_blocks = []
+    for block in blocks:
+        block = re.sub(r"\s+", " ", block).strip()
+        sentences = re.split(r"(?<=[.!?])\s+", block)
+        composed = []
+        for sentence in sentences:
+            clean = sentence.strip()
+            if clean:
+                composed.append(clean)
+        if composed:
+            normalized_blocks.append("\n".join(composed))
+
+    if len(normalized_blocks) == 1:
+        sentence_list = re.split(r"(?<=[.!?])\s+", normalized_blocks[0])
+        sentence_list = [s.strip() for s in sentence_list if s.strip()]
+        if len(sentence_list) >= 2:
+            split_at = max(1, len(sentence_list) // 2)
+            left = "\n".join(sentence_list[:split_at])
+            right = "\n".join(sentence_list[split_at:])
+            return "\n\n".join([left, right])
+
+    return "\n\n".join(normalized_blocks)
+
+
 def _format_quote_lines_by_width(text, max_width, measure):
     """Preserve quote structure while wrapping each line to its measured width."""
+    text = _normalize_quote_layout(text)
     raw_lines = text.strip().split("\n")
     speaker_pattern = re.compile(r"^[A-Z][A-Za-z .'-]{1,20}:\s+\S+")
     speaker_lines = [line for line in raw_lines if speaker_pattern.match(line.strip())]
@@ -321,14 +420,32 @@ def _format_quote_lines_by_width(text, max_width, measure):
 
         return formatted_lines, True
 
+    has_explicit_breaks = "\n" in text
     paragraphs = [paragraph.strip() for paragraph in text.split("\n\n") if paragraph.strip()]
     formatted_lines = []
 
+    if not has_explicit_breaks and paragraphs:
+        single_block = paragraphs[0].strip()
+        if measure(single_block) <= max_width:
+            return [single_block], False
+
     for paragraph_index, paragraph in enumerate(paragraphs):
-        for explicit_line in paragraph.split("\n"):
-            formatted_lines.extend(
-                _wrap_text_by_width(explicit_line.strip(), max_width, measure)
-            )
+        lines_in_paragraph = paragraph.split("\n") if has_explicit_breaks else [paragraph]
+
+        for explicit_line in lines_in_paragraph:
+            explicit_line = explicit_line.strip()
+            if not explicit_line:
+                continue
+
+            if has_explicit_breaks and "\n" in paragraph:
+                formatted_lines.extend(
+                    _sentence_aware_wrap(explicit_line, max_width, measure)
+                )
+            else:
+                formatted_lines.extend(
+                    _sentence_aware_wrap(paragraph, max_width, measure)
+                )
+                break
 
         if paragraph_index < len(paragraphs) - 1 and formatted_lines:
             formatted_lines.append("")
@@ -511,10 +628,13 @@ def create_neon_quote_image(
         draw_mask = ImageDraw.Draw(base_mask)
 
         for line_index, line in enumerate(page_lines):
+            y_pos = start_y + (line_index * line_spacing)
+
             if not line:
+                # Explicit paragraph spacing from \n\n must remain visible.
+                y_pos += line_spacing // 2
                 continue
 
-            y_pos = start_y + (line_index * line_spacing)
             text_width = _spaced_text_width(draw_mask, line, font)
             x_pos = (
                 side_margin
@@ -561,7 +681,7 @@ def create_neon_quote_image(
     return saved_paths
    
 if __name__ == "__main__":
-    quote_input = "The last beats of the dhaak before,\nMaa's return feel Heavier,\nleaving our hearts a little emptier\nas we prepare to wait another whole year.\n\nThe sindoor-khela, the mishti,\nthe tearful hugs, and every\n“Bhalo theko, abar dekha hobe”.\n\nBijoya Dashami breaks our hearts a little, but we still smile, touch Maa's feet, and whisper,\n“Abar Esho, Maa!!”\nWith tears in our eyes and hope in our hearts, we raise our voices \n”Asche Bochor Abar Hobe!!”\n\nBecause that's how Bengalis say goodbye — with tears in their eyes, mishti in their hands,\nand a heart already waiting for next Pujo."
+    quote_input = "You don't notice how much you've changed until you react calmly to something that used to ruin your whole week.\n\nThat is quiet progress."
 
     print(quote_input)
     create_neon_quote_image(

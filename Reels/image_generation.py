@@ -258,7 +258,6 @@ ENVIRONMENTS = [
     "ocean shore under cloudy sky",
     "wildflower field with soft wind",
     "wooden dock beside a still lake",
-    "old bridge over a narrow river",
     "snow covered path through trees",
     "library corner with window light",
     "empty park bench under trees",
@@ -818,26 +817,23 @@ def build_style_prompt(
 # PER-IMAGE VISUAL IDENTITY  (random per image, NOT story-based)
 # ============================================================
 # Old behaviour: one ``visual_mode`` (male/female/nature/...) was chosen for
-# the whole reel and reused on every image. That is "story-based" and, because
-# SDXL defaults an ungendered person to female-presenting, reels came out
-# female-only.
+# Gender used to vary independently in each image, which made a single reel's
+# lead character inconsistent and could let models default to female-presenting.
 #
-# New behaviour: EVERY image picks its own gender + aesthetic flavor
-# independently — a balanced rotation of male / female / nature / aesthetic —
-# so the reel is a genuine mix and is no longer locked to the story-wide
-# visual_mode. Gender is only injected when a scene actually contains a person,
-# so scenery-only scenes (animals, architecture, objects-as-focus, rainy city)
-# are never contradicted.
+# Gender stays consistent across person-led scenes within one reel; the next
+# reel rotates the lead gender. Aesthetic flavor can still vary per image.
 PERSON_CENTERED_SCENE_TYPES = {
     "person",
     "abstract_emotion",
     "nostalgic_room",
     "environment",
     "object",
+    "rainy_city",
+    "nature",
+    "animal_life",
 }
 
-# Balanced male/female shuffle bucket so genders alternate instead of
-# clustering (fixes the female-only skew). One figure per image.
+# Balanced male/female shuffle bucket rotates the lead character between reels.
 _PERSON_GENDER_BUCKET: List[str] = []
 
 
@@ -914,13 +910,15 @@ def _neutralize_gender(text: str) -> str:
 
 def pick_per_image_identity(
     scene_type_resolved: str,
+    person_gender: Optional[str] = None,
+    include_person: bool = False,
 ) -> Tuple[Optional[str], Optional[str]]:
     """Decide this image's gender + aesthetic flavor independently.
 
     Returns ``(gender, flavor)`` where ``gender`` is ``None`` or ``"male"`` /
     ``"female"`` and ``flavor`` is ``None`` or ``"nature"`` / ``"aesthetic"``.
-    Selection is random per image and decoupled from the story-wide
-    ``visual_mode``.
+    The lead gender can be supplied by the reel so the same character remains
+    visually coherent across scenes; aesthetic flavor varies per image.
     """
     scene_type_resolved = (scene_type_resolved or "").lower()
     is_person_scene = scene_type_resolved in PERSON_CENTERED_SCENE_TYPES
@@ -928,7 +926,11 @@ def pick_per_image_identity(
     # ~60% of images get a nature or aesthetic lift so the reel is visibly a
     # mix of "male / female / nature / aesthetic" rather than people-only.
     flavor = random.choice(["nature", "aesthetic", "", "nature", "aesthetic"])
-    gender = _next_gender() if is_person_scene else None
+    gender = (
+        person_gender or _next_gender()
+        if is_person_scene or include_person
+        else None
+    )
     return gender, flavor or None
 
 
@@ -962,6 +964,7 @@ def build_prompt(
     event_instruction: Optional[str] = None,
     gender: Optional[str] = None,
     flavor: Optional[str] = None,
+    include_person: bool = False,
 ) -> str:
     """Build the normal-day image prompt.
 
@@ -1009,8 +1012,9 @@ def build_prompt(
         subject = (
             "The location and surrounding environment are the main visual subject. "
             "Show the complete architectural/environmental setting in a wide shot. "
-            "Only include people if the story explicitly requires them. "
-            "Any person must remain small and naturally integrated into the environment. "
+            "When the scene description includes a person, show one clearly visible "
+            "adult naturally integrated into the setting, small-to-medium in frame. "
+            "Across the reel, most scenes should include a human character. "
             "Never use portrait framing."
         )
 
@@ -1025,7 +1029,8 @@ def build_prompt(
         subject = (
             "Rainy city atmosphere is the main subject. "
             "Wet roads, umbrellas, bus windows, balcony plants, tea stalls, apartment windows, neon reflections, and puddles. "
-            "People may be tiny and distant only."
+            "Include one clearly visible adult in this scene, naturally engaged in an "
+            "everyday action; keep them small-to-medium in the wide composition."
         )
 
     elif scene_type == "nostalgic_room":
@@ -1085,8 +1090,28 @@ def build_prompt(
                 "full body, small scale, natural body language."
             )
         )
+    elif gender and scene_type in {"rainy_city", "animal_life"}:
+        subject = f"{subject} {_gendered_person_subject(gender)}"
+    elif gender and scene_type == "architecture":
+        subject = (
+            f"{subject} {_gendered_person_subject(gender)} "
+            "The person is present in this scene, naturally engaged with the place."
+        )
     elif gender and scene_type in PERSON_CENTERED_SCENE_TYPES:
         subject = _gendered_person_subject(gender)
+
+    if include_person and gender and scene_type not in {
+        "person", "abstract_emotion", "nostalgic_room", "environment",
+        "object", "rainy_city", "animal_life", "architecture", "couple",
+    }:
+        subject = f"{subject} {_gendered_person_subject(gender)}"
+
+    if include_person:
+        subject += (
+            " If the story conveys loneliness, make it readable through the "
+            "person's posture, gaze, and quiet relationship to the surrounding "
+            "space; use a fitting varied location, not a bridge by default."
+        )
 
     if flavor == "nature":
         flavor_text = (
@@ -1667,7 +1692,6 @@ PERSON_VARIATIONS = [
     "reading a book beside a rainy window",
     "standing on a train platform in morning haze",
     "drinking coffee inside a cozy cafe",
-    "standing on a bridge during blue hour",
     "looking across a peaceful lake under cloudy sky",
     "walking beneath autumn trees",
     "sitting on a quiet bus near a rain-streaked window",
@@ -1937,6 +1961,7 @@ def generate_single_image(
     event_instruction: Optional[str] = None,
     gender: Optional[str] = None,
     flavor: Optional[str] = None,
+    include_person: bool = False,
 ) -> str:
     scene_type = scene.get("type", "environment")
     scene_description = scene.get("description", "").strip()
@@ -1955,6 +1980,7 @@ def generate_single_image(
         event_instruction=event_instruction,
         gender=gender,
         flavor=flavor,
+        include_person=include_person,
     )
 
     if event_instruction:
@@ -2008,6 +2034,11 @@ def generate_images_for_reel(
     visual_mode = str(reel_json.get("visual_mode", "environment")).lower()
     character = reel_json.get("character", {}) or {}
     character_gender = str(character.get("gender", "")).lower()
+    reel_person_gender = (
+        character_gender
+        if character_gender in {"male", "female"}
+        else _next_gender()
+    )
 
     if not visual_mode or visual_mode == "environment":
         if character_gender in {"male", "female"}:
@@ -2053,6 +2084,8 @@ def generate_images_for_reel(
 
     generated_images = []
 
+    human_scene_count = max(1, (len(scenes) * 2 + 2) // 3)
+
     for index, scene in enumerate(
         scenes,
         start=1,
@@ -2063,12 +2096,15 @@ def generate_images_for_reel(
             visual_mode,
         )
 
-        # Per-IMAGE identity (male / female / nature / aesthetic), random and
-        # NOT driven by the story-wide visual_mode. This decouples each frame's
-        # gender and aesthetic so the reel is a genuine mix (and fixes the old
-        # female-only skew, since SDXL no longer gets an ungendered person).
+        # Keep the lead character's gender consistent across this reel, while
+        # allowing the aesthetic treatment to vary from scene to scene.
         _resolved_type = str(scene.get("type", "")).lower()
-        gender, flavor = pick_per_image_identity(_resolved_type)
+        include_person = index <= human_scene_count
+        gender, flavor = pick_per_image_identity(
+            _resolved_type,
+            person_gender=reel_person_gender,
+            include_person=include_person,
+        )
         if gender or flavor:
             print(
                 f"Identity : gender={gender or 'scene-default'}, "
@@ -2100,6 +2136,7 @@ def generate_images_for_reel(
             event_instruction=event_instruction,
             gender=gender,
             flavor=flavor,
+            include_person=include_person,
         )
 
         generated_images.append(image_path)
