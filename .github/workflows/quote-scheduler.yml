@@ -110,6 +110,8 @@ jobs:
           CONTENT_HISTORY_GIST_ID: ${{ secrets.CONTENT_HISTORY_GIST_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
           PAGE_ID: ${{ secrets.PAGE_ID }}
           PAGE_ACCESS_TOKEN: ${{ secrets.PAGE_ACCESS_TOKEN }}
           API_VERSION: ${{ secrets.API_VERSION }}

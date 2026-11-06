@@ -26,7 +26,8 @@ def _generate_text_with_fallback(prompt):
     except Exception as gemini_error:
         print(
             "⚠️ Gemini generation failed "
-            f"({type(gemini_error).__name__}); trying Groq fallback..."
+            f"({type(gemini_error).__name__}: {gemini_error}); "
+            "trying Groq fallback..."
         )
 
     try:
